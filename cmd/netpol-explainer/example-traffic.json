@@ -1,0 +1,24 @@
+[
+  {
+    "Source": {
+      "Internal": {
+        "PodLabels": {},
+        "NamespaceLabels": {},
+        "Namespace": "default"
+      },
+      "IP": "192.168.1.10"
+    },
+    "Destination": {
+      "Internal": {
+        "PodLabels": {},
+        "NamespaceLabels": {},
+        "Namespace": "default"
+      },
+      "IP": "192.168.1.10"
+    },
+    "PortProtocol": {
+      "Protocol": "TCP",
+      "Port": 80
+    }
+  }
+]
