@@ -16,6 +16,8 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
+	"path/filepath"
+	"sigs.k8s.io/yaml"
 )
 
 func RunRootCommand() {
@@ -56,6 +58,7 @@ func setupRootCommand() *cobra.Command {
 type AnalyzePoliciesArgs struct {
 	PolicySource string
 	Namespaces   []string
+	PolicyPath   string
 }
 
 func setupAnalyzePoliciesCommand() *cobra.Command {
@@ -74,12 +77,14 @@ func setupAnalyzePoliciesCommand() *cobra.Command {
 
 	command.Flags().StringSliceVar(&args.Namespaces, "namespaces", []string{}, "only set if policy-source = kube; selects namespaces to read policies from; leaving empty will select all namespaces")
 
+	command.Flags().StringVar(&args.PolicyPath, "policy-path", "", "only set if policy-source = file; path to network polic(ies)")
+
 	return command
 }
 
 func runAnalyzePoliciesCommand(args *AnalyzePoliciesArgs) {
 	// 1. source of policies
-	kubePolicies, err := readPolicies(args.PolicySource, args.Namespaces)
+	kubePolicies, err := readPolicies(args.PolicySource, args.Namespaces, args.PolicyPath)
 	utils.DoOrDie(err)
 
 	// 2. consume policies
@@ -92,6 +97,7 @@ type QueryTrafficArgs struct {
 	PolicySource string
 	Namespaces   []string
 	TrafficFile  string
+	PolicyPath   string
 }
 
 func setupQueryTrafficCommand() *cobra.Command {
@@ -111,6 +117,8 @@ func setupQueryTrafficCommand() *cobra.Command {
 
 	command.Flags().StringSliceVar(&args.Namespaces, "namespaces", []string{}, "only set if policy-source = kube; selects namespaces to read policies from; leaving empty will select all namespaces")
 
+	command.Flags().StringVar(&args.PolicyPath, "policy-path", "", "only set if policy-source = file; path to network polic(ies)")
+
 	command.Flags().StringVar(&args.TrafficFile, "traffic-file", "", "path to traffic file, containing a list of traffic objects")
 	command.MarkFlagRequired("traffic-file")
 
@@ -119,7 +127,7 @@ func setupQueryTrafficCommand() *cobra.Command {
 
 func runQueryTrafficCommand(args *QueryTrafficArgs) {
 	// 1. source of policies
-	kubePolicies, err := readPolicies(args.PolicySource, args.Namespaces)
+	kubePolicies, err := readPolicies(args.PolicySource, args.Namespaces, args.PolicyPath)
 	utils.DoOrDie(err)
 
 	// 2. consume policies
@@ -141,17 +149,60 @@ func runQueryTrafficCommand(args *QueryTrafficArgs) {
 	}
 }
 
-func readPolicies(source string, namespaces []string) ([]*networkingv1.NetworkPolicy, error) {
+func readPolicies(source string, namespaces []string, policyPath string) ([]*networkingv1.NetworkPolicy, error) {
 	switch source {
 	case "kube":
 		return readPoliciesFromKube(namespaces)
 	case "file":
-		return nil, errors.Errorf("TODO -- unimplemented")
+		return readPoliciesFromPath(policyPath)
 	case "examples":
 		return examples.AllExamples, nil
 	default:
 		return nil, errors.Errorf("invalid policy source %s", source)
 	}
+}
+
+func readPoliciesFromPath(policyPath string) ([]*networkingv1.NetworkPolicy, error) {
+	var allPolicies []*networkingv1.NetworkPolicy
+	err := filepath.Walk(policyPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return errors.Wrapf(err, "unable to walk path %s", path)
+		}
+		if info.IsDir() {
+			log.Infof("not opening dir %s", path)
+			return nil
+		}
+		log.Infof("walking path %s", path)
+		bytes, err := ioutil.ReadFile(path)
+		if err != nil {
+			return errors.Wrapf(err, "unable to read file %s", path)
+		}
+
+		// try parsing a list first
+		var policies []*networkingv1.NetworkPolicy
+		err = yaml.Unmarshal(bytes, &policies)
+		if err == nil {
+			log.Debugf("parsed %d policies from %s", len(policies), path)
+			allPolicies = append(allPolicies, policies...)
+			return nil
+		}
+
+		log.Debugf("failed to parse list from %s, falling back to parsing single policy", path)
+		var policy *networkingv1.NetworkPolicy
+		err = yaml.Unmarshal(bytes, &policy)
+		if err != nil {
+			return errors.Wrapf(err, "unable to unmarshal single policy from yaml at %s", path)
+		}
+
+		log.Debugf("parsed single policy from %s: %+v", path, policy)
+		allPolicies = append(allPolicies, policy)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+		//return nil, errors.Wrapf(err, "unable to walk filesystem from %s", policyPath)
+	}
+	return allPolicies, nil
 }
 
 func readPoliciesFromKube(namespaces []string) ([]*networkingv1.NetworkPolicy, error) {
