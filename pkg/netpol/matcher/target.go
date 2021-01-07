@@ -6,6 +6,7 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sort"
 )
@@ -15,7 +16,7 @@ type Target struct {
 	Namespace   string
 	PodSelector metav1.LabelSelector
 	Edge        EdgeMatcher
-	SourceRules []string
+	SourceRules []*networkingv1.NetworkPolicy
 	primaryKey  string
 }
 

@@ -14,7 +14,7 @@ func Explain(policies *Policy) string {
 		if len(t.SourceRules) != 0 {
 			lines = append(lines, "  source rules:")
 			for _, sr := range t.SourceRules {
-				lines = append(lines, "    "+sr)
+				lines = append(lines, fmt.Sprintf("    %s/%s", sr.Namespace, sr.Name))
 			}
 		}
 		switch a := t.Edge.(type) {
@@ -36,7 +36,7 @@ func Explain(policies *Policy) string {
 		if len(t.SourceRules) != 0 {
 			lines = append(lines, "  source rules:")
 			for _, sr := range t.SourceRules {
-				lines = append(lines, "    "+sr)
+				lines = append(lines, fmt.Sprintf("    %s/%s", sr.Namespace, sr.Name))
 			}
 		}
 

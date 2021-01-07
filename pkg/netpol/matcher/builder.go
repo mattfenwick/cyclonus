@@ -33,14 +33,14 @@ func BuildTarget(netpol *networkingv1.NetworkPolicy) (*Target, *Target) {
 			ingress = &Target{
 				Namespace:   netpol.Namespace,
 				PodSelector: netpol.Spec.PodSelector,
-				SourceRules: []string{netpol.Name},
+				SourceRules: []*networkingv1.NetworkPolicy{netpol},
 				Edge:        BuildIngressMatcher(netpol.Namespace, netpol.Spec.Ingress),
 			}
 		case networkingv1.PolicyTypeEgress:
 			egress = &Target{
 				Namespace:   netpol.Namespace,
 				PodSelector: netpol.Spec.PodSelector,
-				SourceRules: []string{netpol.Name},
+				SourceRules: []*networkingv1.NetworkPolicy{netpol},
 				Edge:        BuildEgressMatcher(netpol.Namespace, netpol.Spec.Egress),
 			}
 		}
