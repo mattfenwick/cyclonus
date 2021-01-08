@@ -9,7 +9,7 @@ type EdgeMatcher interface {
 	Allows(peer *TrafficPeer, portProtocol *PortProtocol) bool
 }
 
-func Combine(a EdgeMatcher, b EdgeMatcher) EdgeMatcher {
+func CombineEdgeMatchers(a EdgeMatcher, b EdgeMatcher) EdgeMatcher {
 	switch this := a.(type) {
 	case *EdgePeerPortMatcher:
 		switch that := b.(type) {

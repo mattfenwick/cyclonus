@@ -10,49 +10,44 @@ func Explain(policies *Policy) string {
 	var lines []string
 	// 1. ingress
 	for _, t := range policies.Ingress {
-		lines = append(lines, t.GetPrimaryKey())
-		if len(t.SourceRules) != 0 {
-			lines = append(lines, "  source rules:")
-			for _, sr := range t.SourceRules {
-				lines = append(lines, fmt.Sprintf("    %s/%s", sr.Namespace, sr.Name))
-			}
-		}
-		switch a := t.Edge.(type) {
-		case *NoneEdgeMatcher:
-			lines = append(lines, "  all ingress blocked")
-		case *EdgePeerPortMatcher:
-			lines = append(lines, "  ingress:")
-			lines = append(lines, ExplainEdgePeerPortMatcher(a)...)
-		default:
-			panic(errors.Errorf("invalid EdgeMatcher type %T", t.Edge))
-		}
-
-		lines = append(lines, "")
+		lines = append(lines, ExplainTarget(t, true)...)
 	}
 
 	// 2. egress
 	for _, t := range policies.Egress {
-		lines = append(lines, t.GetPrimaryKey())
-		if len(t.SourceRules) != 0 {
-			lines = append(lines, "  source rules:")
-			for _, sr := range t.SourceRules {
-				lines = append(lines, fmt.Sprintf("    %s/%s", sr.Namespace, sr.Name))
-			}
-		}
-
-		switch a := t.Edge.(type) {
-		case *NoneEdgeMatcher:
-			lines = append(lines, "  all egress blocked")
-		case *EdgePeerPortMatcher:
-			lines = append(lines, "  egress:")
-			lines = append(lines, ExplainEdgePeerPortMatcher(a)...)
-		default:
-			panic(errors.Errorf("invalid EdgeMatcher type %T", t.Edge))
-		}
-		lines = append(lines, "")
+		lines = append(lines, ExplainTarget(t, false)...)
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+func ExplainTarget(target *Target, isIngress bool) []string {
+	var targetType string
+	if isIngress {
+		targetType = "ingress"
+	} else {
+		targetType = "egress"
+	}
+	var lines []string
+	lines = append(lines, target.GetPrimaryKey())
+	if len(target.SourceRules) != 0 {
+		lines = append(lines, "  source rules:")
+		for _, sr := range target.SourceRules {
+			lines = append(lines, fmt.Sprintf("    %s/%s", sr.Namespace, sr.Name))
+		}
+	}
+	switch a := target.Edge.(type) {
+	case *NoneEdgeMatcher:
+		lines = append(lines, fmt.Sprintf("  all %s blocked", targetType))
+	case *EdgePeerPortMatcher:
+		lines = append(lines, fmt.Sprintf("  %s:", targetType))
+		lines = append(lines, ExplainEdgePeerPortMatcher(a)...)
+	default:
+		panic(errors.Errorf("invalid EdgeMatcher type %T", target.Edge))
+	}
+
+	lines = append(lines, "")
+	return lines
 }
 
 func ExplainEdgePeerPortMatcher(tp *EdgePeerPortMatcher) []string {

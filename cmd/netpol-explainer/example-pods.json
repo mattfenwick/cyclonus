@@ -1,0 +1,21 @@
+[
+  {
+    "Namespace": "x",
+    "Labels": {
+      "pod": "a"
+    }
+  },
+  {
+    "Namespace": "y",
+    "Labels": {
+      "pod": "b"
+    }
+  },
+  {
+    "Namespace": "default",
+    "Labels": {
+      "pod": "q",
+      "app": "web"
+    }
+  }
+]

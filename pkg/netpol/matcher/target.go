@@ -11,6 +11,23 @@ import (
 	"sort"
 )
 
+func CombineTargetsIgnoringPrimaryKey(namespace string, podSelector metav1.LabelSelector, targets []*Target) *Target {
+	if len(targets) == 0 {
+		return nil
+	}
+	target := &Target{
+		Namespace:   namespace,
+		PodSelector: podSelector,
+		Edge:        targets[0].Edge,
+		SourceRules: targets[0].SourceRules,
+	}
+	for _, t := range targets[1:] {
+		target.Edge = CombineEdgeMatchers(target.Edge, t.Edge)
+		target.SourceRules = append(target.SourceRules, t.SourceRules...)
+	}
+	return target
+}
+
 // Target represents a NetworkPolicySpec.PodSelector, which is in a namespace
 type Target struct {
 	Namespace   string
@@ -28,7 +45,7 @@ func (t *Target) IsMatch(namespace string, podLabels map[string]string) bool {
 	return t.Namespace == namespace && kube.IsLabelsMatchLabelSelector(podLabels, t.PodSelector)
 }
 
-// Combine creates a new Target combining the egress and ingress rules
+// CombineEdgeMatchers creates a new Target combining the egress and ingress rules
 // of the two original targets.  Neither input is modified.
 // The Primary Keys of the two targets must match.
 func (t *Target) Combine(other *Target) *Target {
@@ -41,7 +58,7 @@ func (t *Target) Combine(other *Target) *Target {
 	return &Target{
 		Namespace:   t.Namespace,
 		PodSelector: t.PodSelector,
-		Edge:        Combine(t.Edge, other.Edge),
+		Edge:        CombineEdgeMatchers(t.Edge, other.Edge),
 		SourceRules: append(t.SourceRules, other.SourceRules...),
 	}
 }
