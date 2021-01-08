@@ -9,28 +9,6 @@ type EdgeMatcher interface {
 	Allows(peer *TrafficPeer, portProtocol *PortProtocol) bool
 }
 
-func CombineEdgeMatchers(a EdgeMatcher, b EdgeMatcher) EdgeMatcher {
-	switch this := a.(type) {
-	case *EdgePeerPortMatcher:
-		switch that := b.(type) {
-		case *EdgePeerPortMatcher:
-			return &EdgePeerPortMatcher{Matchers: append(this.Matchers, that.Matchers...)}
-		//case *AllEdgeMatcher:
-		//	return b
-		case *NoneEdgeMatcher:
-			return a
-		default:
-			panic(errors.Errorf("invalid EdgeMatcher type %T", b))
-		}
-	//case *AllEdgeMatcher:
-	//	return a
-	case *NoneEdgeMatcher:
-		return b
-	default:
-		panic(errors.Errorf("invalid EdgeMatcher type %T", a))
-	}
-}
-
 type EdgePeerPortMatcher struct {
 	// TODO change this to:
 	//   SourceDests map[string]*PeerPortMatcher
@@ -76,4 +54,28 @@ func (nem *NoneEdgeMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
 		"Type": "none",
 	})
+}
+
+// functions
+
+func CombineEdgeMatchers(a EdgeMatcher, b EdgeMatcher) EdgeMatcher {
+	switch this := a.(type) {
+	case *EdgePeerPortMatcher:
+		switch that := b.(type) {
+		case *EdgePeerPortMatcher:
+			return &EdgePeerPortMatcher{Matchers: append(this.Matchers, that.Matchers...)}
+		//case *AllEdgeMatcher:
+		//	return b
+		case *NoneEdgeMatcher:
+			return a
+		default:
+			panic(errors.Errorf("invalid EdgeMatcher type %T", b))
+		}
+	//case *AllEdgeMatcher:
+	//	return a
+	case *NoneEdgeMatcher:
+		return b
+	default:
+		panic(errors.Errorf("invalid EdgeMatcher type %T", a))
+	}
 }

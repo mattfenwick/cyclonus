@@ -5,28 +5,10 @@ import (
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sort"
 )
-
-func CombineTargetsIgnoringPrimaryKey(namespace string, podSelector metav1.LabelSelector, targets []*Target) *Target {
-	if len(targets) == 0 {
-		return nil
-	}
-	target := &Target{
-		Namespace:   namespace,
-		PodSelector: podSelector,
-		Edge:        targets[0].Edge,
-		SourceRules: targets[0].SourceRules,
-	}
-	for _, t := range targets[1:] {
-		target.Edge = CombineEdgeMatchers(target.Edge, t.Edge)
-		target.SourceRules = append(target.SourceRules, t.SourceRules...)
-	}
-	return target
-}
 
 // Target represents a NetworkPolicySpec.PodSelector, which is in a namespace
 type Target struct {
@@ -88,7 +70,26 @@ func SerializeLabelSelector(ls metav1.LabelSelector) string {
 	// this is weird, but use an array to make the order deterministic
 	bytes, err := json.Marshal([]interface{}{"MatchLabels", keyVals, "MatchExpression", ls.MatchExpressions})
 	if err != nil {
-		log.Fatalf("%+v", err)
+		panic(errors.Wrapf(err, "unable to marshal json"))
 	}
 	return string(bytes)
+}
+
+// CombineTargetsIgnoringPrimaryKey creates a new target from the given namespace and pod selector,
+// and combines all the edges and source rules from the original targets into the new target.
+func CombineTargetsIgnoringPrimaryKey(namespace string, podSelector metav1.LabelSelector, targets []*Target) *Target {
+	if len(targets) == 0 {
+		return nil
+	}
+	target := &Target{
+		Namespace:   namespace,
+		PodSelector: podSelector,
+		Edge:        targets[0].Edge,
+		SourceRules: targets[0].SourceRules,
+	}
+	for _, t := range targets[1:] {
+		target.Edge = CombineEdgeMatchers(target.Edge, t.Edge)
+		target.SourceRules = append(target.SourceRules, t.SourceRules...)
+	}
+	return target
 }
