@@ -4,6 +4,7 @@ go 1.15
 
 require (
 	github.com/imdario/mergo v0.3.11 // indirect
+	github.com/olekukonko/tablewriter v0.0.4
 	github.com/onsi/ginkgo v1.11.0
 	github.com/onsi/gomega v1.7.0
 	github.com/pkg/errors v0.9.1

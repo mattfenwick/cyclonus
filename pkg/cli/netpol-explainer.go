@@ -1,11 +1,9 @@
 package cli
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/mattfenwick/cyclonus/pkg/kube"
-	"github.com/mattfenwick/cyclonus/pkg/kube/netpol/examples"
+	"github.com/mattfenwick/cyclonus/pkg/netpol/connectivity"
 	"github.com/mattfenwick/cyclonus/pkg/netpol/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/netpol/utils"
 	"github.com/pkg/errors"
@@ -13,11 +11,8 @@ import (
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	v1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"os"
-	"path/filepath"
-	"sigs.k8s.io/yaml"
 )
 
 func RunRootCommand() {
@@ -47,6 +42,7 @@ func setupRootCommand() *cobra.Command {
 
 	command.AddCommand(setupAnalyzePoliciesCommand())
 	command.AddCommand(setupQueryTrafficCommand())
+	command.AddCommand(setupProbeConnectivityCommand())
 
 	// TODO
 	//command.AddCommand(setupQueryTargetsCommand())
@@ -59,6 +55,7 @@ type AnalyzePoliciesArgs struct {
 	PolicySource string
 	Namespaces   []string
 	PolicyPath   string
+	Format       string
 }
 
 func setupAnalyzePoliciesCommand() *cobra.Command {
@@ -79,6 +76,8 @@ func setupAnalyzePoliciesCommand() *cobra.Command {
 
 	command.Flags().StringVar(&args.PolicyPath, "policy-path", "", "only set if policy-source = file; path to network polic(ies)")
 
+	command.Flags().StringVar(&args.Format, "format", "", "output format; human-readable if empty (options: json)")
+
 	return command
 }
 
@@ -89,8 +88,12 @@ func runAnalyzePoliciesCommand(args *AnalyzePoliciesArgs) {
 
 	// 2. consume policies
 	explainedPolicies := matcher.BuildNetworkPolicies(kubePolicies)
-	printJSON(explainedPolicies)
-	fmt.Printf("%s\n\n", matcher.Explain(explainedPolicies))
+	switch args.Format {
+	case "json":
+		printJSON(explainedPolicies)
+	default:
+		fmt.Printf("%s\n\n", matcher.Explain(explainedPolicies))
+	}
 }
 
 type QueryTrafficArgs struct {
@@ -149,109 +152,98 @@ func runQueryTrafficCommand(args *QueryTrafficArgs) {
 	}
 }
 
-func readPolicies(source string, namespaces []string, policyPath string) ([]*networkingv1.NetworkPolicy, error) {
-	switch source {
-	case "kube":
-		return readPoliciesFromKube(namespaces)
-	case "file":
-		return readPoliciesFromPath(policyPath)
-	case "examples":
-		return examples.AllExamples, nil
-	default:
-		return nil, errors.Errorf("invalid policy source %s", source)
-	}
+type ProbeConnectivityArgs struct {
+	PolicySource    string
+	Namespaces      []string
+	PolicyPath      string
+	ModelNamespaces []string
+	ModelPods       []string
 }
 
-func readPoliciesFromPath(policyPath string) ([]*networkingv1.NetworkPolicy, error) {
-	var allPolicies []*networkingv1.NetworkPolicy
-	err := filepath.Walk(policyPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return errors.Wrapf(err, "unable to walk path %s", path)
-		}
-		if info.IsDir() {
-			log.Infof("not opening dir %s", path)
-			return nil
-		}
-		log.Infof("walking path %s", path)
-		bytes, err := ioutil.ReadFile(path)
-		if err != nil {
-			return errors.Wrapf(err, "unable to read file %s", path)
-		}
+func setupProbeConnectivityCommand() *cobra.Command {
+	args := &ProbeConnectivityArgs{}
 
-		// try parsing a list first
-		var policies []*networkingv1.NetworkPolicy
-		err = yaml.Unmarshal(bytes, &policies)
-		if err == nil {
-			log.Debugf("parsed %d policies from %s", len(policies), path)
-			allPolicies = append(allPolicies, policies...)
-			return nil
-		}
-
-		log.Debugf("failed to parse list from %s, falling back to parsing single policy", path)
-		var policy *networkingv1.NetworkPolicy
-		err = yaml.Unmarshal(bytes, &policy)
-		if err != nil {
-			return errors.Wrapf(err, "unable to unmarshal single policy from yaml at %s", path)
-		}
-
-		log.Debugf("parsed single policy from %s: %+v", path, policy)
-		allPolicies = append(allPolicies, policy)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-		//return nil, errors.Wrapf(err, "unable to walk filesystem from %s", policyPath)
+	command := &cobra.Command{
+		Use:   "probe",
+		Short: "probe connectivity",
+		Long:  "probe connectivity against a cluster model; does not use a real cluster",
+		Args:  cobra.ExactArgs(0),
+		Run: func(cmd *cobra.Command, as []string) {
+			runProbeConnectivityCommand(args)
+		},
 	}
-	return allPolicies, nil
+
+	command.Flags().StringVar(&args.PolicySource, "policy-source", "kube", "source of network policies (kube, file, examples)")
+
+	command.Flags().StringSliceVar(&args.Namespaces, "namespaces", []string{}, "only set if policy-source = kube; selects namespaces to read policies from; leaving empty will select all namespaces")
+
+	command.Flags().StringVar(&args.PolicyPath, "policy-path", "", "only set if policy-source = file; path to network polic(ies)")
+
+	command.Flags().StringSliceVar(&args.ModelNamespaces, "model-namespace", []string{"x", "y", "z"}, "namespaces to use in model")
+	command.Flags().StringSliceVar(&args.ModelPods, "model-pods", []string{"a", "b", "c"}, "pods to use in model")
+
+	return command
 }
 
-func readPoliciesFromKube(namespaces []string) ([]*networkingv1.NetworkPolicy, error) {
-	kubeClient, err := kube.NewKubernetes()
-	if err != nil {
-		return nil, err
-	}
-	if len(namespaces) == 0 {
-		list, err := kubeClient.ClientSet.NetworkingV1().NetworkPolicies(v1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
-		if err != nil {
-			return nil, errors.Wrapf(err, "unable to list netpols in all namespaces")
-		}
-		return refNetpolList(list.Items), nil
-	} else {
-		var list []*networkingv1.NetworkPolicy
-		for _, ns := range namespaces {
-			nsList, err := kubeClient.ClientSet.NetworkingV1().NetworkPolicies(ns).List(context.TODO(), metav1.ListOptions{})
-			if err != nil {
-				return nil, errors.Wrapf(err, "unable to list netpols in namespace %s", ns)
-			}
-			list = append(list, refNetpolList(nsList.Items)...)
-		}
-		return list, nil
-	}
-}
-
-func refNetpolList(refs []networkingv1.NetworkPolicy) []*networkingv1.NetworkPolicy {
-	policies := make([]*networkingv1.NetworkPolicy, len(refs))
-	for i := 0; i < len(refs); i++ {
-		policies[i] = &refs[i]
-	}
-	return policies
-}
-
-func printJSON(obj interface{}) {
-	bytes, err := json.MarshalIndent(obj, "", "  ")
+func runProbeConnectivityCommand(args *ProbeConnectivityArgs) {
+	// 1. source of policies
+	kubePolicies, err := readPolicies(args.PolicySource, args.Namespaces, args.PolicyPath)
 	utils.DoOrDie(err)
-	fmt.Printf("%s\n", string(bytes))
-}
 
-func SetUpLogger(logLevelStr string) error {
-	logLevel, err := log.ParseLevel(logLevelStr)
-	if err != nil {
-		return errors.Wrapf(err, "unable to parse the specified log level: '%s'", logLevel)
+	// 2. consume policies
+	explainedPolicies := matcher.BuildNetworkPolicies(kubePolicies)
+
+	// 3. use model to create traffic
+	model := connectivity.NewModel(args.ModelNamespaces, args.ModelPods)
+	ingressTable := model.NewTruthTable()
+	egressTable := model.NewTruthTable()
+	truthTable := model.NewTruthTable()
+
+	// TODO add protocol
+	// TODO add port
+	// TODO add ips
+	for _, namespaceFrom := range model.Namespaces {
+		for _, podFrom := range namespaceFrom.Pods {
+			for _, namespaceTo := range model.Namespaces {
+				for _, podTo := range namespaceTo.Pods {
+					traffic := &matcher.Traffic{
+						Source: &matcher.TrafficPeer{
+							Internal: &matcher.InternalPeer{
+								PodLabels:       podFrom.Labels,
+								NamespaceLabels: namespaceFrom.Labels,
+								Namespace:       namespaceFrom.Name,
+							},
+							//IP:       "", TODO
+						},
+						Destination: &matcher.TrafficPeer{
+							Internal: &matcher.InternalPeer{
+								PodLabels:       podTo.Labels,
+								NamespaceLabels: namespaceTo.Labels,
+								Namespace:       namespaceTo.Name,
+							},
+							//IP:       "", TODO
+						},
+						PortProtocol: &matcher.PortProtocol{
+							Protocol: v1.ProtocolTCP,
+							Port:     intstr.FromInt(80),
+						},
+					}
+					fr := podFrom.PodString().String()
+					to := podTo.PodString().String()
+					allowed := explainedPolicies.IsTrafficAllowed(traffic)
+					truthTable.Set(fr, to, allowed.IsAllowed())
+					ingressTable.Set(fr, to, allowed.Ingress.IsAllowed)
+					egressTable.Set(fr, to, allowed.Egress.IsAllowed)
+				}
+			}
+		}
 	}
-	log.SetLevel(logLevel)
-	log.SetFormatter(&log.TextFormatter{
-		FullTimestamp: true,
-	})
-	log.Infof("log level set to '%s'", log.GetLevel())
-	return nil
+
+	// 4. print out a result matrix
+	fmt.Println("Ingress:")
+	ingressTable.Table().Render()
+	fmt.Println("Egress:")
+	egressTable.Table().Render()
+	fmt.Println("Combined:")
+	truthTable.Table().Render()
 }
