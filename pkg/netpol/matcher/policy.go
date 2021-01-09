@@ -81,6 +81,7 @@ func (np *Policy) IsIngressOrEgressAllowed(traffic *Traffic, isIngress bool) *Di
 	}
 
 	// 1. if target is external to cluster -> allow
+	//   this is because we can't stop external hosts from sending or receiving traffic
 	if target.Internal == nil {
 		return &DirectionResult{IsAllowed: true, AllowingTargets: nil, MatchingTargets: nil}
 	}

@@ -24,7 +24,11 @@
 
 Using policies from files:
 ```
-$ go run cmd/netpol-explainer/main.go probe --policy-source file --policy-path ./networkpolicies --model-namespace m,default,n
+$ go run cmd/netpol-explainer/main.go probe \
+  --policy-source file \
+  --policy-path ./networkpolicies \
+  --model-namespace m,default,n \
+  --numbered-port 80
 
 Ingress:
 +-----------+-----+-----+-----+-----------+-----------+-----------+-----+-----+-----+
