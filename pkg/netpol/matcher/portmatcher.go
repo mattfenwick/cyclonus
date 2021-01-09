@@ -2,62 +2,77 @@ package matcher
 
 import (
 	"encoding/json"
+	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 type PortMatcher interface {
-	Allows(port *PortProtocol) bool
+	Allows(port intstr.IntOrString, protocol v1.Protocol) bool
 }
 
-// AllPortsAllProtocolsMatcher models the case where no ports/protocols are
-// specified, which is treated as "allow any" by NetworkPolicy
-type AllPortsAllProtocolsMatcher struct{}
+func CombinePortMatchers(a PortMatcher, b PortMatcher) PortMatcher {
+	switch l := a.(type) {
+	case *AllPortsMatcher:
+		return a
+	case *SpecificPortsMatcher:
+		switch r := b.(type) {
+		case *AllPortsMatcher:
+			return b
+		case *SpecificPortsMatcher:
+			return &SpecificPortsMatcher{Ports: append(l.Ports, r.Ports...)}
+		default:
+			panic(errors.Errorf("invalid PortMatcher type %T", a))
+		}
+	default:
+		panic(errors.Errorf("invalid PortMatcher type %T", b))
+	}
+}
 
-func (ap *AllPortsAllProtocolsMatcher) Allows(pp *PortProtocol) bool {
+type AllPortsMatcher struct{}
+
+func (ap *AllPortsMatcher) Allows(port intstr.IntOrString, protocol v1.Protocol) bool {
 	return true
 }
 
-func (ap *AllPortsAllProtocolsMatcher) MarshalJSON() (b []byte, e error) {
-	return json.Marshal(map[string]string{
-		"Type": "all ports all protocols",
+func (ap *AllPortsMatcher) MarshalJSON() (b []byte, e error) {
+	return json.Marshal(map[string]interface{}{
+		"Type": "all ports",
 	})
 }
 
-// AllPortsOnProtocolMatcher models the case where a protocol is specified but
-// a port number/name is not, which is treated as "allow any number/named
-// port on the matching protocol"
-type AllPortsOnProtocolMatcher struct {
+// PortProtocolMatcher models a specific combination of port+protocol.  If port is nil,
+// all ports are matched.
+type PortProtocolMatcher struct {
+	Port     *intstr.IntOrString
 	Protocol v1.Protocol
 }
 
-func (apop *AllPortsOnProtocolMatcher) Allows(pp *PortProtocol) bool {
-	return apop.Protocol == pp.Protocol
+func (ppm *PortProtocolMatcher) Allows(port intstr.IntOrString, protocol v1.Protocol) bool {
+	if ppm.Port != nil {
+		return isPortMatch(*ppm.Port, port) && ppm.Protocol == protocol
+	}
+	return ppm.Protocol == protocol
 }
 
-func (apop *AllPortsOnProtocolMatcher) MarshalJSON() (b []byte, e error) {
+// SpecificPortsMatcher models the case where traffic must match a named or numbered port
+type SpecificPortsMatcher struct {
+	Ports []*PortProtocolMatcher
+}
+
+func (epp *SpecificPortsMatcher) Allows(port intstr.IntOrString, protocol v1.Protocol) bool {
+	for _, matcher := range epp.Ports {
+		if matcher.Allows(port, protocol) {
+			return true
+		}
+	}
+	return false
+}
+
+func (epp *SpecificPortsMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
-		"Type":     "all ports on protocol",
-		"Protocol": apop.Protocol,
-	})
-}
-
-// ExactPortProtocolMatcher models the case where traffic must match a protocol and
-// a number/named port
-type ExactPortProtocolMatcher struct {
-	Protocol v1.Protocol
-	Port     intstr.IntOrString
-}
-
-func (epp *ExactPortProtocolMatcher) Allows(other *PortProtocol) bool {
-	return other.Protocol == epp.Protocol && isPortMatch(other.Port, epp.Port)
-}
-
-func (epp *ExactPortProtocolMatcher) MarshalJSON() (b []byte, e error) {
-	return json.Marshal(map[string]interface{}{
-		"Type":     "port on protocol",
-		"Protocol": epp.Protocol,
-		"Port":     epp.Port,
+		"Type":  "specific ports",
+		"Ports": epp.Ports,
 	})
 }
 

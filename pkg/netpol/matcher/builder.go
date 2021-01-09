@@ -1,6 +1,7 @@
 package matcher
 
 import (
+	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,114 +50,98 @@ func BuildTarget(netpol *networkingv1.NetworkPolicy) (*Target, *Target) {
 }
 
 func BuildIngressMatcher(policyNamespace string, ingresses []networkingv1.NetworkPolicyIngressRule) EdgeMatcher {
-	if len(ingresses) == 0 {
-		return &NoneEdgeMatcher{}
-	}
-	var sdaps []*PeerPortMatcher
+	var matcher EdgeMatcher = &NoneEdgeMatcher{}
 	for _, ingress := range ingresses {
-		sdaps = append(sdaps, BuildPeerPortMatchers(policyNamespace, ingress.Ports, ingress.From)...)
+		matcher = CombineEdgeMatchers(matcher, BuildPeerPortMatchers(policyNamespace, ingress.Ports, ingress.From))
 	}
-	return &EdgePeerPortMatcher{Matchers: sdaps}
+	return matcher
 }
 
 func BuildEgressMatcher(policyNamespace string, egresses []networkingv1.NetworkPolicyEgressRule) EdgeMatcher {
-	if len(egresses) == 0 {
-		return &NoneEdgeMatcher{}
-	}
-	var sdaps []*PeerPortMatcher
+	var matcher EdgeMatcher = &NoneEdgeMatcher{}
 	for _, egress := range egresses {
-		sdaps = append(sdaps, BuildPeerPortMatchers(policyNamespace, egress.Ports, egress.To)...)
+		matcher = CombineEdgeMatchers(matcher, BuildPeerPortMatchers(policyNamespace, egress.Ports, egress.To))
 	}
-	return &EdgePeerPortMatcher{Matchers: sdaps}
+	return matcher
 }
 
-func BuildPeerPortMatchers(policyNamespace string, npPorts []networkingv1.NetworkPolicyPort, peers []networkingv1.NetworkPolicyPeer) []*PeerPortMatcher {
-	// 1. build ports
-	ports := BuildPortMatchers(npPorts)
-	// 2. build SourceDests
-	sds := BuildPeerMatchers(policyNamespace, peers)
-	// 3. build the cartesian product of ports and SourceDests
-	var sdaps []*PeerPortMatcher
-	for _, port := range ports {
-		for _, sd := range sds {
-			sdaps = append(sdaps, &PeerPortMatcher{
-				Peer: sd,
-				Port: port,
+func BuildPeerPortMatchers(policyNamespace string, npPorts []networkingv1.NetworkPolicyPort, peers []networkingv1.NetworkPolicyPeer) EdgeMatcher {
+	// 1. build port matcher
+	port := BuildPortMatcher(npPorts)
+	// 2. build Peers
+	if len(peers) == 0 {
+		return &AllEdgeMatcher{}
+	} else {
+		matcher := &SpecificEdgeMatcher{
+			IP:       map[string]*IPBlockPeerMatcher{},
+			Internal: &NoneInternalMatcher{},
+		}
+		for _, from := range peers {
+			if from.IPBlock != nil {
+				matcher.AddIPMatcher(&IPBlockPeerMatcher{
+					IPBlock:     from.IPBlock,
+					PortMatcher: port,
+				})
+			} else {
+				ns, pod := BuildPeerMatcher(policyNamespace, from)
+				internal := &SpecificInternalMatcher{PodPeers: map[string]*PodPeerMatcher{}}
+				internal.Add(&PodPeerMatcher{
+					Namespace: ns,
+					Pod:       pod,
+					Port:      port,
+				})
+				matcher.Internal = CombineInternalMatchers(matcher.Internal, internal)
+			}
+		}
+		return matcher
+	}
+}
+
+func BuildPortMatcher(npPorts []networkingv1.NetworkPolicyPort) PortMatcher {
+	if len(npPorts) == 0 {
+		return &AllPortsMatcher{}
+	} else {
+		matcher := &SpecificPortsMatcher{}
+		for _, p := range npPorts {
+			protocol := v1.ProtocolTCP
+			if p.Protocol != nil {
+				protocol = *p.Protocol
+			}
+			matcher.Ports = append(matcher.Ports, &PortProtocolMatcher{
+				Port:     p.Port,
+				Protocol: protocol,
 			})
 		}
+		return matcher
 	}
-	return sdaps
-}
-
-func BuildPortMatchers(npPorts []networkingv1.NetworkPolicyPort) []PortMatcher {
-	var ports []PortMatcher
-	if len(npPorts) == 0 {
-		ports = append(ports, &AllPortsAllProtocolsMatcher{})
-	} else {
-		for _, p := range npPorts {
-			ports = append(ports, BuildPortMatcher(p))
-		}
-	}
-	return ports
-}
-
-func BuildPortMatcher(p networkingv1.NetworkPolicyPort) PortMatcher {
-	protocol := v1.ProtocolTCP
-	if p.Protocol != nil {
-		protocol = *p.Protocol
-	}
-	if p.Port == nil {
-		return &AllPortsOnProtocolMatcher{Protocol: protocol}
-	}
-	return &ExactPortProtocolMatcher{Port: *p.Port, Protocol: protocol}
-}
-
-func BuildPeerMatchers(policyNamespace string, peers []networkingv1.NetworkPolicyPeer) []PeerMatcher {
-	var sds []PeerMatcher
-	if len(peers) == 0 {
-		sds = append(sds, &AnywherePeerMatcher{})
-	} else {
-		for _, from := range peers {
-			sds = append(sds, BuildPeerMatcher(policyNamespace, from))
-		}
-	}
-	return sds
 }
 
 func isLabelSelectorEmpty(l metav1.LabelSelector) bool {
 	return len(l.MatchLabels) == 0 && len(l.MatchExpressions) == 0
 }
 
-func BuildPeerMatcher(policyNamespace string, peer networkingv1.NetworkPolicyPeer) PeerMatcher {
+func BuildPeerMatcher(policyNamespace string, peer networkingv1.NetworkPolicyPeer) (NamespaceMatcher, PodMatcher) {
 	if peer.IPBlock != nil {
-		return &IPBlockPeerMatcher{peer.IPBlock}
+		panic(errors.Errorf("unable to handle non-nil peer IPBlock %+v", peer))
 	}
+
 	podSel := peer.PodSelector
-	nsSel := peer.NamespaceSelector
+	var podMatcher PodMatcher
 	if podSel == nil || isLabelSelectorEmpty(*podSel) {
-		if nsSel == nil {
-			return &AllPodsInPolicyNamespacePeerMatcher{Namespace: policyNamespace}
-		} else if isLabelSelectorEmpty(*nsSel) {
-			return &AllPodsAllNamespacesPeerMatcher{}
-		} else {
-			// nsSel has some stuff
-			return &AllPodsInMatchingNamespacesPeerMatcher{NamespaceSelector: *nsSel}
-		}
+		podMatcher = &AllPodMatcher{}
 	} else {
-		// podSel has some stuff
-		if nsSel == nil {
-			return &MatchingPodsInPolicyNamespacePeerMatcher{
-				PodSelector: *podSel,
-				Namespace:   policyNamespace,
-			}
-		} else if isLabelSelectorEmpty(*nsSel) {
-			return &MatchingPodsInAllNamespacesPeerMatcher{PodSelector: *podSel}
-		} else {
-			// nsSel has some stuff
-			return &MatchingPodsInMatchingNamespacesPeerMatcher{
-				PodSelector:       *podSel,
-				NamespaceSelector: *nsSel,
-			}
-		}
+		podMatcher = &LabelSelectorPodMatcher{Selector: *podSel}
 	}
+
+	nsSel := peer.NamespaceSelector
+	var nsMatcher NamespaceMatcher
+	if nsSel == nil {
+		nsMatcher = &ExactNamespaceMatcher{Namespace: policyNamespace}
+	} else if isLabelSelectorEmpty(*nsSel) {
+		nsMatcher = &AllNamespaceMatcher{}
+	} else {
+		nsMatcher = &LabelSelectorNamespaceMatcher{Selector: *nsSel}
+	}
+
+	return nsMatcher, podMatcher
 }
