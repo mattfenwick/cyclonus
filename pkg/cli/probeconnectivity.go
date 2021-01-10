@@ -98,7 +98,7 @@ func runProbeConnectivityCommand(args *ProbeConnectivityArgs) {
 								NamespaceLabels: namespaceFrom.Labels,
 								Namespace:       namespaceFrom.Name,
 							},
-							//IP:       "", TODO
+							IP: "0.0.0.0",
 						},
 						Destination: &matcher.TrafficPeer{
 							Internal: &matcher.InternalPeer{
@@ -106,7 +106,7 @@ func runProbeConnectivityCommand(args *ProbeConnectivityArgs) {
 								NamespaceLabels: namespaceTo.Labels,
 								Namespace:       namespaceTo.Name,
 							},
-							//IP:       "", TODO
+							IP: "0.0.0.0",
 						},
 						PortProtocol: &matcher.PortProtocol{
 							Protocol: protocol,

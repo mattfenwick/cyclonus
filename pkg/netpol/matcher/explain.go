@@ -111,6 +111,8 @@ func ExplainNamespaceMatcher(pm NamespaceMatcher) string {
 func ExplainInternal(i InternalMatcher) []string {
 	var lines []string
 	switch l := i.(type) {
+	case *NoneInternalMatcher:
+		lines = append(lines, "  all pods blocked")
 	case *AllInternalMatcher:
 		lines = append(lines, "    all pods in all namespaces")
 	case *SpecificInternalMatcher:
