@@ -2,50 +2,50 @@ package matcher
 
 import "github.com/pkg/errors"
 
-type EdgeMatcher interface {
+type PeerMatcher interface {
 	Allows(peer *TrafficPeer, portProtocol *PortProtocol) bool
 }
 
-func CombineEdgeMatchers(a EdgeMatcher, b EdgeMatcher) EdgeMatcher {
+func CombinePeerMatchers(a PeerMatcher, b PeerMatcher) PeerMatcher {
 	switch l := a.(type) {
-	case *NoneEdgeMatcher:
+	case *NonePeerMatcher:
 		return b
-	case *AllEdgeMatcher:
+	case *AllPeerMatcher:
 		return a
-	case *SpecificEdgeMatcher:
+	case *SpecificPeerMatcher:
 		switch r := b.(type) {
-		case *NoneEdgeMatcher:
+		case *NonePeerMatcher:
 			return a
-		case *AllEdgeMatcher:
+		case *AllPeerMatcher:
 			return b
-		case *SpecificEdgeMatcher:
+		case *SpecificPeerMatcher:
 			return l.Combine(r)
 		default:
-			panic(errors.Errorf("invalid EdgeMatcher type %T", b))
+			panic(errors.Errorf("invalid PeerMatcher type %T", b))
 		}
 	default:
-		panic(errors.Errorf("invalid EdgeMatcher type %T", a))
+		panic(errors.Errorf("invalid PeerMatcher type %T", a))
 	}
 }
 
-type NoneEdgeMatcher struct{}
+type NonePeerMatcher struct{}
 
-func (nem *NoneEdgeMatcher) Allows(peer *TrafficPeer, portProtocol *PortProtocol) bool {
+func (nem *NonePeerMatcher) Allows(peer *TrafficPeer, portProtocol *PortProtocol) bool {
 	return false
 }
 
-type AllEdgeMatcher struct{}
+type AllPeerMatcher struct{}
 
-func (aem *AllEdgeMatcher) Allows(peer *TrafficPeer, portProtocol *PortProtocol) bool {
+func (aem *AllPeerMatcher) Allows(peer *TrafficPeer, portProtocol *PortProtocol) bool {
 	return true
 }
 
-type SpecificEdgeMatcher struct {
-	IP       map[string]*IPBlockPeerMatcher
+type SpecificPeerMatcher struct {
+	IP       map[string]*IPBlockMatcher
 	Internal InternalMatcher
 }
 
-func (em *SpecificEdgeMatcher) Allows(peer *TrafficPeer, portProtocol *PortProtocol) bool {
+func (em *SpecificPeerMatcher) Allows(peer *TrafficPeer, portProtocol *PortProtocol) bool {
 	// can always match by ip
 	for _, ipMatcher := range em.IP {
 		if ipMatcher.Allows(peer.IP, portProtocol) {
@@ -60,8 +60,8 @@ func (em *SpecificEdgeMatcher) Allows(peer *TrafficPeer, portProtocol *PortProto
 	return false
 }
 
-func (em *SpecificEdgeMatcher) Combine(other *SpecificEdgeMatcher) *SpecificEdgeMatcher {
-	ipMatchers := map[string]*IPBlockPeerMatcher{}
+func (em *SpecificPeerMatcher) Combine(other *SpecificPeerMatcher) *SpecificPeerMatcher {
+	ipMatchers := map[string]*IPBlockMatcher{}
 	for key, ip := range em.IP {
 		ipMatchers[key] = ip
 	}
@@ -72,13 +72,13 @@ func (em *SpecificEdgeMatcher) Combine(other *SpecificEdgeMatcher) *SpecificEdge
 			ipMatchers[key] = ip
 		}
 	}
-	return &SpecificEdgeMatcher{
+	return &SpecificPeerMatcher{
 		IP:       ipMatchers,
 		Internal: CombineInternalMatchers(em.Internal, other.Internal),
 	}
 }
 
-func (em *SpecificEdgeMatcher) AddIPMatcher(ip *IPBlockPeerMatcher) {
+func (em *SpecificPeerMatcher) AddIPMatcher(ip *IPBlockMatcher) {
 	key := ip.PrimaryKey()
 	if matcher, ok := em.IP[key]; ok {
 		em.IP[key] = matcher.Combine(ip)

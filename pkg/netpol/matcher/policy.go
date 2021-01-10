@@ -96,7 +96,7 @@ func (np *Policy) IsIngressOrEgressAllowed(traffic *Traffic, isIngress bool) *Di
 	// 3. Check if any matching targets allow this traffic
 	var allowers []*Target
 	for _, target := range matchingTargets {
-		if target.Edge.Allows(peer, traffic.PortProtocol) {
+		if target.Peer.Allows(peer, traffic.PortProtocol) {
 			allowers = append(allowers, target)
 		}
 	}

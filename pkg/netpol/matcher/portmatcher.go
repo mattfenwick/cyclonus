@@ -13,29 +13,29 @@ type PortMatcher interface {
 
 func CombinePortMatchers(a PortMatcher, b PortMatcher) PortMatcher {
 	switch l := a.(type) {
-	case *AllPortsMatcher:
+	case *AllPortMatcher:
 		return a
 	case *SpecificPortsMatcher:
 		switch r := b.(type) {
-		case *AllPortsMatcher:
+		case *AllPortMatcher:
 			return b
 		case *SpecificPortsMatcher:
 			return &SpecificPortsMatcher{Ports: append(l.Ports, r.Ports...)}
 		default:
-			panic(errors.Errorf("invalid PortMatcher type %T", a))
+			panic(errors.Errorf("invalid Port type %T", a))
 		}
 	default:
-		panic(errors.Errorf("invalid PortMatcher type %T", b))
+		panic(errors.Errorf("invalid Port type %T", b))
 	}
 }
 
-type AllPortsMatcher struct{}
+type AllPortMatcher struct{}
 
-func (ap *AllPortsMatcher) Allows(port intstr.IntOrString, protocol v1.Protocol) bool {
+func (ap *AllPortMatcher) Allows(port intstr.IntOrString, protocol v1.Protocol) bool {
 	return true
 }
 
-func (ap *AllPortsMatcher) MarshalJSON() (b []byte, e error) {
+func (ap *AllPortMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
 		"Type": "all ports",
 	})

@@ -9,36 +9,36 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-var anySourceDestAndPort = &PodPeerMatcher{
-	Namespace: &AllNamespacesMatcher{},
-	Pod:       &AllPodsMatcher{},
-	Port:      &AllPortsMatcher{},
+var anySourceDestAndPort = &NamespacePodMatcher{
+	Namespace: &AllNamespaceMatcher{},
+	Pod:       &AllPodMatcher{},
+	Port:      &AllPortMatcher{},
 }
 
-var anyTrafficPeer = &AllEdgeMatcher{}
+var anyTrafficPeer = &AllPeerMatcher{}
 
 func RunCornerCaseTests() {
 	Describe("Allow none -- nil egress/ingress", func() {
 		It("allow-no-ingress", func() {
 			ingress, egress := BuildTarget(examples.AllowNoIngress)
 
-			Expect(ingress.Edge).To(Equal(&NoneEdgeMatcher{}))
-			//Expect(target.Ingress).To(Equal(&EdgeMatcher{Matchers: []*PodPeerMatcher{}}))
+			Expect(ingress.Peer).To(Equal(&NonePeerMatcher{}))
+			//Expect(target.Ingress).To(Equal(&PeerMatcher{Matchers: []*NamespacePodMatcher{}}))
 			Expect(egress).To(BeNil())
 		})
 
 		It("allow-no-egress", func() {
 			ingress, egress := BuildTarget(examples.AllowNoEgress)
 
-			Expect(egress.Edge).To(Equal(&NoneEdgeMatcher{}))
+			Expect(egress.Peer).To(Equal(&NonePeerMatcher{}))
 			Expect(ingress).To(BeNil())
 		})
 
 		It("allow-neither", func() {
 			ingress, egress := BuildTarget(examples.AllowNoIngressAllowNoEgress)
 
-			Expect(ingress.Edge).To(Equal(&NoneEdgeMatcher{}))
-			Expect(egress.Edge).To(Equal(&NoneEdgeMatcher{}))
+			Expect(ingress.Peer).To(Equal(&NonePeerMatcher{}))
+			Expect(egress.Peer).To(Equal(&NonePeerMatcher{}))
 		})
 	})
 
@@ -46,22 +46,22 @@ func RunCornerCaseTests() {
 		It("allow-no-ingress", func() {
 			ingress, egress := BuildTarget(examples.AllowNoIngress_EmptyIngress)
 
-			Expect(ingress.Edge).To(Equal(&NoneEdgeMatcher{}))
+			Expect(ingress.Peer).To(Equal(&NonePeerMatcher{}))
 			Expect(egress).To(BeNil())
 		})
 
 		It("allow-no-egress", func() {
 			ingress, egress := BuildTarget(examples.AllowNoEgress_EmptyEgress)
 
-			Expect(egress.Edge).To(Equal(&NoneEdgeMatcher{}))
+			Expect(egress.Peer).To(Equal(&NonePeerMatcher{}))
 			Expect(ingress).To(BeNil())
 		})
 
 		It("allow-neither", func() {
 			ingress, egress := BuildTarget(examples.AllowNoIngressAllowNoEgress_EmptyEgressEmptyIngress)
 
-			Expect(ingress.Edge).To(Equal(&NoneEdgeMatcher{}))
-			Expect(egress.Edge).To(Equal(&NoneEdgeMatcher{}))
+			Expect(ingress.Peer).To(Equal(&NonePeerMatcher{}))
+			Expect(egress.Peer).To(Equal(&NonePeerMatcher{}))
 		})
 	})
 
@@ -70,28 +70,28 @@ func RunCornerCaseTests() {
 			ingress, egress := BuildTarget(examples.AllowAllIngress)
 
 			Expect(egress).To(BeNil())
-			Expect(ingress.Edge).To(Equal(anyTrafficPeer))
+			Expect(ingress.Peer).To(Equal(anyTrafficPeer))
 		})
 
 		It("allow-all-egress", func() {
 			ingress, egress := BuildTarget(examples.AllowAllEgress)
 
-			Expect(egress.Edge).To(Equal(anyTrafficPeer))
+			Expect(egress.Peer).To(Equal(anyTrafficPeer))
 			Expect(ingress).To(BeNil())
 		})
 
 		It("allow-all-both", func() {
 			ingress, egress := BuildTarget(examples.AllowAllIngressAllowAllEgress)
 
-			Expect(egress.Edge).To(Equal(anyTrafficPeer))
-			Expect(ingress.Edge).To(Equal(anyTrafficPeer))
+			Expect(egress.Peer).To(Equal(anyTrafficPeer))
+			Expect(ingress.Peer).To(Equal(anyTrafficPeer))
 		})
 	})
 
 	Describe("Source/destination from slice of NetworkPolicyPeer", func() {
 		It("allows all source/destination from an empty slice", func() {
 			sds := BuildPeerPortMatchers("abc", []networkingv1.NetworkPolicyPort{}, []networkingv1.NetworkPolicyPeer{})
-			Expect(sds).To(Equal(&AllEdgeMatcher{}))
+			Expect(sds).To(Equal(&AllPeerMatcher{}))
 		})
 	})
 
@@ -99,37 +99,37 @@ func RunCornerCaseTests() {
 		It("allow all pods in policy namespace", func() {
 			ns, pod := BuildPeerMatcher(examples.Namespace, examples.AllowAllPodsInPolicyNamespacePeer)
 			Expect(ns).To(Equal(&ExactNamespaceMatcher{Namespace: examples.Namespace}))
-			Expect(pod).To(Equal(&AllPodsMatcher{}))
+			Expect(pod).To(Equal(&AllPodMatcher{}))
 		})
 
 		It("allow all pods in all namespaces", func() {
 			ns, pod := BuildPeerMatcher(examples.Namespace, examples.AllowAllPodsInAllNamespacesPeer)
-			Expect(ns).To(Equal(&AllNamespacesMatcher{}))
-			Expect(pod).To(Equal(&AllPodsMatcher{}))
+			Expect(ns).To(Equal(&AllNamespaceMatcher{}))
+			Expect(pod).To(Equal(&AllPodMatcher{}))
 		})
 
 		It("allow all pods in matching namespace", func() {
 			ns, pod := BuildPeerMatcher(examples.Namespace, examples.AllowAllPodsInMatchingNamespacesPeer)
 			Expect(ns).To(Equal(&LabelSelectorNamespaceMatcher{Selector: *examples.SelectorAB}))
-			Expect(pod).To(Equal(&AllPodsMatcher{}))
+			Expect(pod).To(Equal(&AllPodMatcher{}))
 		})
 
 		It("allow all pods in policy namespace -- empty pod selector", func() {
 			ns, pod := BuildPeerMatcher(examples.Namespace, examples.AllowAllPodsInPolicyNamespacePeer_EmptyPodSelector)
 			Expect(ns).To(Equal(&ExactNamespaceMatcher{Namespace: examples.Namespace}))
-			Expect(pod).To(Equal(&AllPodsMatcher{}))
+			Expect(pod).To(Equal(&AllPodMatcher{}))
 		})
 
 		It("allow all pods in all namespaces -- empty pod selector", func() {
 			ns, pod := BuildPeerMatcher(examples.Namespace, examples.AllowAllPodsInAllNamespacesPeer_EmptyPodSelector)
-			Expect(ns).To(Equal(&AllNamespacesMatcher{}))
-			Expect(pod).To(Equal(&AllPodsMatcher{}))
+			Expect(ns).To(Equal(&AllNamespaceMatcher{}))
+			Expect(pod).To(Equal(&AllPodMatcher{}))
 		})
 
 		It("allow all pods in matching namespace -- empty pod selector", func() {
 			ns, pod := BuildPeerMatcher(examples.Namespace, examples.AllowAllPodsInMatchingNamespacesPeer_EmptyPodSelector)
 			Expect(ns).To(Equal(&LabelSelectorNamespaceMatcher{Selector: *examples.SelectorAB}))
-			Expect(pod).To(Equal(&AllPodsMatcher{}))
+			Expect(pod).To(Equal(&AllPodMatcher{}))
 		})
 
 		It("allow matching pods in policy namespace", func() {
@@ -140,7 +140,7 @@ func RunCornerCaseTests() {
 
 		It("allow matching pods in all namespaces", func() {
 			ns, pod := BuildPeerMatcher(examples.Namespace, examples.AllowMatchingPodsInAllNamespacesPeer)
-			Expect(ns).To(Equal(&AllNamespacesMatcher{}))
+			Expect(ns).To(Equal(&AllNamespaceMatcher{}))
 			Expect(pod).To(Equal(&LabelSelectorPodMatcher{Selector: *examples.SelectorEF}))
 		})
 
@@ -152,7 +152,7 @@ func RunCornerCaseTests() {
 
 		//It("allow ipblock", func() {
 		//	sd := BuildPeerMatcher(examples.Namespace, examples.AllowIPBlockPeer)
-		//	Expect(sd).To(Equal(&IPBlockPeerMatcher{
+		//	Expect(sd).To(Equal(&IPBlockMatcher{
 		//		&networkingv1.IPBlock{CIDR: "10.0.0.1/24",
 		//			Except: []string{
 		//				"10.0.0.2",
@@ -165,7 +165,7 @@ func RunCornerCaseTests() {
 	Describe("Port from slice of NetworkPolicyPort", func() {
 		It("allows all ports and all protocols from an empty slice", func() {
 			pm := BuildPortMatcher([]networkingv1.NetworkPolicyPort{})
-			Expect(pm).To(Equal(&AllPortsMatcher{}))
+			Expect(pm).To(Equal(&AllPortMatcher{}))
 		})
 	})
 

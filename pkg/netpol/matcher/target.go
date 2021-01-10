@@ -12,7 +12,7 @@ import (
 type Target struct {
 	Namespace   string
 	PodSelector metav1.LabelSelector
-	Edge        EdgeMatcher
+	Peer        PeerMatcher
 	SourceRules []*networkingv1.NetworkPolicy
 	primaryKey  string
 }
@@ -25,7 +25,7 @@ func (t *Target) IsMatch(namespace string, podLabels map[string]string) bool {
 	return t.Namespace == namespace && kube.IsLabelsMatchLabelSelector(podLabels, t.PodSelector)
 }
 
-// CombineEdgeMatchers creates a new Target combining the egress and ingress rules
+// CombinePeerMatchers creates a new Target combining the egress and ingress rules
 // of the two original targets.  Neither input is modified.
 // The Primary Keys of the two targets must match.
 func (t *Target) Combine(other *Target) *Target {
@@ -38,7 +38,7 @@ func (t *Target) Combine(other *Target) *Target {
 	return &Target{
 		Namespace:   t.Namespace,
 		PodSelector: t.PodSelector,
-		Edge:        CombineEdgeMatchers(t.Edge, other.Edge),
+		Peer:        CombinePeerMatchers(t.Peer, other.Peer),
 		SourceRules: append(t.SourceRules, other.SourceRules...),
 	}
 }
@@ -60,11 +60,11 @@ func CombineTargetsIgnoringPrimaryKey(namespace string, podSelector metav1.Label
 	target := &Target{
 		Namespace:   namespace,
 		PodSelector: podSelector,
-		Edge:        targets[0].Edge,
+		Peer:        targets[0].Peer,
 		SourceRules: targets[0].SourceRules,
 	}
 	for _, t := range targets[1:] {
-		target.Edge = CombineEdgeMatchers(target.Edge, t.Edge)
+		target.Peer = CombinePeerMatchers(target.Peer, t.Peer)
 		target.SourceRules = append(target.SourceRules, t.SourceRules...)
 	}
 	return target

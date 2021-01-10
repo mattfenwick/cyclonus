@@ -7,24 +7,24 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type PodPeerMatcher struct {
+type NamespacePodMatcher struct {
 	Namespace NamespaceMatcher
 	Pod       PodMatcher
 	Port      PortMatcher
 }
 
-func (ppm *PodPeerMatcher) PrimaryKey() string {
+func (ppm *NamespacePodMatcher) PrimaryKey() string {
 	return ppm.Namespace.PrimaryKey() + "---" + ppm.Pod.PrimaryKey()
 }
 
-func (ppm *PodPeerMatcher) Allows(peer *InternalPeer, portProtocol *PortProtocol) bool {
+func (ppm *NamespacePodMatcher) Allows(peer *InternalPeer, portProtocol *PortProtocol) bool {
 	return ppm.Namespace.Allows(peer.Namespace, peer.NamespaceLabels) &&
 		ppm.Pod.Allows(peer.PodLabels) &&
 		ppm.Port.Allows(portProtocol.Port, portProtocol.Protocol)
 }
 
-func (ppm *PodPeerMatcher) Combine(otherPort PortMatcher) *PodPeerMatcher {
-	return &PodPeerMatcher{
+func (ppm *NamespacePodMatcher) Combine(otherPort PortMatcher) *NamespacePodMatcher {
+	return &NamespacePodMatcher{
 		Namespace: ppm.Namespace,
 		Pod:       ppm.Pod,
 		Port:      CombinePortMatchers(ppm.Port, otherPort),
@@ -74,19 +74,19 @@ type PodMatcher interface {
 	PrimaryKey() string
 }
 
-type AllPodsMatcher struct{}
+type AllPodMatcher struct{}
 
-func (p *AllPodsMatcher) Allows(podLabels map[string]string) bool {
+func (p *AllPodMatcher) Allows(podLabels map[string]string) bool {
 	return true
 }
 
-func (p *AllPodsMatcher) MarshalJSON() (b []byte, e error) {
+func (p *AllPodMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
 		"Type": "all pods",
 	})
 }
 
-func (p *AllPodsMatcher) PrimaryKey() string {
+func (p *AllPodMatcher) PrimaryKey() string {
 	return `{"type": "all-pods"}`
 }
 
@@ -154,18 +154,18 @@ func (p *LabelSelectorNamespaceMatcher) PrimaryKey() string {
 	return fmt.Sprintf(`{"type": "label-selector", "selector": "%s"}`, SerializeLabelSelector(p.Selector))
 }
 
-type AllNamespacesMatcher struct{}
+type AllNamespaceMatcher struct{}
 
-func (a *AllNamespacesMatcher) Allows(namespace string, namespaceLabels map[string]string) bool {
+func (a *AllNamespaceMatcher) Allows(namespace string, namespaceLabels map[string]string) bool {
 	return true
 }
 
-func (a *AllNamespacesMatcher) MarshalJSON() (b []byte, e error) {
+func (a *AllNamespaceMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
 		"Type": "all namespaces",
 	})
 }
 
-func (a *AllNamespacesMatcher) PrimaryKey() string {
+func (a *AllNamespaceMatcher) PrimaryKey() string {
 	return `{"type": "all-namespaces"}`
 }

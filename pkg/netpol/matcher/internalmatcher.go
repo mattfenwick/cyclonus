@@ -22,7 +22,7 @@ func CombineInternalMatchers(a InternalMatcher, b InternalMatcher) InternalMatch
 		case *AllInternalMatcher:
 			return b
 		case *SpecificInternalMatcher:
-			for _, val := range r.PodPeers {
+			for _, val := range r.Pods {
 				l.Add(val)
 			}
 			return l
@@ -61,11 +61,11 @@ func (a *AllInternalMatcher) MarshalJSON() (b []byte, e error) {
 }
 
 type SpecificInternalMatcher struct {
-	PodPeers map[string]*PodPeerMatcher
+	Pods map[string]*NamespacePodMatcher
 }
 
 func (a *SpecificInternalMatcher) Allows(peer *InternalPeer, portProtocol *PortProtocol) bool {
-	for _, podPeer := range a.PodPeers {
+	for _, podPeer := range a.Pods {
 		if podPeer.Allows(peer, portProtocol) {
 			return true
 		}
@@ -75,16 +75,16 @@ func (a *SpecificInternalMatcher) Allows(peer *InternalPeer, portProtocol *PortP
 
 func (a *SpecificInternalMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
-		"Type":     "specific internal",
-		"PodPeers": a.PodPeers,
+		"Type": "specific internal",
+		"Pods": a.Pods,
 	})
 }
 
-func (a *SpecificInternalMatcher) Add(newMatcher *PodPeerMatcher) {
+func (a *SpecificInternalMatcher) Add(newMatcher *NamespacePodMatcher) {
 	key := newMatcher.PrimaryKey()
-	if oldMatcher, ok := a.PodPeers[key]; ok {
-		a.PodPeers[key] = oldMatcher.Combine(newMatcher.Port)
+	if oldMatcher, ok := a.Pods[key]; ok {
+		a.Pods[key] = oldMatcher.Combine(newMatcher.Port)
 	} else {
-		a.PodPeers[key] = newMatcher
+		a.Pods[key] = newMatcher
 	}
 }

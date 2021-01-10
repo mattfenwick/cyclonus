@@ -35,57 +35,57 @@ func BuildTarget(netpol *networkingv1.NetworkPolicy) (*Target, *Target) {
 				Namespace:   netpol.Namespace,
 				PodSelector: netpol.Spec.PodSelector,
 				SourceRules: []*networkingv1.NetworkPolicy{netpol},
-				Edge:        BuildIngressMatcher(netpol.Namespace, netpol.Spec.Ingress),
+				Peer:        BuildIngressMatcher(netpol.Namespace, netpol.Spec.Ingress),
 			}
 		case networkingv1.PolicyTypeEgress:
 			egress = &Target{
 				Namespace:   netpol.Namespace,
 				PodSelector: netpol.Spec.PodSelector,
 				SourceRules: []*networkingv1.NetworkPolicy{netpol},
-				Edge:        BuildEgressMatcher(netpol.Namespace, netpol.Spec.Egress),
+				Peer:        BuildEgressMatcher(netpol.Namespace, netpol.Spec.Egress),
 			}
 		}
 	}
 	return ingress, egress
 }
 
-func BuildIngressMatcher(policyNamespace string, ingresses []networkingv1.NetworkPolicyIngressRule) EdgeMatcher {
-	var matcher EdgeMatcher = &NoneEdgeMatcher{}
+func BuildIngressMatcher(policyNamespace string, ingresses []networkingv1.NetworkPolicyIngressRule) PeerMatcher {
+	var matcher PeerMatcher = &NonePeerMatcher{}
 	for _, ingress := range ingresses {
-		matcher = CombineEdgeMatchers(matcher, BuildPeerPortMatchers(policyNamespace, ingress.Ports, ingress.From))
+		matcher = CombinePeerMatchers(matcher, BuildPeerPortMatchers(policyNamespace, ingress.Ports, ingress.From))
 	}
 	return matcher
 }
 
-func BuildEgressMatcher(policyNamespace string, egresses []networkingv1.NetworkPolicyEgressRule) EdgeMatcher {
-	var matcher EdgeMatcher = &NoneEdgeMatcher{}
+func BuildEgressMatcher(policyNamespace string, egresses []networkingv1.NetworkPolicyEgressRule) PeerMatcher {
+	var matcher PeerMatcher = &NonePeerMatcher{}
 	for _, egress := range egresses {
-		matcher = CombineEdgeMatchers(matcher, BuildPeerPortMatchers(policyNamespace, egress.Ports, egress.To))
+		matcher = CombinePeerMatchers(matcher, BuildPeerPortMatchers(policyNamespace, egress.Ports, egress.To))
 	}
 	return matcher
 }
 
-func BuildPeerPortMatchers(policyNamespace string, npPorts []networkingv1.NetworkPolicyPort, peers []networkingv1.NetworkPolicyPeer) EdgeMatcher {
+func BuildPeerPortMatchers(policyNamespace string, npPorts []networkingv1.NetworkPolicyPort, peers []networkingv1.NetworkPolicyPeer) PeerMatcher {
 	// 1. build port matcher
 	port := BuildPortMatcher(npPorts)
 	// 2. build Peers
 	if len(peers) == 0 {
-		return &AllEdgeMatcher{}
+		return &AllPeerMatcher{}
 	} else {
-		matcher := &SpecificEdgeMatcher{
-			IP:       map[string]*IPBlockPeerMatcher{},
+		matcher := &SpecificPeerMatcher{
+			IP:       map[string]*IPBlockMatcher{},
 			Internal: &NoneInternalMatcher{},
 		}
 		for _, from := range peers {
 			if from.IPBlock != nil {
-				matcher.AddIPMatcher(&IPBlockPeerMatcher{
-					IPBlock:     from.IPBlock,
-					PortMatcher: port,
+				matcher.AddIPMatcher(&IPBlockMatcher{
+					IPBlock: from.IPBlock,
+					Port:    port,
 				})
 			} else {
 				ns, pod := BuildPeerMatcher(policyNamespace, from)
-				internal := &SpecificInternalMatcher{PodPeers: map[string]*PodPeerMatcher{}}
-				internal.Add(&PodPeerMatcher{
+				internal := &SpecificInternalMatcher{Pods: map[string]*NamespacePodMatcher{}}
+				internal.Add(&NamespacePodMatcher{
 					Namespace: ns,
 					Pod:       pod,
 					Port:      port,
@@ -99,7 +99,7 @@ func BuildPeerPortMatchers(policyNamespace string, npPorts []networkingv1.Networ
 
 func BuildPortMatcher(npPorts []networkingv1.NetworkPolicyPort) PortMatcher {
 	if len(npPorts) == 0 {
-		return &AllPortsMatcher{}
+		return &AllPortMatcher{}
 	} else {
 		matcher := &SpecificPortsMatcher{}
 		for _, p := range npPorts {
@@ -128,7 +128,7 @@ func BuildPeerMatcher(policyNamespace string, peer networkingv1.NetworkPolicyPee
 	podSel := peer.PodSelector
 	var podMatcher PodMatcher
 	if podSel == nil || isLabelSelectorEmpty(*podSel) {
-		podMatcher = &AllPodsMatcher{}
+		podMatcher = &AllPodMatcher{}
 	} else {
 		podMatcher = &LabelSelectorPodMatcher{Selector: *podSel}
 	}
@@ -138,7 +138,7 @@ func BuildPeerMatcher(policyNamespace string, peer networkingv1.NetworkPolicyPee
 	if nsSel == nil {
 		nsMatcher = &ExactNamespaceMatcher{Namespace: policyNamespace}
 	} else if isLabelSelectorEmpty(*nsSel) {
-		nsMatcher = &AllNamespacesMatcher{}
+		nsMatcher = &AllNamespaceMatcher{}
 	} else {
 		nsMatcher = &LabelSelectorNamespaceMatcher{Selector: *nsSel}
 	}
