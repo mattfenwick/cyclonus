@@ -1,7 +1,6 @@
 package matcher
 
 import (
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -77,13 +76,11 @@ func BuildPeerPortMatchers(policyNamespace string, npPorts []networkingv1.Networ
 			Internal: &NoneInternalMatcher{},
 		}
 		for _, from := range peers {
-			if from.IPBlock != nil {
-				matcher.AddIPMatcher(&IPBlockMatcher{
-					IPBlock: from.IPBlock,
-					Port:    port,
-				})
+			ip, ns, pod := BuildPeerMatcher(policyNamespace, from)
+			if ip != nil {
+				ip.Port = port
+				matcher.AddIPMatcher(ip)
 			} else {
-				ns, pod := BuildPeerMatcher(policyNamespace, from)
 				internal := &SpecificInternalMatcher{Pods: map[string]*NamespacePodMatcher{}}
 				internal.Add(&NamespacePodMatcher{
 					Namespace: ns,
@@ -95,6 +92,35 @@ func BuildPeerPortMatchers(policyNamespace string, npPorts []networkingv1.Networ
 		}
 		return matcher
 	}
+}
+
+func BuildPeerMatcher(policyNamespace string, peer networkingv1.NetworkPolicyPeer) (*IPBlockMatcher, NamespaceMatcher, PodMatcher) {
+	if peer.IPBlock != nil {
+		return &IPBlockMatcher{
+			IPBlock: peer.IPBlock,
+			Port:    nil, // remember to set this elsewhere!
+		}, nil, nil
+	}
+
+	podSel := peer.PodSelector
+	var podMatcher PodMatcher
+	if podSel == nil || isLabelSelectorEmpty(*podSel) {
+		podMatcher = &AllPodMatcher{}
+	} else {
+		podMatcher = &LabelSelectorPodMatcher{Selector: *podSel}
+	}
+
+	nsSel := peer.NamespaceSelector
+	var nsMatcher NamespaceMatcher
+	if nsSel == nil {
+		nsMatcher = &ExactNamespaceMatcher{Namespace: policyNamespace}
+	} else if isLabelSelectorEmpty(*nsSel) {
+		nsMatcher = &AllNamespaceMatcher{}
+	} else {
+		nsMatcher = &LabelSelectorNamespaceMatcher{Selector: *nsSel}
+	}
+
+	return nil, nsMatcher, podMatcher
 }
 
 func BuildPortMatcher(npPorts []networkingv1.NetworkPolicyPort) PortMatcher {
@@ -118,30 +144,4 @@ func BuildPortMatcher(npPorts []networkingv1.NetworkPolicyPort) PortMatcher {
 
 func isLabelSelectorEmpty(l metav1.LabelSelector) bool {
 	return len(l.MatchLabels) == 0 && len(l.MatchExpressions) == 0
-}
-
-func BuildPeerMatcher(policyNamespace string, peer networkingv1.NetworkPolicyPeer) (NamespaceMatcher, PodMatcher) {
-	if peer.IPBlock != nil {
-		panic(errors.Errorf("unable to handle non-nil peer IPBlock %+v", peer))
-	}
-
-	podSel := peer.PodSelector
-	var podMatcher PodMatcher
-	if podSel == nil || isLabelSelectorEmpty(*podSel) {
-		podMatcher = &AllPodMatcher{}
-	} else {
-		podMatcher = &LabelSelectorPodMatcher{Selector: *podSel}
-	}
-
-	nsSel := peer.NamespaceSelector
-	var nsMatcher NamespaceMatcher
-	if nsSel == nil {
-		nsMatcher = &ExactNamespaceMatcher{Namespace: policyNamespace}
-	} else if isLabelSelectorEmpty(*nsSel) {
-		nsMatcher = &AllNamespaceMatcher{}
-	} else {
-		nsMatcher = &LabelSelectorNamespaceMatcher{Selector: *nsSel}
-	}
-
-	return nsMatcher, podMatcher
 }
