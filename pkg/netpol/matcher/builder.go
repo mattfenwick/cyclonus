@@ -128,7 +128,7 @@ func BuildPeerMatcher(policyNamespace string, peer networkingv1.NetworkPolicyPee
 	podSel := peer.PodSelector
 	var podMatcher PodMatcher
 	if podSel == nil || isLabelSelectorEmpty(*podSel) {
-		podMatcher = &AllPodMatcher{}
+		podMatcher = &AllPodsMatcher{}
 	} else {
 		podMatcher = &LabelSelectorPodMatcher{Selector: *podSel}
 	}
@@ -138,7 +138,7 @@ func BuildPeerMatcher(policyNamespace string, peer networkingv1.NetworkPolicyPee
 	if nsSel == nil {
 		nsMatcher = &ExactNamespaceMatcher{Namespace: policyNamespace}
 	} else if isLabelSelectorEmpty(*nsSel) {
-		nsMatcher = &AllNamespaceMatcher{}
+		nsMatcher = &AllNamespacesMatcher{}
 	} else {
 		nsMatcher = &LabelSelectorNamespaceMatcher{Selector: *nsSel}
 	}

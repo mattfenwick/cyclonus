@@ -74,19 +74,19 @@ type PodMatcher interface {
 	PrimaryKey() string
 }
 
-type AllPodMatcher struct{}
+type AllPodsMatcher struct{}
 
-func (p *AllPodMatcher) Allows(podLabels map[string]string) bool {
+func (p *AllPodsMatcher) Allows(podLabels map[string]string) bool {
 	return true
 }
 
-func (p *AllPodMatcher) MarshalJSON() (b []byte, e error) {
+func (p *AllPodsMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
 		"Type": "all pods",
 	})
 }
 
-func (p *AllPodMatcher) PrimaryKey() string {
+func (p *AllPodsMatcher) PrimaryKey() string {
 	return `{"type": "all-pods"}`
 }
 
@@ -154,18 +154,18 @@ func (p *LabelSelectorNamespaceMatcher) PrimaryKey() string {
 	return fmt.Sprintf(`{"type": "label-selector", "selector": "%s"}`, SerializeLabelSelector(p.Selector))
 }
 
-type AllNamespaceMatcher struct{}
+type AllNamespacesMatcher struct{}
 
-func (a *AllNamespaceMatcher) Allows(namespace string, namespaceLabels map[string]string) bool {
+func (a *AllNamespacesMatcher) Allows(namespace string, namespaceLabels map[string]string) bool {
 	return true
 }
 
-func (a *AllNamespaceMatcher) MarshalJSON() (b []byte, e error) {
+func (a *AllNamespacesMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
 		"Type": "all namespaces",
 	})
 }
 
-func (a *AllNamespaceMatcher) PrimaryKey() string {
+func (a *AllNamespacesMatcher) PrimaryKey() string {
 	return `{"type": "all-namespaces"}`
 }
