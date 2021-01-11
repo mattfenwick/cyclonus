@@ -103,7 +103,7 @@ func BuildPeerMatcher(policyNamespace string, npPorts []networkingv1.NetworkPoli
 				}
 				// it's okay to continue processing additional matchers after hitting the special case,
 				//   since nothing can override an AllInternalMatcher
-				internal := &SpecificInternalMatcher{Pods: map[string]*NamespacePodMatcher{}}
+				internal := &SpecificInternalMatcher{NamespacePods: map[string]*NamespacePodMatcher{}}
 				internal.Add(&NamespacePodMatcher{
 					Namespace: ns,
 					Pod:       pod,

@@ -22,6 +22,7 @@ func Explain(policies *Policy) string {
 }
 
 func ExplainTarget(target *Target, isIngress bool) []string {
+	indent := ""
 	var targetType string
 	if isIngress {
 		targetType = "ingress"
@@ -43,7 +44,7 @@ func ExplainTarget(target *Target, isIngress bool) []string {
 		lines = append(lines, fmt.Sprintf("  all %s allowed", targetType))
 	case *SpecificPeerMatcher:
 		lines = append(lines, fmt.Sprintf("  %s:", targetType))
-		lines = append(lines, ExplainEdgePeerPortMatcher(a)...)
+		lines = append(lines, ExplainSpecificPeerMatcher(a, indent+"  ")...)
 	default:
 		panic(errors.Errorf("invalid PeerMatcher type %T", target.Peer))
 	}
@@ -52,30 +53,36 @@ func ExplainTarget(target *Target, isIngress bool) []string {
 	return lines
 }
 
-func ExplainEdgePeerPortMatcher(tp *SpecificPeerMatcher) []string {
+func ExplainSpecificPeerMatcher(tp *SpecificPeerMatcher, indent string) []string {
 	var lines []string
 	for _, ip := range tp.IP {
-		block := fmt.Sprintf("IPBlock: cidr %s, except %+v", ip.IPBlock.CIDR, ip.IPBlock.Except)
-		lines = append(lines, fmt.Sprintf("  - %s", block))
-		for _, port := range ExplainPortMatcher(ip.Port) {
-			lines = append(lines, "    "+port)
-		}
+		lines = append(lines, ExplainIPBlockMatcher(ip, indent+"  ")...)
 	}
-	return append(lines, ExplainInternal(tp.Internal)...)
+	return append(lines, ExplainInternalMatcher(tp.Internal, indent+"  ")...)
 }
 
-func ExplainPortMatcher(pm PortMatcher) []string {
+func ExplainIPBlockMatcher(ip *IPBlockMatcher, indent string) []string {
+	var lines []string
+	block := fmt.Sprintf("IPBlock: cidr %s, except %+v", ip.IPBlock.CIDR, ip.IPBlock.Except)
+	lines = append(lines, indent+block)
+	for _, port := range ExplainPortMatcher(ip.Port, indent+"  ") {
+		lines = append(lines, port)
+	}
+	return lines
+}
+
+func ExplainPortMatcher(pm PortMatcher, indent string) []string {
 	switch m := pm.(type) {
 	case *AllPortMatcher:
-		return []string{"all ports all protocols"}
+		return []string{indent + "all ports all protocols"}
 	case *SpecificPortMatcher:
 		var lines []string
 		for _, port := range m.Ports {
 			lines = append(lines)
 			if port.Port != nil {
-				lines = append(lines, fmt.Sprintf("port %s on protocol %s", port.Port.String(), port.Protocol))
+				lines = append(lines, indent+fmt.Sprintf("port %s on protocol %s", port.Port.String(), port.Protocol))
 			} else {
-				lines = append(lines, fmt.Sprintf("all ports on protocol %s", port.Protocol))
+				lines = append(lines, indent+fmt.Sprintf("all ports on protocol %s", port.Protocol))
 			}
 		}
 		return lines
@@ -84,44 +91,50 @@ func ExplainPortMatcher(pm PortMatcher) []string {
 	}
 }
 
-func ExplainPodMatcher(pm PodMatcher) string {
+func ExplainPodMatcher(pm PodMatcher, indent string) string {
 	switch m := pm.(type) {
 	case *AllPodMatcher:
-		return "all pods"
+		return indent + "all pods"
 	case *LabelSelectorPodMatcher:
-		return "pods matching " + SerializeLabelSelector(m.Selector)
+		return indent + "pods matching " + SerializeLabelSelector(m.Selector)
 	default:
 		panic(errors.Errorf("invalid PodMatcher type %T", pm))
 	}
 }
 
-func ExplainNamespaceMatcher(pm NamespaceMatcher) string {
+func ExplainNamespaceMatcher(pm NamespaceMatcher, indent string) string {
 	switch m := pm.(type) {
 	case *AllNamespaceMatcher:
-		return "all namespaces"
+		return indent + "all namespaces"
 	case *ExactNamespaceMatcher:
-		return "namespace " + m.Namespace
+		return indent + "namespace " + m.Namespace
 	case *LabelSelectorNamespaceMatcher:
-		return "namespaces matching " + SerializeLabelSelector(m.Selector)
+		return indent + "namespaces matching " + SerializeLabelSelector(m.Selector)
 	default:
 		panic(errors.Errorf("invalid NamespaceMatcher type %T", pm))
 	}
 }
 
-func ExplainInternal(i InternalMatcher) []string {
-	var lines []string
+func ExplainInternalMatcher(i InternalMatcher, indent string) []string {
+	lines := []string{indent + "Internal:"}
 	switch l := i.(type) {
 	case *NoneInternalMatcher:
-		lines = append(lines, "  all pods blocked")
+		lines = append(lines, indent+"all pods blocked")
 	case *AllInternalMatcher:
-		lines = append(lines, "    all pods in all namespaces")
+		lines = append(lines, indent+"all pods in all namespaces")
 	case *SpecificInternalMatcher:
-		for _, peer := range l.Pods {
-			lines = append(lines, fmt.Sprintf("    %s; %s", ExplainNamespaceMatcher(peer.Namespace), ExplainPodMatcher(peer.Pod)))
-			for _, port := range ExplainPortMatcher(peer.Port) {
-				lines = append(lines, "      "+port)
-			}
+		for _, peer := range l.NamespacePods {
+			lines = append(lines, ExplainNamespacePod(peer, indent+"  ")...)
 		}
+	}
+	return lines
+}
+
+func ExplainNamespacePod(peer *NamespacePodMatcher, indent string) []string {
+	lines := []string{indent + "Namespace/Pod:"}
+	lines = append(lines, ExplainNamespaceMatcher(peer.Namespace, indent+"  "), ExplainPodMatcher(peer.Pod, indent+"  "))
+	for _, port := range ExplainPortMatcher(peer.Port, indent+"  ") {
+		lines = append(lines, port)
 	}
 	return lines
 }

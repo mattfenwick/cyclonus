@@ -12,15 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-var anySourceDestAndPort = &NamespacePodMatcher{
-	Namespace: &AllNamespaceMatcher{},
-	Pod:       &AllPodMatcher{},
-	Port:      &AllPortMatcher{},
-}
-
-var anyTrafficPeer = &AllPeerMatcher{}
-
-func RunCornerCaseTests() {
+func RunBuilderTests() {
 	Describe("BuildTarget: Allow none -- nil egress/ingress", func() {
 		It("allow-no-ingress", func() {
 			ingress, egress := BuildTarget(examples.AllowNoIngress)
@@ -73,21 +65,21 @@ func RunCornerCaseTests() {
 			ingress, egress := BuildTarget(examples.AllowAllIngress)
 
 			Expect(egress).To(BeNil())
-			Expect(ingress.Peer).To(Equal(anyTrafficPeer))
+			Expect(ingress.Peer).To(Equal(&AllPeerMatcher{}))
 		})
 
 		It("allow-all-egress", func() {
 			ingress, egress := BuildTarget(examples.AllowAllEgress)
 
-			Expect(egress.Peer).To(Equal(anyTrafficPeer))
+			Expect(egress.Peer).To(Equal(&AllPeerMatcher{}))
 			Expect(ingress).To(BeNil())
 		})
 
 		It("allow-all-both", func() {
 			ingress, egress := BuildTarget(examples.AllowAllIngressAllowAllEgress)
 
-			Expect(egress.Peer).To(Equal(anyTrafficPeer))
-			Expect(ingress.Peer).To(Equal(anyTrafficPeer))
+			Expect(egress.Peer).To(Equal(&AllPeerMatcher{}))
+			Expect(ingress.Peer).To(Equal(&AllPeerMatcher{}))
 		})
 	})
 
@@ -180,7 +172,7 @@ func RunCornerCaseTests() {
 			}
 			Expect(peer).To(Equal(&SpecificPeerMatcher{
 				IP: map[string]*IPBlockMatcher{},
-				Internal: &SpecificInternalMatcher{Pods: map[string]*NamespacePodMatcher{
+				Internal: &SpecificInternalMatcher{NamespacePods: map[string]*NamespacePodMatcher{
 					matcher.PrimaryKey(): matcher,
 				}},
 			}))
@@ -241,7 +233,7 @@ func RunCornerCaseTests() {
 				Pod:       &LabelSelectorPodMatcher{Selector: *examples.SelectorAB},
 				Port:      &AllPortMatcher{},
 			}
-			some1 := &SpecificInternalMatcher{Pods: map[string]*NamespacePodMatcher{
+			some1 := &SpecificInternalMatcher{NamespacePods: map[string]*NamespacePodMatcher{
 				np1.PrimaryKey(): np1,
 			}}
 

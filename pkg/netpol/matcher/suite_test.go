@@ -9,6 +9,7 @@ import (
 
 func TestModel(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunCornerCaseTests()
+	RunBuilderTests()
+	RunExplainerTests()
 	RunSpecs(t, "network policy matcher suite")
 }
