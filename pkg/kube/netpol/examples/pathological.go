@@ -24,7 +24,15 @@ var (
 		MatchLabels: LabelsGH,
 	}
 
+	SelectorEmpty = &metav1.LabelSelector{}
+
 	Namespace = "pathological-namespace"
+
+	IPBlock_10_0_0_1_24 = &networkingv1.IPBlock{CIDR: "10.0.0.1/24",
+		Except: []string{
+			"10.0.0.2",
+		},
+	}
 )
 
 // allow nothing (i.e. deny all)
@@ -194,12 +202,7 @@ var AllowMatchingPodsInMatchingNamespacesPeer = networkingv1.NetworkPolicyPeer{
 }
 
 var AllowIPBlockPeer = networkingv1.NetworkPolicyPeer{
-	IPBlock: &networkingv1.IPBlock{
-		CIDR: "10.0.0.1/24",
-		Except: []string{
-			"10.0.0.2",
-		},
-	},
+	IPBlock: IPBlock_10_0_0_1_24,
 }
 
 // allow based on matching port and protocol

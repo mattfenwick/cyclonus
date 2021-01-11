@@ -51,7 +51,7 @@ func BuildTarget(netpol *networkingv1.NetworkPolicy) (*Target, *Target) {
 func BuildIngressMatcher(policyNamespace string, ingresses []networkingv1.NetworkPolicyIngressRule) PeerMatcher {
 	var matcher PeerMatcher = &NonePeerMatcher{}
 	for _, ingress := range ingresses {
-		matcher = CombinePeerMatchers(matcher, BuildPeerPortMatchers(policyNamespace, ingress.Ports, ingress.From))
+		matcher = CombinePeerMatchers(matcher, BuildPeerMatcher(policyNamespace, ingress.Ports, ingress.From))
 	}
 	return matcher
 }
@@ -59,12 +59,12 @@ func BuildIngressMatcher(policyNamespace string, ingresses []networkingv1.Networ
 func BuildEgressMatcher(policyNamespace string, egresses []networkingv1.NetworkPolicyEgressRule) PeerMatcher {
 	var matcher PeerMatcher = &NonePeerMatcher{}
 	for _, egress := range egresses {
-		matcher = CombinePeerMatchers(matcher, BuildPeerPortMatchers(policyNamespace, egress.Ports, egress.To))
+		matcher = CombinePeerMatchers(matcher, BuildPeerMatcher(policyNamespace, egress.Ports, egress.To))
 	}
 	return matcher
 }
 
-func BuildPeerPortMatchers(policyNamespace string, npPorts []networkingv1.NetworkPolicyPort, peers []networkingv1.NetworkPolicyPeer) PeerMatcher {
+func BuildPeerMatcher(policyNamespace string, npPorts []networkingv1.NetworkPolicyPort, peers []networkingv1.NetworkPolicyPeer) PeerMatcher {
 	// 1. build port matcher
 	port := BuildPortMatcher(npPorts)
 	// 2. build Peers
@@ -76,7 +76,7 @@ func BuildPeerPortMatchers(policyNamespace string, npPorts []networkingv1.Networ
 			Internal: &NoneInternalMatcher{},
 		}
 		for _, from := range peers {
-			ip, ns, pod := BuildPeerMatcher(policyNamespace, from)
+			ip, ns, pod := BuildIPBlockNamespacePodMatcher(policyNamespace, from)
 			if ip != nil {
 				ip.Port = port
 				matcher.AddIPMatcher(ip)
@@ -94,7 +94,7 @@ func BuildPeerPortMatchers(policyNamespace string, npPorts []networkingv1.Networ
 	}
 }
 
-func BuildPeerMatcher(policyNamespace string, peer networkingv1.NetworkPolicyPeer) (*IPBlockMatcher, NamespaceMatcher, PodMatcher) {
+func BuildIPBlockNamespacePodMatcher(policyNamespace string, peer networkingv1.NetworkPolicyPeer) (*IPBlockMatcher, NamespaceMatcher, PodMatcher) {
 	if peer.IPBlock != nil {
 		return &IPBlockMatcher{
 			IPBlock: peer.IPBlock,
