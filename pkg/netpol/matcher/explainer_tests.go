@@ -88,15 +88,21 @@ func RunExplainerTests() {
     test-ns/complicated-netpol
   ingress:
     IPBlock: cidr 1.2.3.4/24, except [1.2.3.8]
-      all ports all protocols
-    namespace test-ns
-    pods matching ["MatchLabels",["pod: b","stuff: c"],"MatchExpression",null]
-      port 103 on protocol UDP
-      all ports on protocol SCTP
-    namespaces matching ["MatchLabels",["ns: y","other: z"],"MatchExpression",null]
-    pods matching ["MatchLabels",["pod: b","stuff: c"],"MatchExpression",null]
-      port 103 on protocol UDP
-      all ports on protocol SCTP
+      Port(s):
+        all ports all protocols
+    Internal:
+      Namespace/Pod:
+        namespace test-ns
+        pods matching ["MatchLabels",["pod: b","stuff: c"],"MatchExpression",null]
+        Port(s):
+          port 103 on protocol UDP
+          all ports on protocol SCTP
+      Namespace/Pod:
+        namespaces matching ["MatchLabels",["ns: y","other: z"],"MatchExpression",null]
+        pods matching ["MatchLabels",["pod: b","stuff: c"],"MatchExpression",null]
+        Port(s):
+          port 103 on protocol UDP
+          all ports on protocol SCTP
 `
 			Expect(explanation).To(Equal(expected))
 		})

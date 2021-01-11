@@ -72,47 +72,31 @@ func ExplainIPBlockMatcher(ip *IPBlockMatcher, indent string) []string {
 }
 
 func ExplainPortMatcher(pm PortMatcher, indent string) []string {
+	lines := []string{indent + "Port(s):"}
 	switch m := pm.(type) {
 	case *AllPortMatcher:
-		return []string{indent + "all ports all protocols"}
+		return append(lines, ExplainAllPortMatcher(indent+"  ")...)
 	case *SpecificPortMatcher:
-		var lines []string
-		for _, port := range m.Ports {
-			lines = append(lines)
-			if port.Port != nil {
-				lines = append(lines, indent+fmt.Sprintf("port %s on protocol %s", port.Port.String(), port.Protocol))
-			} else {
-				lines = append(lines, indent+fmt.Sprintf("all ports on protocol %s", port.Protocol))
-			}
-		}
-		return lines
+		return append(lines, ExplainSpecificPortMatcher(m, indent+"  ")...)
 	default:
 		panic(errors.Errorf("invalid Port type %T", pm))
 	}
 }
 
-func ExplainPodMatcher(pm PodMatcher, indent string) string {
-	switch m := pm.(type) {
-	case *AllPodMatcher:
-		return indent + "all pods"
-	case *LabelSelectorPodMatcher:
-		return indent + "pods matching " + SerializeLabelSelector(m.Selector)
-	default:
-		panic(errors.Errorf("invalid PodMatcher type %T", pm))
-	}
+func ExplainAllPortMatcher(indent string) []string {
+	return []string{indent + "all ports all protocols"}
 }
 
-func ExplainNamespaceMatcher(pm NamespaceMatcher, indent string) string {
-	switch m := pm.(type) {
-	case *AllNamespaceMatcher:
-		return indent + "all namespaces"
-	case *ExactNamespaceMatcher:
-		return indent + "namespace " + m.Namespace
-	case *LabelSelectorNamespaceMatcher:
-		return indent + "namespaces matching " + SerializeLabelSelector(m.Selector)
-	default:
-		panic(errors.Errorf("invalid NamespaceMatcher type %T", pm))
+func ExplainSpecificPortMatcher(spm *SpecificPortMatcher, indent string) []string {
+	var lines []string
+	for _, port := range spm.Ports {
+		if port.Port != nil {
+			lines = append(lines, indent+fmt.Sprintf("port %s on protocol %s", port.Port.String(), port.Protocol))
+		} else {
+			lines = append(lines, indent+fmt.Sprintf("all ports on protocol %s", port.Protocol))
+		}
 	}
+	return lines
 }
 
 func ExplainInternalMatcher(i InternalMatcher, indent string) []string {
@@ -137,4 +121,28 @@ func ExplainNamespacePod(peer *NamespacePodMatcher, indent string) []string {
 		lines = append(lines, port)
 	}
 	return lines
+}
+
+func ExplainPodMatcher(pm PodMatcher, indent string) string {
+	switch m := pm.(type) {
+	case *AllPodMatcher:
+		return indent + "all pods"
+	case *LabelSelectorPodMatcher:
+		return indent + "pods matching " + SerializeLabelSelector(m.Selector)
+	default:
+		panic(errors.Errorf("invalid PodMatcher type %T", pm))
+	}
+}
+
+func ExplainNamespaceMatcher(pm NamespaceMatcher, indent string) string {
+	switch m := pm.(type) {
+	case *AllNamespaceMatcher:
+		return indent + "all namespaces"
+	case *ExactNamespaceMatcher:
+		return indent + "namespace " + m.Namespace
+	case *LabelSelectorNamespaceMatcher:
+		return indent + "namespaces matching " + SerializeLabelSelector(m.Selector)
+	default:
+		panic(errors.Errorf("invalid NamespaceMatcher type %T", pm))
+	}
 }
