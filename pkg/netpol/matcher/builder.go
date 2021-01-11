@@ -1,6 +1,7 @@
 package matcher
 
 import (
+	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -77,10 +78,31 @@ func BuildPeerMatcher(policyNamespace string, npPorts []networkingv1.NetworkPoli
 		}
 		for _, from := range peers {
 			ip, ns, pod := BuildIPBlockNamespacePodMatcher(policyNamespace, from)
+			// invalid netpol guards
+			if ip == nil && ns == nil && pod == nil {
+				panic(errors.Errorf("invalid NetworkPolicyPeer: all of IPBlock, NamespaceSelector, and PodSelector are nil"))
+			}
+			if ip != nil && (ns != nil || pod != nil) {
+				panic(errors.Errorf("invalid NetworkPolicyPeer: if NamespaceSelector or PodSelector is non-nil, IPBlock must be nil"))
+			}
+			// process a valid netpol
 			if ip != nil {
 				ip.Port = port
 				matcher.AddIPMatcher(ip)
 			} else {
+				// special case: if all ports, namespaces, and pods are allowed
+				switch port.(type) {
+				case *AllPortMatcher:
+					switch ns.(type) {
+					case *AllNamespaceMatcher:
+						switch pod.(type) {
+						case *AllPodMatcher:
+							matcher.Internal = &AllInternalMatcher{}
+						}
+					}
+				}
+				// it's okay to continue processing additional matchers after hitting the special case,
+				//   since nothing can override an AllInternalMatcher
 				internal := &SpecificInternalMatcher{Pods: map[string]*NamespacePodMatcher{}}
 				internal.Add(&NamespacePodMatcher{
 					Namespace: ns,
@@ -127,7 +149,7 @@ func BuildPortMatcher(npPorts []networkingv1.NetworkPolicyPort) PortMatcher {
 	if len(npPorts) == 0 {
 		return &AllPortMatcher{}
 	} else {
-		matcher := &SpecificPortsMatcher{}
+		matcher := &SpecificPortMatcher{}
 		for _, p := range npPorts {
 			protocol := v1.ProtocolTCP
 			if p.Protocol != nil {

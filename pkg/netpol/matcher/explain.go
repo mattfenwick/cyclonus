@@ -68,7 +68,7 @@ func ExplainPortMatcher(pm PortMatcher) []string {
 	switch m := pm.(type) {
 	case *AllPortMatcher:
 		return []string{"all ports all protocols"}
-	case *SpecificPortsMatcher:
+	case *SpecificPortMatcher:
 		var lines []string
 		for _, port := range m.Ports {
 			lines = append(lines)

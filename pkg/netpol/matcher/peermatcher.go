@@ -1,6 +1,9 @@
 package matcher
 
-import "github.com/pkg/errors"
+import (
+	"encoding/json"
+	"github.com/pkg/errors"
+)
 
 type PeerMatcher interface {
 	Allows(peer *TrafficPeer, portProtocol *PortProtocol) bool
@@ -34,15 +37,35 @@ func (nem *NonePeerMatcher) Allows(peer *TrafficPeer, portProtocol *PortProtocol
 	return false
 }
 
+func (nem *NonePeerMatcher) MarshalJSON() (b []byte, e error) {
+	return json.Marshal(map[string]interface{}{
+		"Type": "no peers",
+	})
+}
+
 type AllPeerMatcher struct{}
 
 func (aem *AllPeerMatcher) Allows(peer *TrafficPeer, portProtocol *PortProtocol) bool {
 	return true
 }
 
+func (aem *AllPeerMatcher) MarshalJSON() (b []byte, e error) {
+	return json.Marshal(map[string]interface{}{
+		"Type": "all peers",
+	})
+}
+
 type SpecificPeerMatcher struct {
 	IP       map[string]*IPBlockMatcher
 	Internal InternalMatcher
+}
+
+func (em *SpecificPeerMatcher) MarshalJSON() (b []byte, e error) {
+	return json.Marshal(map[string]interface{}{
+		"Type":     "specific peers",
+		"IP":       em.IP,
+		"Internal": em.Internal,
+	})
 }
 
 func (em *SpecificPeerMatcher) Allows(peer *TrafficPeer, portProtocol *PortProtocol) bool {

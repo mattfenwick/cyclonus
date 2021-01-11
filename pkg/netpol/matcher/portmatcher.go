@@ -15,17 +15,17 @@ func CombinePortMatchers(a PortMatcher, b PortMatcher) PortMatcher {
 	switch l := a.(type) {
 	case *AllPortMatcher:
 		return a
-	case *SpecificPortsMatcher:
+	case *SpecificPortMatcher:
 		switch r := b.(type) {
 		case *AllPortMatcher:
 			return b
-		case *SpecificPortsMatcher:
-			return &SpecificPortsMatcher{Ports: append(l.Ports, r.Ports...)}
+		case *SpecificPortMatcher:
+			return &SpecificPortMatcher{Ports: append(l.Ports, r.Ports...)}
 		default:
-			panic(errors.Errorf("invalid Port type %T", a))
+			panic(errors.Errorf("invalid Port type %T", b))
 		}
 	default:
-		panic(errors.Errorf("invalid Port type %T", b))
+		panic(errors.Errorf("invalid Port type %T", a))
 	}
 }
 
@@ -55,12 +55,12 @@ func (ppm *PortProtocolMatcher) Allows(port intstr.IntOrString, protocol v1.Prot
 	return ppm.Protocol == protocol
 }
 
-// SpecificPortsMatcher models the case where traffic must match a named or numbered port
-type SpecificPortsMatcher struct {
+// SpecificPortMatcher models the case where traffic must match a named or numbered port
+type SpecificPortMatcher struct {
 	Ports []*PortProtocolMatcher
 }
 
-func (epp *SpecificPortsMatcher) Allows(port intstr.IntOrString, protocol v1.Protocol) bool {
+func (epp *SpecificPortMatcher) Allows(port intstr.IntOrString, protocol v1.Protocol) bool {
 	for _, matcher := range epp.Ports {
 		if matcher.Allows(port, protocol) {
 			return true
@@ -69,7 +69,7 @@ func (epp *SpecificPortsMatcher) Allows(port intstr.IntOrString, protocol v1.Pro
 	return false
 }
 
-func (epp *SpecificPortsMatcher) MarshalJSON() (b []byte, e error) {
+func (epp *SpecificPortMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
 		"Type":  "specific ports",
 		"Ports": epp.Ports,

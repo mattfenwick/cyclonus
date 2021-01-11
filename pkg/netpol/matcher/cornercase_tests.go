@@ -1,7 +1,10 @@
 package matcher
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/kube/netpol/examples"
+	"github.com/mattfenwick/cyclonus/pkg/netpol/utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
@@ -18,7 +21,7 @@ var anySourceDestAndPort = &NamespacePodMatcher{
 var anyTrafficPeer = &AllPeerMatcher{}
 
 func RunCornerCaseTests() {
-	Describe("Allow none -- nil egress/ingress", func() {
+	Describe("BuildTarget: Allow none -- nil egress/ingress", func() {
 		It("allow-no-ingress", func() {
 			ingress, egress := BuildTarget(examples.AllowNoIngress)
 
@@ -42,7 +45,7 @@ func RunCornerCaseTests() {
 		})
 	})
 
-	Describe("Allow none -- empty ingress/egress", func() {
+	Describe("BuildTarget: Allow none -- empty ingress/egress", func() {
 		It("allow-no-ingress", func() {
 			ingress, egress := BuildTarget(examples.AllowNoIngress_EmptyIngress)
 
@@ -65,7 +68,7 @@ func RunCornerCaseTests() {
 		})
 	})
 
-	Describe("Allow all", func() {
+	Describe("BuildTarget: Allow all", func() {
 		It("allow-all-ingress", func() {
 			ingress, egress := BuildTarget(examples.AllowAllIngress)
 
@@ -87,6 +90,8 @@ func RunCornerCaseTests() {
 			Expect(ingress.Peer).To(Equal(anyTrafficPeer))
 		})
 	})
+
+	// TODO target: combine, ??? etc.
 
 	Describe("PeerMatcher from slice of ingress/egress rules", func() {
 		It("allows no ingress from an empty slice of ingress rules", func() {
@@ -146,7 +151,7 @@ func RunCornerCaseTests() {
 			}))
 		})
 
-		It("allows ns/pods, but no ips from a single namespace/pod", func() {
+		It("allows all ns/pods/ports, but no ips from a single peer with empty pod/ns selectors", func() {
 			peer := BuildPeerMatcher("abc", []networkingv1.NetworkPolicyPort{}, []networkingv1.NetworkPolicyPeer{
 				{
 					PodSelector:       examples.SelectorEmpty,
@@ -154,9 +159,22 @@ func RunCornerCaseTests() {
 					IPBlock:           nil,
 				},
 			})
-			// TODO this should be &AllInternalMatcher{}
+			Expect(peer).To(Equal(&SpecificPeerMatcher{
+				IP:       map[string]*IPBlockMatcher{},
+				Internal: &AllInternalMatcher{},
+			}))
+		})
+
+		It("allows ns/pods, but no ips from a single namespace/pod", func() {
+			peer := BuildPeerMatcher("abc", []networkingv1.NetworkPolicyPort{}, []networkingv1.NetworkPolicyPeer{
+				{
+					PodSelector:       examples.SelectorEmpty,
+					NamespaceSelector: nil,
+					IPBlock:           nil,
+				},
+			})
 			matcher := &NamespacePodMatcher{
-				Namespace: &AllNamespaceMatcher{},
+				Namespace: &ExactNamespaceMatcher{Namespace: "abc"},
 				Pod:       &AllPodMatcher{},
 				Port:      &AllPortMatcher{},
 			}
@@ -166,6 +184,76 @@ func RunCornerCaseTests() {
 					matcher.PrimaryKey(): matcher,
 				}},
 			}))
+		})
+
+		// TODO SpecificPeerMatcher
+		// TODO SpecificInternalMatcher
+
+		It("should combine Peer matchers correctly", func() {
+			all := &AllPeerMatcher{}
+			none := &NonePeerMatcher{}
+			ip := &IPBlockMatcher{
+				IPBlock: examples.IPBlock_10_0_0_1_24,
+				Port:    &AllPortMatcher{},
+			}
+			someIps := &SpecificPeerMatcher{
+				IP: map[string]*IPBlockMatcher{
+					ip.PrimaryKey(): ip,
+				},
+				Internal: &NoneInternalMatcher{},
+			}
+			someInternal1 := &SpecificPeerMatcher{
+				IP:       map[string]*IPBlockMatcher{},
+				Internal: &AllInternalMatcher{},
+			}
+			someInternal2 := &SpecificPeerMatcher{
+				IP:       map[string]*IPBlockMatcher{},
+				Internal: &NoneInternalMatcher{},
+			}
+
+			Expect(CombinePeerMatchers(all, all)).To(Equal(all))
+			Expect(CombinePeerMatchers(all, none)).To(Equal(all))
+			Expect(CombinePeerMatchers(all, someIps)).To(Equal(all))
+			Expect(CombinePeerMatchers(all, someInternal1)).To(Equal(all))
+			Expect(CombinePeerMatchers(none, all)).To(Equal(all))
+			Expect(CombinePeerMatchers(someIps, all)).To(Equal(all))
+			Expect(CombinePeerMatchers(someInternal1, all)).To(Equal(all))
+
+			Expect(CombinePeerMatchers(none, none)).To(Equal(none))
+			Expect(CombinePeerMatchers(none, someIps)).To(Equal(someIps))
+			Expect(CombinePeerMatchers(none, someInternal1)).To(Equal(someInternal1))
+			Expect(CombinePeerMatchers(someIps, none)).To(Equal(someIps))
+			Expect(CombinePeerMatchers(someInternal1, none)).To(Equal(someInternal1))
+
+			bs, err := json.MarshalIndent([]interface{}{someInternal1, someInternal2}, "", "  ")
+			utils.DoOrDie(err)
+			fmt.Printf("%s\n\n", bs)
+
+			Expect(CombinePeerMatchers(someInternal1, someInternal2)).To(Equal(someInternal1))
+			Expect(CombinePeerMatchers(someInternal2, someInternal1)).To(Equal(someInternal1))
+		})
+
+		It("should combine Internal matchers correctly", func() {
+			all := &AllInternalMatcher{}
+			none := &NoneInternalMatcher{}
+			np1 := &NamespacePodMatcher{
+				Namespace: &AllNamespaceMatcher{},
+				Pod:       &LabelSelectorPodMatcher{Selector: *examples.SelectorAB},
+				Port:      &AllPortMatcher{},
+			}
+			some1 := &SpecificInternalMatcher{Pods: map[string]*NamespacePodMatcher{
+				np1.PrimaryKey(): np1,
+			}}
+
+			Expect(CombineInternalMatchers(all, all)).To(Equal(all))
+			Expect(CombineInternalMatchers(all, none)).To(Equal(all))
+			Expect(CombineInternalMatchers(all, some1)).To(Equal(all))
+			Expect(CombineInternalMatchers(none, all)).To(Equal(all))
+			Expect(CombineInternalMatchers(some1, all)).To(Equal(all))
+
+			Expect(CombineInternalMatchers(none, none)).To(Equal(none))
+			Expect(CombineInternalMatchers(none, some1)).To(Equal(some1))
+			Expect(CombineInternalMatchers(some1, none)).To(Equal(some1))
 		})
 	})
 
@@ -252,13 +340,13 @@ func RunCornerCaseTests() {
 
 		It("allow all ports on protocol", func() {
 			pm := BuildPortMatcher([]networkingv1.NetworkPolicyPort{examples.AllowAllPortsOnProtocol})
-			Expect(pm).To(Equal(&SpecificPortsMatcher{Ports: []*PortProtocolMatcher{{Port: nil, Protocol: v1.ProtocolSCTP}}}))
+			Expect(pm).To(Equal(&SpecificPortMatcher{Ports: []*PortProtocolMatcher{{Port: nil, Protocol: v1.ProtocolSCTP}}}))
 		})
 
 		It("allow numbered port on protocol", func() {
 			portNumber := intstr.FromInt(9001)
 			pm := BuildPortMatcher([]networkingv1.NetworkPolicyPort{examples.AllowNumberedPortOnProtocol})
-			Expect(pm).To(Equal(&SpecificPortsMatcher{[]*PortProtocolMatcher{{
+			Expect(pm).To(Equal(&SpecificPortMatcher{[]*PortProtocolMatcher{{
 				Protocol: v1.ProtocolTCP,
 				Port:     &portNumber,
 			}}}))
@@ -267,10 +355,36 @@ func RunCornerCaseTests() {
 		It("allow named port on protocol", func() {
 			portName := intstr.FromString("hello")
 			pm := BuildPortMatcher([]networkingv1.NetworkPolicyPort{examples.AllowNamedPortOnProtocol})
-			Expect(pm).To(Equal(&SpecificPortsMatcher{[]*PortProtocolMatcher{{
+			Expect(pm).To(Equal(&SpecificPortMatcher{[]*PortProtocolMatcher{{
 				Protocol: v1.ProtocolUDP,
 				Port:     &portName,
 			}}}))
+		})
+
+		It("should combine matchers correctly", func() {
+			port99 := intstr.FromInt(99)
+			allPortsOnSctp := &PortProtocolMatcher{
+				Port:     nil,
+				Protocol: v1.ProtocolSCTP,
+			}
+			port99OnUdp := &PortProtocolMatcher{
+				Port:     &port99,
+				Protocol: v1.ProtocolSCTP,
+			}
+
+			allMatcher := &AllPortMatcher{}
+			allPortsOnSctpMatcher := &SpecificPortMatcher{Ports: []*PortProtocolMatcher{allPortsOnSctp}}
+			port99OnUdpMatcher := &SpecificPortMatcher{Ports: []*PortProtocolMatcher{port99OnUdp}}
+			combinedMatcher := &SpecificPortMatcher{Ports: []*PortProtocolMatcher{allPortsOnSctp, port99OnUdp}}
+			combined2Matcher := &SpecificPortMatcher{Ports: []*PortProtocolMatcher{port99OnUdp, allPortsOnSctp}}
+
+			Expect(CombinePortMatchers(allMatcher, allPortsOnSctpMatcher)).To(Equal(allMatcher))
+			Expect(CombinePortMatchers(allMatcher, port99OnUdpMatcher)).To(Equal(allMatcher))
+			Expect(CombinePortMatchers(allPortsOnSctpMatcher, allMatcher)).To(Equal(allMatcher))
+			Expect(CombinePortMatchers(port99OnUdpMatcher, allMatcher)).To(Equal(allMatcher))
+
+			Expect(CombinePortMatchers(allPortsOnSctpMatcher, port99OnUdpMatcher)).To(Equal(combinedMatcher))
+			Expect(CombinePortMatchers(port99OnUdpMatcher, allPortsOnSctpMatcher)).To(Equal(combined2Matcher))
 		})
 	})
 }

@@ -11,16 +11,16 @@ type InternalMatcher interface {
 
 func CombineInternalMatchers(a InternalMatcher, b InternalMatcher) InternalMatcher {
 	switch l := a.(type) {
-	case *NoneInternalMatcher:
-		return b
 	case *AllInternalMatcher:
 		return a
+	case *NoneInternalMatcher:
+		return b
 	case *SpecificInternalMatcher:
 		switch r := b.(type) {
-		case *NoneInternalMatcher:
-			return a
 		case *AllInternalMatcher:
 			return b
+		case *NoneInternalMatcher:
+			return a
 		case *SpecificInternalMatcher:
 			for _, val := range r.Pods {
 				l.Add(val)
