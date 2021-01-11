@@ -2,149 +2,143 @@
 
 ## network policy explainer
 
-1. read network policies
-
- - from a kubernetes cluster
- - from files
- 
-2. policy analysis
-
- - break the policies down by target, ingress/egress etc.
-
-3. traffic analysis
-
- - given a pod (with labels, in a namespace with labels) determine which policies apply
- - given traffic between pods, determine whether it would be allowed or not
-
-4. connectivity probe
+Parse, explain, and probe network policies to understand their implications and help design
+policies that suit your needs!
 
 ## Examples
 
-### Connectivity probe
+### Probe
 
-Using policies from files:
+Using hypothetical "traffic", generate a table of presumed connectivity by evaluating network
+policies.  Note: this does not use a kubernetes cluster.
+
 ```
 $ go run cmd/netpol-explainer/main.go probe \
-  --policy-source file \
-  --policy-path ./networkpolicies \
-  --model-namespace m,default,n \
-  --numbered-port 80
+  --model-path cmd/netpol-explainer/probe-example.json \
+  --policy-source examples
 
 Ingress:
 +-----------+-----+-----+-----+-----------+-----------+-----------+-----+-----+-----+
-|     -     | M/A | M/B | M/C | DEFAULT/A | DEFAULT/B | DEFAULT/C | N/A | N/B | N/C |
+|     -     | X/C | X/A | X/B | DEFAULT/A | DEFAULT/B | DEFAULT/C | Z/C | Z/A | Z/B |
 +-----------+-----+-----+-----+-----------+-----------+-----------+-----+-----+-----+
-| m/a       | .   | .   | .   | X         | .         | X         | .   | .   | .   |
-| m/b       | .   | .   | .   | X         | .         | X         | .   | .   | .   |
-| m/c       | .   | .   | .   | X         | .         | X         | .   | .   | .   |
-| default/a | .   | .   | .   | X         | .         | X         | .   | .   | .   |
-| default/b | .   | .   | .   | X         | .         | X         | .   | .   | .   |
-| default/c | .   | .   | .   | .         | .         | X         | .   | .   | .   |
-| n/a       | .   | .   | .   | X         | .         | X         | .   | .   | .   |
-| n/b       | .   | .   | .   | X         | .         | X         | .   | .   | .   |
-| n/c       | .   | .   | .   | X         | .         | X         | .   | .   | .   |
-+-----------+-----+-----+-----+-----------+-----------+-----------+-----+-----+-----+
-Egress:
-+-----------+-----+-----+-----+-----------+-----------+-----------+-----+-----+-----+
-|     -     | M/A | M/B | M/C | DEFAULT/A | DEFAULT/B | DEFAULT/C | N/A | N/B | N/C |
-+-----------+-----+-----+-----+-----------+-----------+-----------+-----+-----+-----+
-| m/a       | .   | .   | .   | .         | .         | .         | .   | .   | .   |
-| m/b       | .   | .   | .   | .         | .         | .         | .   | .   | .   |
-| m/c       | .   | .   | .   | .         | .         | .         | .   | .   | .   |
+| x/c       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
+| x/a       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
+| x/b       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
 | default/a | .   | .   | .   | .         | .         | .         | .   | .   | .   |
 | default/b | .   | .   | .   | .         | .         | .         | .   | .   | .   |
 | default/c | .   | .   | .   | .         | .         | .         | .   | .   | .   |
-| n/a       | .   | .   | .   | .         | .         | .         | .   | .   | .   |
-| n/b       | .   | .   | .   | .         | .         | .         | .   | .   | .   |
-| n/c       | .   | .   | .   | .         | .         | .         | .   | .   | .   |
-+-----------+-----+-----+-----+-----------+-----------+-----------+-----+-----+-----+
-Combined:
-+-----------+-----+-----+-----+-----------+-----------+-----------+-----+-----+-----+
-|     -     | M/A | M/B | M/C | DEFAULT/A | DEFAULT/B | DEFAULT/C | N/A | N/B | N/C |
-+-----------+-----+-----+-----+-----------+-----------+-----------+-----+-----+-----+
-| m/a       | .   | .   | .   | X         | .         | X         | .   | .   | .   |
-| m/b       | .   | .   | .   | X         | .         | X         | .   | .   | .   |
-| m/c       | .   | .   | .   | X         | .         | X         | .   | .   | .   |
-| default/a | .   | .   | .   | X         | .         | X         | .   | .   | .   |
-| default/b | .   | .   | .   | X         | .         | X         | .   | .   | .   |
-| default/c | .   | .   | .   | .         | .         | X         | .   | .   | .   |
-| n/a       | .   | .   | .   | X         | .         | X         | .   | .   | .   |
-| n/b       | .   | .   | .   | X         | .         | X         | .   | .   | .   |
-| n/c       | .   | .   | .   | X         | .         | X         | .   | .   | .   |
-+-----------+-----+-----+-----+-----------+-----------+-----------+-----+-----+-----+
-```
-
-Using policies from golang structs:
-
-```
-$ go run cmd/netpol-explainer/main.go probe --policy-source examples --model-namespace m,default,n
-
-Ingress:
-+-----------+-----+-----+-----+-----------+-----------+-----------+-----+-----+-----+
-|     -     | M/A | M/B | M/C | DEFAULT/A | DEFAULT/B | DEFAULT/C | N/A | N/B | N/C |
-+-----------+-----+-----+-----+-----------+-----------+-----------+-----+-----+-----+
-| m/a       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
-| m/b       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
-| m/c       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
-| default/a | .   | .   | .   | .         | .         | .         | .   | .   | .   |
-| default/b | .   | .   | .   | .         | .         | .         | .   | .   | .   |
-| default/c | .   | .   | .   | .         | .         | .         | .   | .   | .   |
-| n/a       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
-| n/b       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
-| n/c       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
+| z/c       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
+| z/a       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
+| z/b       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
 +-----------+-----+-----+-----+-----------+-----------+-----------+-----+-----+-----+
 Egress:
 +-----------+-----+-----+-----+-----------+-----------+-----------+-----+-----+-----+
-|     -     | M/A | M/B | M/C | DEFAULT/A | DEFAULT/B | DEFAULT/C | N/A | N/B | N/C |
+|     -     | X/C | X/A | X/B | DEFAULT/A | DEFAULT/B | DEFAULT/C | Z/C | Z/A | Z/B |
 +-----------+-----+-----+-----+-----------+-----------+-----------+-----+-----+-----+
-| m/a       | .   | .   | .   | .         | .         | .         | .   | .   | .   |
-| m/b       | .   | .   | .   | .         | .         | .         | .   | .   | .   |
-| m/c       | .   | .   | .   | .         | .         | .         | .   | .   | .   |
+| x/c       | .   | .   | .   | .         | .         | .         | .   | .   | .   |
+| x/a       | .   | .   | .   | .         | .         | .         | .   | .   | .   |
+| x/b       | .   | .   | .   | .         | .         | .         | .   | .   | .   |
 | default/a | X   | X   | X   | X         | X         | X         | X   | X   | X   |
 | default/b | X   | X   | X   | X         | X         | X         | X   | X   | X   |
 | default/c | X   | X   | X   | X         | X         | X         | X   | X   | X   |
-| n/a       | .   | .   | .   | .         | .         | .         | .   | .   | .   |
-| n/b       | .   | .   | .   | .         | .         | .         | .   | .   | .   |
-| n/c       | .   | .   | .   | .         | .         | .         | .   | .   | .   |
+| z/c       | .   | .   | .   | .         | .         | .         | .   | .   | .   |
+| z/a       | .   | .   | .   | .         | .         | .         | .   | .   | .   |
+| z/b       | .   | .   | .   | .         | .         | .         | .   | .   | .   |
 +-----------+-----+-----+-----+-----------+-----------+-----------+-----+-----+-----+
 Combined:
 +-----------+-----+-----+-----+-----------+-----------+-----------+-----+-----+-----+
-|     -     | M/A | M/B | M/C | DEFAULT/A | DEFAULT/B | DEFAULT/C | N/A | N/B | N/C |
+|     -     | X/C | X/A | X/B | DEFAULT/A | DEFAULT/B | DEFAULT/C | Z/C | Z/A | Z/B |
 +-----------+-----+-----+-----+-----------+-----------+-----------+-----+-----+-----+
-| m/a       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
-| m/b       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
-| m/c       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
+| x/c       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
+| x/a       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
+| x/b       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
 | default/a | X   | X   | X   | X         | X         | X         | X   | X   | X   |
 | default/b | X   | X   | X   | X         | X         | X         | X   | X   | X   |
 | default/c | X   | X   | X   | X         | X         | X         | X   | X   | X   |
-| n/a       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
-| n/b       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
-| n/c       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
+| z/c       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
+| z/a       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
+| z/b       | .   | .   | .   | X         | X         | X         | .   | .   | .   |
 +-----------+-----+-----+-----+-----------+-----------+-----------+-----+-----+-----+
 ```
 
-## Analyze policies
+## Analyze
+
+Groups policies by target, divides rules into egress and ingress, and gives a basic explanation of the combined
+policies.  This clarifies the interactions between "denies" and "allows" from multiple policies.
 
 ```
-$ go run cmd/netpol-explainer/main.go analyze --policy-source file --policy-path ./networkpolicies
+$ go run cmd/netpol-explainer/main.go analyze \
+  --policy-source examples 
 
-{"Namespace": "default", "PodSelector": ["MatchLabels",null,"MatchExpression",null]}
-  source rules:
-    default/deny-all
-  all ingress blocked
-
-{"Namespace": "default", "PodSelector": ["MatchLabels",["pod: b"],"MatchExpression",null]}
-  source rules:
-    default/allow-all-for-label
-  ingress:
-  - anywhere: all pods in all namespaces and all IPs
-    all ports all protocols
-
-{"Namespace": "default", "PodSelector": ["MatchLabels",["pod: a"],"MatchExpression",null]}
-  source rules:
-    default/allow-label-to-label
-    default/deny-all-for-label
-  ingress:
-  - pods matching ["MatchLabels",["pod: c"],"MatchExpression",null] in namespace default
-    all ports all protocols
+  {"Namespace": "default", "PodSelector": ["MatchLabels",["app: foo"],"MatchExpression",null]}
+    source rules:
+      default/allow-nothing
+    all ingress blocked
+  
+  {"Namespace": "default", "PodSelector": ["MatchLabels",["app: bookstore","role: api"],"MatchExpression",null]}
+    source rules:
+      default/allow-from-app-bookstore-to-app-bookstore-role-api
+    ingress:
+      Internal:
+        Namespace/Pod:
+          namespace default
+          pods matching ["MatchLabels",["app: bookstore"],"MatchExpression",null]
+          Port(s):
+            all ports all protocols
+    
+  {"Namespace": "default", "PodSelector": ["MatchLabels",null,"MatchExpression",null]}
+    source rules:
+      default/allow-no-egress-from-namespace
+    all egress blocked
 ```
+
+## traffic
+
+Given arbitrary traffic examples (from a source to a destination, including labels, over a port and protocol),
+this command parses network policies and determines if the traffic is allowed or not.
+
+```
+$ go run cmd/netpol-explainer/main.go traffic \
+  --policy-source examples \
+  --traffic-path cmd/netpol-explainer/traffic-example.json 
+
+Traffic:
+{
+  "Source": {
+    "Internal": {
+      "PodLabels": {
+        "pod": "a"
+      },
+      "NamespaceLabels": {
+        "ns": "z"
+      },
+      "Namespace": "z"
+    },
+    "IP": "192.168.1.13"
+  },
+  "Destination": {
+    "Internal": {
+      "PodLabels": {
+        "pod": "b"
+      },
+      "NamespaceLabels": {
+        "ns": "x"
+      },
+      "Namespace": "x"
+    },
+    "IP": "192.168.1.14"
+  },
+  "PortProtocol": {
+    "Protocol": "TCP",
+    "Port": 80
+  }
+}
+
+Is allowed: true
+```
+
+## targets
+
+Given a set of pods, this command determines which network policies affect those pods.
+
+TODO in progress 

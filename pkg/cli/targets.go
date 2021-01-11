@@ -3,7 +3,6 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/mattfenwick/cyclonus/pkg/netpol/connectivity"
 	"github.com/mattfenwick/cyclonus/pkg/netpol/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/netpol/utils"
 	"github.com/spf13/cobra"
@@ -13,10 +12,10 @@ import (
 )
 
 type QueryTargetsArgs struct {
-	PolicySource  string
-	Namespaces    []string
-	PolicyPath    string
-	PathToPodFile string
+	PolicySource string
+	Namespaces   []string
+	PolicyPath   string
+	PodPath      string
 }
 
 func setupQueryTargetsCommand() *cobra.Command {
@@ -38,10 +37,15 @@ func setupQueryTargetsCommand() *cobra.Command {
 
 	command.Flags().StringVar(&args.PolicyPath, "policy-path", "", "only set if policy-source = file; path to network polic(ies)")
 
-	command.Flags().StringVar(&args.PathToPodFile, "pod-file", "", "path to pod file -- json array of dicts")
-	utils.DoOrDie(command.MarkFlagRequired("pod-file"))
+	command.Flags().StringVar(&args.PodPath, "pod-path", "", "path to pod file -- json array of dicts")
+	utils.DoOrDie(command.MarkFlagRequired("pod-path"))
 
 	return command
+}
+
+type QueryTargetPod struct {
+	Namespace string
+	Labels    map[string]string
 }
 
 func runQueryTargetsCommand(args *QueryTargetsArgs) {
@@ -53,8 +57,8 @@ func runQueryTargetsCommand(args *QueryTargetsArgs) {
 	explainedPolicies := matcher.BuildNetworkPolicies(kubePolicies)
 
 	// 3. read pods
-	var pods []connectivity.Pod
-	bs, err := ioutil.ReadFile(args.PathToPodFile)
+	var pods []QueryTargetPod
+	bs, err := ioutil.ReadFile(args.PodPath)
 	utils.DoOrDie(err)
 	err = json.Unmarshal(bs, &pods)
 	utils.DoOrDie(err)

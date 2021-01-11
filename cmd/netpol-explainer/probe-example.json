@@ -1,0 +1,71 @@
+{
+  "Probes": [
+    {
+      "Protocol": "TCP",
+      "Port": 80
+    },
+    {
+      "Protocol": "TCP",
+      "Port": 81
+    },
+    {
+      "Protocol": "UDP",
+      "Port": 53
+    }
+  ],
+  "Pods": {
+    "Namespaces": {
+      "x": {
+        "Labels": {"ns": "x"},
+        "Pods": {
+          "a": {
+            "Labels": {"pod": "a"},
+            "IP": "192.168.1.8"
+          },
+          "b": {
+            "Labels": {"pod": "b"},
+            "IP": "192.168.1.9"
+          },
+          "c": {
+            "Labels": {"pod": "c"},
+            "IP": "192.168.1.10"
+          }
+        }
+      },
+      "default": {
+        "Labels": {"ns": "default"},
+        "Pods": {
+          "a": {
+            "Labels": {"pod": "a"},
+            "IP": "192.168.1.11"
+          },
+          "b": {
+            "Labels": {"pod": "b"},
+            "IP": "192.168.1.12"
+          },
+          "c": {
+            "Labels": {"pod": "c"},
+            "IP": "192.168.1.13"
+          }
+        }
+      },
+      "z": {
+        "Labels": {"ns": "z"},
+        "Pods": {
+          "a": {
+            "Labels": {"pod": "a"},
+            "IP": "192.168.1.14"
+          },
+          "b": {
+            "Labels": {"pod": "b"},
+            "IP": "192.168.1.15"
+          },
+          "c": {
+            "Labels": {"pod": "c"},
+            "IP": "192.168.1.16"
+          }
+        }
+      }
+    }
+  }
+}

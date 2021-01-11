@@ -12,7 +12,7 @@ import (
 type QueryTrafficArgs struct {
 	PolicySource string
 	Namespaces   []string
-	TrafficFile  string
+	TrafficPath  string
 	PolicyPath   string
 }
 
@@ -35,8 +35,8 @@ func setupQueryTrafficCommand() *cobra.Command {
 
 	command.Flags().StringVar(&args.PolicyPath, "policy-path", "", "only set if policy-source = file; path to network polic(ies)")
 
-	command.Flags().StringVar(&args.TrafficFile, "traffic-file", "", "path to traffic file, containing a list of traffic objects")
-	command.MarkFlagRequired("traffic-file")
+	command.Flags().StringVar(&args.TrafficPath, "traffic-path", "", "path to traffic file, containing a list of traffic objects")
+	utils.DoOrDie(command.MarkFlagRequired("traffic-path"))
 
 	return command
 }
@@ -47,20 +47,18 @@ func runQueryTrafficCommand(args *QueryTrafficArgs) {
 	utils.DoOrDie(err)
 
 	// 2. consume policies
-	explainedPolicies := matcher.BuildNetworkPolicies(kubePolicies)
+	policies := matcher.BuildNetworkPolicies(kubePolicies)
 
 	// 3. query
 	var allTraffics []*matcher.Traffic
-	allTrafficBytes, err := ioutil.ReadFile(args.TrafficFile)
+	allTrafficBytes, err := ioutil.ReadFile(args.TrafficPath)
 	utils.DoOrDie(err)
 	err = json.Unmarshal(allTrafficBytes, &allTraffics)
 	utils.DoOrDie(err)
 	for _, traffic := range allTraffics {
 		trafficBytes, err := json.MarshalIndent(traffic, "", "  ")
 		utils.DoOrDie(err)
-		result := explainedPolicies.IsTrafficAllowed(traffic)
-		resultBytes, err := json.MarshalIndent(result, "", "  ")
-		utils.DoOrDie(err)
-		fmt.Printf("Traffic:\n%s\n\nIs allowed: %t\n\nExplanation:\n\n%s\n\n", string(trafficBytes), result.IsAllowed(), string(resultBytes))
+		result := policies.IsTrafficAllowed(traffic)
+		fmt.Printf("Traffic:\n%s\n\nIs allowed: %t\n\n", string(trafficBytes), result.IsAllowed())
 	}
 }
