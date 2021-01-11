@@ -1,5 +1,7 @@
 package connectivity
 
+import "sort"
+
 // PodModel defines the namespaces, deployments, services, pods, containers and associated
 // data for network policy test cases and provides the source of truth
 type PodModel struct {
@@ -36,6 +38,9 @@ func (m *PodModel) NewTruthTable() *TruthTable {
 	for _, pod := range m.AllPodStrings() {
 		podNames = append(podNames, pod.String())
 	}
+	sort.Slice(podNames, func(i, j int) bool {
+		return podNames[i] < podNames[j]
+	})
 	return NewTruthTableFromItems(podNames, nil)
 }
 

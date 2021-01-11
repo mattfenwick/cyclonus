@@ -6,6 +6,7 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/netpol/connectivity"
 	"github.com/mattfenwick/cyclonus/pkg/netpol/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/netpol/utils"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"io/ioutil"
@@ -58,10 +59,10 @@ func runProbeConnectivityCommand(args *ProbeConnectivityArgs) {
 
 	// 3. create config
 	bs, err := ioutil.ReadFile(args.ModelPath)
-	utils.DoOrDie(err)
+	utils.DoOrDie(errors.Wrapf(err, "unable to read file %s", args.ModelPath))
 	config := &ProbeConnectivityConfig{}
 	err = json.Unmarshal(bs, &config)
-	utils.DoOrDie(err)
+	utils.DoOrDie(errors.Wrapf(err, "unable to unmarshal json"))
 
 	// 4. run probes
 	for _, result := range connectivity.RunProbes(explainedPolicies, config.Probes, config.Pods) {
