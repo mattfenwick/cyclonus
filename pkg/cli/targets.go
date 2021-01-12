@@ -68,33 +68,33 @@ func runQueryTargetsCommand(args *QueryTargetsArgs) {
 		fmt.Printf("pod %+v:\n\n", pod)
 
 		// ingress
-		fmt.Println("ingress")
+		fmt.Println("  ingress")
 		ingressValue := true
 		ingressTargets := explainedPolicies.TargetsApplyingToPod(ingressValue, pod.Namespace, pod.Labels)
 		for _, t := range ingressTargets {
-			fmt.Printf("%s\n", strings.Join(matcher.ExplainTarget(t, ingressValue), "\n"))
+			fmt.Printf("    %s\n", strings.Join(matcher.ExplainTarget(t, ingressValue), "\n"))
 		}
 		// combine all the ingress targets for combined connectivity
 		combinedIngressTarget := matcher.CombineTargetsIgnoringPrimaryKey(pod.Namespace, metav1.LabelSelector{MatchLabels: pod.Labels}, ingressTargets)
 		if combinedIngressTarget != nil {
-			fmt.Printf("combined ingress:\n%s\n\n", strings.Join(matcher.ExplainTarget(combinedIngressTarget, ingressValue), "\n"))
+			fmt.Printf("    combined ingress:\n%s\n\n", strings.Join(matcher.ExplainTarget(combinedIngressTarget, ingressValue), "\n"))
 		} else {
-			fmt.Println("combined ingress: none")
+			fmt.Println("    combined ingress: none")
 		}
 
 		// egress
-		fmt.Printf("\negress\n")
+		fmt.Printf("\n  egress\n")
 		egressValue := false
 		egressTargets := explainedPolicies.TargetsApplyingToPod(egressValue, pod.Namespace, pod.Labels)
 		for _, t := range egressTargets {
-			fmt.Printf("%s\n", strings.Join(matcher.ExplainTarget(t, egressValue), "\n"))
+			fmt.Printf("    %s\n", strings.Join(matcher.ExplainTarget(t, egressValue), "\n"))
 		}
 		// combine all the egress targets for combined connectivity
 		combinedEgressTarget := matcher.CombineTargetsIgnoringPrimaryKey(pod.Namespace, metav1.LabelSelector{MatchLabels: pod.Labels}, egressTargets)
 		if combinedEgressTarget != nil {
-			fmt.Printf("combined egress:\n%s\n\n", strings.Join(matcher.ExplainTarget(combinedEgressTarget, egressValue), "\n"))
+			fmt.Printf("    combined egress:\n%s\n\n", strings.Join(matcher.ExplainTarget(combinedEgressTarget, egressValue), "\n"))
 		} else {
-			fmt.Println("combined egress: none")
+			fmt.Println("    combined egress: none")
 		}
 
 		fmt.Printf("\n\n")
