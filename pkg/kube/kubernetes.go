@@ -18,7 +18,6 @@ import (
 )
 
 type Kubernetes struct {
-	podCache  map[string][]v1.Pod
 	ClientSet *kubernetes.Clientset
 }
 
@@ -28,7 +27,6 @@ func NewKubernetes() (*Kubernetes, error) {
 		return nil, err
 	}
 	return &Kubernetes{
-		podCache:  map[string][]v1.Pod{},
 		ClientSet: clientSet,
 	}, nil
 }
