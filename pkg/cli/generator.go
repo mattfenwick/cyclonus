@@ -33,7 +33,14 @@ func setupGeneratorCommand() *cobra.Command {
 }
 
 func runGeneratorCommand(args *GeneratorArgs) {
-	kubePolicies := netpolgen.NewDefaultGenerator().IngressPolicies()
+	namespaces := []string{"x", "y", "z"}
+	generator := &netpolgen.Generator{
+		Ports:      netpolgen.DefaultPorts(),
+		Peers:      netpolgen.DefaultPeers(),
+		Targets:    netpolgen.DefaultTargets(),
+		Namespaces: namespaces,
+	}
+	kubePolicies := generator.IngressPolicies()
 	fmt.Printf("%d policies\n\n", len(kubePolicies))
 
 	port := &connectivity.ProtocolPort{
@@ -41,7 +48,6 @@ func runGeneratorCommand(args *GeneratorArgs) {
 		Port:     80,
 	}
 	// TODO don't use default model?
-	namespaces := []string{"x", "y", "z"}
 	podModel := connectivity.NewDefaultModel(namespaces, []string{"a", "b", "c"}, port.Port, port.Protocol)
 	kubernetes, err := kube.NewKubernetes()
 	utils.DoOrDie(err)
@@ -78,24 +84,29 @@ func runGeneratorCommand(args *GeneratorArgs) {
 
 		log.Infof("probe on port %d, protocol %s", port.Port, port.Protocol)
 		synthetic := connectivity.RunSyntheticProbe(policy, port, podModel)
-		fmt.Println("Ingress:")
-		synthetic.Ingress.Table().Render()
-		fmt.Println("Egress:")
-		synthetic.Egress.Table().Render()
-		fmt.Println("Combined:")
-		synthetic.Combined.Table().Render()
 
 		kubeProbe := connectivity.RunKubeProbe(kubernetes, podModel, port.Port, port.Protocol, 5)
-		fmt.Printf("\n\nKube results:\n")
+
+		fmt.Printf("\n\nKube results for %s/%s:\n", kubeIngressPolicy.Namespace, kubeIngressPolicy.Name)
 		kubeProbe.Table().Render()
 
-		fmt.Printf("\n\nSynthetic vs combined:\n")
-		synthetic.Combined.Compare(kubeProbe).Table().Render()
+		comparison := synthetic.Combined.Compare(kubeProbe)
+		t, f, nv := comparison.ValueCounts()
+		log.Infof("found %d true, %d false, %d no value", t, f, nv)
+		if f > 0 {
+			fmt.Println("Ingress:")
+			synthetic.Ingress.Table().Render()
 
-		fmt.Println()
+			fmt.Println("Egress:")
+			synthetic.Egress.Table().Render()
 
-		if i > 2 {
-			panic(i)
+			fmt.Println("Combined:")
+			synthetic.Combined.Table().Render()
+
+			fmt.Printf("\n\nSynthetic vs combined:\n")
+			comparison.Table().Render()
 		}
+
+		fmt.Printf("\nfinished policy #%d\n\n", i)
 	}
 }

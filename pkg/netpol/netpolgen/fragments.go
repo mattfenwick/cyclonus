@@ -91,7 +91,7 @@ var (
 	}
 	ipWithExcept = IPBlock{
 		CIDR:   "1.2.3.4/24",
-		Except: []string{"1.2.3.8", "1.2.3.10"},
+		Except: []string{"1.2.3.8/30", "1.2.3.20/30"},
 	}
 
 	ipPeer1 = NetworkPolicyPeer{IPBlock: &ipNoExcept}
@@ -203,7 +203,7 @@ var (
 							NamespaceSelector: nil,
 							IPBlock: &IPBlock{
 								CIDR:   "1.2.3.4/24",
-								Except: []string{"1.2.3.8"},
+								Except: []string{"1.2.3.8/28"},
 							},
 						},
 					},

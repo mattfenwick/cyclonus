@@ -37,7 +37,7 @@ func RunExplainerTests() {
 									NamespaceSelector: nil,
 									IPBlock: &networkingv1.IPBlock{
 										CIDR:   "1.2.3.4/24",
-										Except: []string{"1.2.3.8"},
+										Except: []string{"1.2.3.8/30"},
 									},
 								},
 							},
@@ -87,7 +87,7 @@ func RunExplainerTests() {
   source rules:
     test-ns/complicated-netpol
   ingress:
-    IPBlock: cidr 1.2.3.4/24, except [1.2.3.8]
+    IPBlock: cidr 1.2.3.4/24, except [1.2.3.8/30]
       Port(s):
         all ports all protocols
     Internal:

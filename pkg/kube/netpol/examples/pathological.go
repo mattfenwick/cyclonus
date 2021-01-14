@@ -30,7 +30,7 @@ var (
 
 	IPBlock_10_0_0_1_24 = &networkingv1.IPBlock{CIDR: "10.0.0.1/24",
 		Except: []string{
-			"10.0.0.2",
+			"10.0.0.2/30",
 		},
 	}
 )

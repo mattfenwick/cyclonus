@@ -100,6 +100,22 @@ func (tt *TruthTable) Get(from string, to string) bool {
 	return val
 }
 
+func (tt *TruthTable) ValueCounts() (int, int, int) {
+	trueCount, falseCount, noValueCount := 0, 0, 0
+	for _, from := range tt.Froms {
+		for _, to := range tt.Tos {
+			if _, ok := tt.Values[from][to]; !ok {
+				noValueCount++
+			} else if tt.Values[from][to] {
+				trueCount++
+			} else {
+				falseCount++
+			}
+		}
+	}
+	return trueCount, falseCount, noValueCount
+}
+
 // Compare is used to check two truth tables for equality, returning its
 // result in the form of a third truth table.  Both tables are expected to
 // have identical items.

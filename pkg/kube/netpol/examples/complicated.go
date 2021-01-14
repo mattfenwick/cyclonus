@@ -43,7 +43,7 @@ func ExampleComplicatedNetworkPolicy() *networkingv1.NetworkPolicy {
 						{
 							IPBlock: &networkingv1.IPBlock{
 								CIDR:   "10.0.0.0/16",
-								Except: []string{"10.0.0.0", "10.0.0.1"},
+								Except: []string{"10.0.0.0/28", "10.0.0.64/28"},
 							},
 						},
 					},
