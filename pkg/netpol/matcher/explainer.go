@@ -3,6 +3,7 @@ package matcher
 import (
 	"fmt"
 	"github.com/pkg/errors"
+	networkingv1 "k8s.io/api/networking/v1"
 	"strings"
 )
 
@@ -22,7 +23,7 @@ func Explain(policies *Policy) string {
 }
 
 func ExplainTarget(target *Target, isIngress bool) []string {
-	indent := ""
+	indent := "  "
 	var targetType string
 	if isIngress {
 		targetType = "ingress"
@@ -32,18 +33,16 @@ func ExplainTarget(target *Target, isIngress bool) []string {
 	var lines []string
 	lines = append(lines, target.GetPrimaryKey())
 	if len(target.SourceRules) != 0 {
-		lines = append(lines, "  source rules:")
-		for _, sr := range target.SourceRules {
-			lines = append(lines, fmt.Sprintf("    %s/%s", sr.Namespace, sr.Name))
-		}
+		lines = append(lines, indent+"source rules:")
+		lines = append(lines, ExplainSourceRules(target.SourceRules, indent+"  ")...)
 	}
 	switch a := target.Peer.(type) {
 	case *NonePeerMatcher:
-		lines = append(lines, fmt.Sprintf("  all %s blocked", targetType))
+		lines = append(lines, fmt.Sprintf(indent+"all %s blocked", targetType))
 	case *AllPeerMatcher:
-		lines = append(lines, fmt.Sprintf("  all %s allowed", targetType))
+		lines = append(lines, fmt.Sprintf(indent+"all %s allowed", targetType))
 	case *SpecificPeerMatcher:
-		lines = append(lines, fmt.Sprintf("  %s:", targetType))
+		lines = append(lines, fmt.Sprintf(indent+"%s:", targetType))
 		lines = append(lines, ExplainSpecificPeerMatcher(a, indent+"  ")...)
 	default:
 		panic(errors.Errorf("invalid PeerMatcher type %T", target.Peer))
@@ -53,12 +52,34 @@ func ExplainTarget(target *Target, isIngress bool) []string {
 	return lines
 }
 
-func ExplainSpecificPeerMatcher(tp *SpecificPeerMatcher, indent string) []string {
+func ExplainSourceRules(sourceRules []*networkingv1.NetworkPolicy, indent string) []string {
 	var lines []string
-	for _, ip := range tp.IP {
-		lines = append(lines, ExplainIPBlockMatcher(ip, indent+"  ")...)
+	for _, sr := range sourceRules {
+		lines = append(lines, fmt.Sprintf(indent+"%s/%s", sr.Namespace, sr.Name))
 	}
-	return append(lines, ExplainInternalMatcher(tp.Internal, indent+"  ")...)
+	return lines
+}
+
+func ExplainSpecificPeerMatcher(tp *SpecificPeerMatcher, indent string) []string {
+	lines := ExplainIPMatcher(tp.IP, indent)
+	return append(lines, ExplainInternalMatcher(tp.Internal, indent)...)
+}
+
+func ExplainIPMatcher(ip IPMatcher, indent string) []string {
+	switch a := ip.(type) {
+	case *AllIPMatcher:
+		return append([]string{indent + "all ips"}, ExplainPortMatcher(a.Port, indent+"  ")...)
+	case *NoneIPMatcher:
+		return []string{indent + "no ips"}
+	case *SpecificIPMatcher:
+		lines := []string{indent + "IPBlock(s):"}
+		for _, ip := range a.IPBlocks {
+			lines = append(lines, ExplainIPBlockMatcher(ip, indent+"  ")...)
+		}
+		return lines
+	default:
+		panic(errors.Errorf("invalid IPMatcher type %T", ip))
+	}
 }
 
 func ExplainIPBlockMatcher(ip *IPBlockMatcher, indent string) []string {

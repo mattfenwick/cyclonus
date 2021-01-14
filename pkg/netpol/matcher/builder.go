@@ -70,10 +70,25 @@ func BuildPeerMatcher(policyNamespace string, npPorts []networkingv1.NetworkPoli
 	port := BuildPortMatcher(npPorts)
 	// 2. build Peers
 	if len(peers) == 0 {
-		return &AllPeerMatcher{}
+		switch port.(type) {
+		case *AllPortMatcher:
+			return &AllPeerMatcher{}
+		default:
+			matcher := &NamespacePodMatcher{
+				Namespace: &AllNamespaceMatcher{},
+				Pod:       &AllPodMatcher{},
+				Port:      port,
+			}
+			return &SpecificPeerMatcher{
+				IP: &AllIPMatcher{Port: port},
+				Internal: &SpecificInternalMatcher{NamespacePods: map[string]*NamespacePodMatcher{
+					matcher.PrimaryKey(): matcher,
+				}},
+			}
+		}
 	} else {
 		matcher := &SpecificPeerMatcher{
-			IP:       map[string]*IPBlockMatcher{},
+			IP:       &NoneIPMatcher{},
 			Internal: &NoneInternalMatcher{},
 		}
 		for _, from := range peers {
@@ -88,7 +103,7 @@ func BuildPeerMatcher(policyNamespace string, npPorts []networkingv1.NetworkPoli
 			// process a valid netpol
 			if ip != nil {
 				ip.Port = port
-				matcher.AddIPMatcher(ip)
+				matcher.IP = CombineIPMatchers(matcher.IP, &SpecificIPMatcher{IPBlocks: map[string]*IPBlockMatcher{ip.PrimaryKey(): ip}})
 			} else {
 				// special case: if all ports, namespaces, and pods are allowed
 				switch port.(type) {

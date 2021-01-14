@@ -56,7 +56,7 @@ func (aem *AllPeerMatcher) MarshalJSON() (b []byte, e error) {
 }
 
 type SpecificPeerMatcher struct {
-	IP       map[string]*IPBlockMatcher
+	IP       IPMatcher
 	Internal InternalMatcher
 }
 
@@ -70,10 +70,8 @@ func (em *SpecificPeerMatcher) MarshalJSON() (b []byte, e error) {
 
 func (em *SpecificPeerMatcher) Allows(peer *TrafficPeer, portProtocol *PortProtocol) bool {
 	// can always match by ip
-	for _, ipMatcher := range em.IP {
-		if ipMatcher.Allows(peer.IP, portProtocol) {
-			return true
-		}
+	if em.IP.Allows(peer.IP, portProtocol) {
+		return true
 	}
 	// internal? can also match by pod
 	if !peer.IsExternal() {
@@ -84,28 +82,8 @@ func (em *SpecificPeerMatcher) Allows(peer *TrafficPeer, portProtocol *PortProto
 }
 
 func (em *SpecificPeerMatcher) Combine(other *SpecificPeerMatcher) *SpecificPeerMatcher {
-	ipMatchers := map[string]*IPBlockMatcher{}
-	for key, ip := range em.IP {
-		ipMatchers[key] = ip
-	}
-	for key, ip := range other.IP {
-		if matcher, ok := ipMatchers[key]; ok {
-			ipMatchers[key] = matcher.Combine(ip)
-		} else {
-			ipMatchers[key] = ip
-		}
-	}
 	return &SpecificPeerMatcher{
-		IP:       ipMatchers,
+		IP:       CombineIPMatchers(em.IP, other.IP),
 		Internal: CombineInternalMatchers(em.Internal, other.Internal),
-	}
-}
-
-func (em *SpecificPeerMatcher) AddIPMatcher(ip *IPBlockMatcher) {
-	key := ip.PrimaryKey()
-	if matcher, ok := em.IP[key]; ok {
-		em.IP[key] = matcher.Combine(ip)
-	} else {
-		em.IP[key] = ip
 	}
 }

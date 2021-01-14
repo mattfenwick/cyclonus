@@ -123,6 +123,30 @@ func RunBuilderTests() {
 			Expect(sds).To(Equal(&AllPeerMatcher{}))
 		})
 
+		It("allows all ips and all pods over a specific port from an empty peer slice", func() {
+			sds := BuildPeerMatcher("abc", []networkingv1.NetworkPolicyPort{{
+				Protocol: &sctp,
+				Port:     &port103,
+			}}, []networkingv1.NetworkPolicyPeer{})
+			portMatcher := &SpecificPortMatcher{Ports: []*PortProtocolMatcher{
+				{
+					Port:     &port103,
+					Protocol: v1.ProtocolSCTP,
+				},
+			}}
+			matcher := &NamespacePodMatcher{
+				Namespace: &AllNamespaceMatcher{},
+				Pod:       &AllPodMatcher{},
+				Port:      portMatcher,
+			}
+			Expect(sds).To(Equal(&SpecificPeerMatcher{
+				IP: &AllIPMatcher{Port: portMatcher},
+				Internal: &SpecificInternalMatcher{NamespacePods: map[string]*NamespacePodMatcher{
+					matcher.PrimaryKey(): matcher,
+				}},
+			}))
+		})
+
 		It("allows ips, but no pods from a single IPBlock", func() {
 			peer := BuildPeerMatcher("abc", []networkingv1.NetworkPolicyPort{}, []networkingv1.NetworkPolicyPeer{
 				{
@@ -136,9 +160,9 @@ func RunBuilderTests() {
 				Port:    &AllPortMatcher{},
 			}
 			Expect(peer).To(Equal(&SpecificPeerMatcher{
-				IP: map[string]*IPBlockMatcher{
+				IP: &SpecificIPMatcher{IPBlocks: map[string]*IPBlockMatcher{
 					ip.PrimaryKey(): ip,
-				},
+				}},
 				Internal: &NoneInternalMatcher{},
 			}))
 		})
@@ -152,7 +176,7 @@ func RunBuilderTests() {
 				},
 			})
 			Expect(peer).To(Equal(&SpecificPeerMatcher{
-				IP:       map[string]*IPBlockMatcher{},
+				IP:       &NoneIPMatcher{},
 				Internal: &AllInternalMatcher{},
 			}))
 		})
@@ -171,7 +195,7 @@ func RunBuilderTests() {
 				Port:      &AllPortMatcher{},
 			}
 			Expect(peer).To(Equal(&SpecificPeerMatcher{
-				IP: map[string]*IPBlockMatcher{},
+				IP: &NoneIPMatcher{},
 				Internal: &SpecificInternalMatcher{NamespacePods: map[string]*NamespacePodMatcher{
 					matcher.PrimaryKey(): matcher,
 				}},
@@ -189,17 +213,17 @@ func RunBuilderTests() {
 				Port:    &AllPortMatcher{},
 			}
 			someIps := &SpecificPeerMatcher{
-				IP: map[string]*IPBlockMatcher{
+				IP: &SpecificIPMatcher{IPBlocks: map[string]*IPBlockMatcher{
 					ip.PrimaryKey(): ip,
-				},
+				}},
 				Internal: &NoneInternalMatcher{},
 			}
 			someInternal1 := &SpecificPeerMatcher{
-				IP:       map[string]*IPBlockMatcher{},
+				IP:       &NoneIPMatcher{},
 				Internal: &AllInternalMatcher{},
 			}
 			someInternal2 := &SpecificPeerMatcher{
-				IP:       map[string]*IPBlockMatcher{},
+				IP:       &NoneIPMatcher{},
 				Internal: &NoneInternalMatcher{},
 			}
 

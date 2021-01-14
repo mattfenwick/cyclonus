@@ -87,9 +87,10 @@ func RunExplainerTests() {
   source rules:
     test-ns/complicated-netpol
   ingress:
-    IPBlock: cidr 1.2.3.4/24, except [1.2.3.8/30]
-      Port(s):
-        all ports all protocols
+    IPBlock(s):
+      IPBlock: cidr 1.2.3.4/24, except [1.2.3.8/30]
+        Port(s):
+          all ports all protocols
     Internal:
       Namespace/Pod:
         namespace test-ns
