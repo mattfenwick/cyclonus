@@ -1,9 +1,12 @@
 package connectivity
 
-import "sort"
+import (
+	"fmt"
+	v1 "k8s.io/api/core/v1"
+	"sort"
+	"strings"
+)
 
-// PodModel defines the namespaces, deployments, services, pods, containers and associated
-// data for network policy test cases and provides the source of truth
 type PodModel struct {
 	Namespaces map[string]*Namespace
 	// derived
@@ -11,20 +14,21 @@ type PodModel struct {
 	allPods       *[]*NamespacedPod
 }
 
-// NewDefaultModel instantiates a model based on:
-// - namespaces
-// - pods
-// The total number of pods is the number of namespaces x the number of pods per namespace.
-func NewDefaultModel(namespaces []string, podNames []string) *PodModel {
+func NewDefaultModel(namespaces []string, podNames []string, port int, protocol v1.Protocol) *PodModel {
 	model := &PodModel{Namespaces: map[string]*Namespace{}}
 
-	// build the entire "model" for the overall test, which means, building
-	// namespaces, pods, containers for each protocol.
 	for _, ns := range namespaces {
 		pods := map[string]*Pod{}
 		for _, podName := range podNames {
 			pods[podName] = &Pod{
 				Labels: map[string]string{"pod": podName},
+				Containers: []*Container{
+					{
+						Name:     fmt.Sprintf("cont-%d-%s", port, strings.ToLower(string(protocol))),
+						Port:     port,
+						Protocol: protocol,
+					},
+				},
 			}
 		}
 		model.Namespaces[ns] = &Namespace{Pods: pods, Labels: map[string]string{"ns": ns}}
@@ -32,7 +36,6 @@ func NewDefaultModel(namespaces []string, podNames []string) *PodModel {
 	return model
 }
 
-// NewTruthTable instantiates a default-true truth table
 func (m *PodModel) NewTruthTable() *TruthTable {
 	var podNames []string
 	for _, pod := range m.AllPodStrings() {
@@ -44,7 +47,6 @@ func (m *PodModel) NewTruthTable() *TruthTable {
 	return NewTruthTableFromItems(podNames, nil)
 }
 
-// AllPodStrings returns a slice of all pod strings
 func (m *PodModel) AllPodStrings() []PodString {
 	if m.allPodStrings == nil {
 		var pods []PodString
@@ -58,7 +60,6 @@ func (m *PodModel) AllPodStrings() []PodString {
 	return *m.allPodStrings
 }
 
-// AllPods returns a slice of all pods
 func (m *PodModel) AllPods() []*NamespacedPod {
 	if m.allPods == nil {
 		var pods []*NamespacedPod
@@ -69,6 +70,7 @@ func (m *PodModel) AllPods() []*NamespacedPod {
 					PodName:       podName,
 					Namespace:     ns,
 					Pod:           pod,
+					Containers:    pod.Containers,
 				})
 			}
 		}
@@ -77,18 +79,21 @@ func (m *PodModel) AllPods() []*NamespacedPod {
 	return *m.allPods
 }
 
-// Namespace is the abstract representation of what matters to network policy
-// tests for a namespace; i.e. it ignores kube implementation details
 type Namespace struct {
 	Pods   map[string]*Pod
 	Labels map[string]string
 }
 
-// Pod is the abstract representation of what matters to network policy tests for
-// a pod; i.e. it ignores kube implementation details
 type Pod struct {
-	Labels map[string]string
-	IP     string
+	Labels     map[string]string
+	IP         string
+	Containers []*Container
+}
+
+type Container struct {
+	Name     string
+	Port     int
+	Protocol v1.Protocol
 }
 
 type NamespacedPod struct {
@@ -96,8 +101,17 @@ type NamespacedPod struct {
 	PodName       string
 	Namespace     *Namespace
 	Pod           *Pod
+	Containers    []*Container
 }
 
 func (np *NamespacedPod) PodString() PodString {
 	return NewPodString(np.NamespaceName, np.PodName)
+}
+
+func ServiceName(namespace string, pod string) string {
+	return fmt.Sprintf("s-%s-%s", namespace, pod)
+}
+
+func (np *NamespacedPod) ServiceName() string {
+	return ServiceName(np.NamespaceName, np.PodName)
 }

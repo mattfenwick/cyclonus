@@ -1,18 +1,21 @@
 package kube
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
-	v1net "k8s.io/api/networking/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/remotecommand"
 	"os"
 	"path/filepath"
 )
@@ -49,65 +52,29 @@ func Clientset() (*kubernetes.Clientset, error) {
 	return clientset, nil
 }
 
-//func (k *Kubernetes) GetPods(ns string, key string, val string) ([]v1.Pod, error) {
-//	if p, ok := k.podCache[fmt.Sprintf("%v_%v_%v", ns, key, val)]; ok {
-//		return p, nil
-//	}
-//
-//	v1PodList, err := k.ClientSet.CoreV1().Pods(ns).List(metav1.ListOptions{})
-//	if err != nil {
-//		return nil, errors.Wrapf(err, "unable to list pods")
-//	}
-//	pods := []v1.Pod{}
-//	for _, pod := range v1PodList.Items {
-//		// log.Infof("check: %s, %s, %s, %s", pod.Name, pod.Labels, key, val)
-//		if pod.Labels[key] == val {
-//			pods = append(pods, pod)
-//		}
-//	}
-//
-//	//log.Infof("list in ns %s: %d -> %d", ns, len(v1PodList.Items), len(pods))
-//	k.podCache[fmt.Sprintf("%v_%v_%v", ns, key, val)] = pods
-//
-//	return pods, nil
-//}
-
-//func (k *Kubernetes) GetPod(ns string, key string, val string) (v1.Pod, error) {
-//	pods := k.GetPods(ns, key, val)
-//	if len(pods) != 1 {
-//		return errors.Errorf("expected 1 pod of ")
-//	}
-//}
-
-func (k *Kubernetes) CreateOrUpdateNamespace(n string, labels map[string]string) (*v1.Namespace, error) {
-	ns := &v1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   n,
-			Labels: labels,
-		},
-	}
+func (k *Kubernetes) CreateOrUpdateNamespace(ns *v1.Namespace) (*v1.Namespace, error) {
 	nsr, err := k.ClientSet.CoreV1().Namespaces().Create(context.TODO(), ns, metav1.CreateOptions{})
 	if err == nil {
-		log.Infof("created namespace %s", ns)
-		return nsr, errors.Wrapf(err, "unable to create namespace %s", ns)
+		log.Debugf("created namespace %s", ns)
+		return nsr, nil
 	}
 
 	log.Debugf("unable to create namespace %s, let's try updating it instead (error: %s)", ns.Name, err)
 	nsr, err = k.ClientSet.CoreV1().Namespaces().Update(context.TODO(), ns, metav1.UpdateOptions{})
 	if err != nil {
-		log.Debugf("unable to create namespace %s: %s", ns, err)
+		return nil, errors.Wrapf(err, "unable to update namespace %s", ns.Name)
 	}
-
-	return nsr, err
+	return nsr, nil
 }
 
-func (k *Kubernetes) CleanNetworkPolicies(ns string) error {
+func (k *Kubernetes) DeleteAllNetworkPoliciesInNamespace(ns string) error {
+	log.Debugf("deleting all network policies in namespace %s", ns)
 	netpols, err := k.ClientSet.NetworkingV1().NetworkPolicies(ns).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return errors.Wrapf(err, "unable to list network policies in ns %s", ns)
 	}
 	for _, np := range netpols.Items {
-		log.Infof("deleting network policy %s/%s", ns, np.Name)
+		log.Debugf("deleting network policy %s/%s", ns, np.Name)
 		err = k.ClientSet.NetworkingV1().NetworkPolicies(np.Namespace).Delete(context.TODO(), np.Name, metav1.DeleteOptions{})
 		if err != nil {
 			return errors.Wrapf(err, "unable to delete netpol %s/%s", ns, np.Name)
@@ -116,16 +83,26 @@ func (k *Kubernetes) CleanNetworkPolicies(ns string) error {
 	return nil
 }
 
-func (k *Kubernetes) CreateNetworkPolicy(netpol *v1net.NetworkPolicy) (*v1net.NetworkPolicy, error) {
+func (k *Kubernetes) DeleteAllNetworkPoliciesInNamespaces(nss []string) error {
+	for _, ns := range nss {
+		err := k.DeleteAllNetworkPoliciesInNamespace(ns)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (k *Kubernetes) CreateNetworkPolicy(netpol *networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error) {
 	ns := netpol.Namespace
-	log.Infof("creating network policy %s in ns %s", netpol.Name, ns)
+	log.Debugf("creating network policy %s in ns %s", netpol.Name, ns)
 
 	createdPolicy, err := k.ClientSet.NetworkingV1().NetworkPolicies(ns).Create(context.TODO(), netpol, metav1.CreateOptions{})
 	return createdPolicy, errors.Wrapf(err, "unable to create network policy %s/%s", netpol.Name, netpol.Namespace)
 }
 
-func (k *Kubernetes) CreateOrUpdateNetworkPolicy(ns string, netpol *v1net.NetworkPolicy) (*v1net.NetworkPolicy, error) {
-	log.Infof("creating/updating network policy %s/%s", ns, netpol.Name)
+func (k *Kubernetes) CreateOrUpdateNetworkPolicy(ns string, netpol *networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error) {
+	log.Debugf("creating/updating network policy %s/%s", ns, netpol.Name)
 	netpol.ObjectMeta.Namespace = ns
 	np, err := k.ClientSet.NetworkingV1().NetworkPolicies(ns).Update(context.TODO(), netpol, metav1.UpdateOptions{})
 	if err == nil {
@@ -155,12 +132,33 @@ func (k *Kubernetes) CreateDaemonSetIfNotExists(namespace string, ds *appsv1.Dae
 	return nil, err
 }
 
-func (k *Kubernetes) CreateService(namespace string, svc *v1.Service) (*v1.Service, error) {
-	return k.ClientSet.CoreV1().Services(namespace).Create(context.TODO(), svc, metav1.CreateOptions{})
+func (k *Kubernetes) CreateService(svc *v1.Service) (*v1.Service, error) {
+	ns := svc.Namespace
+	log.Debugf("creating service %s/%s", ns, svc.Name)
+	createdService, err := k.ClientSet.CoreV1().Services(ns).Create(context.TODO(), svc, metav1.CreateOptions{})
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to create service %s/%s", ns, svc.Name)
+	}
+	return createdService, nil
 }
 
-func (k *Kubernetes) CreateServiceIfNotExists(namespace string, svc *v1.Service) (*v1.Service, error) {
-	created, err := k.ClientSet.CoreV1().Services(namespace).Create(context.TODO(), svc, metav1.CreateOptions{})
+func (k *Kubernetes) CreateOrUpdateService(svc *v1.Service) (*v1.Service, error) {
+	nsr, err := k.ClientSet.CoreV1().Services(svc.Namespace).Create(context.TODO(), svc, metav1.CreateOptions{})
+	if err == nil {
+		log.Debugf("created service %s/%s", svc.Namespace, svc.Name)
+		return nsr, nil
+	}
+
+	log.Debugf("unable to create service %s/%s, let's try updating it instead (error: %s)", svc.Namespace, svc.Name, err)
+	nsr, err = k.ClientSet.CoreV1().Services(svc.Namespace).Update(context.TODO(), svc, metav1.UpdateOptions{})
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to update service %s/%s", svc.Namespace, svc.Name)
+	}
+	return nsr, nil
+}
+
+func (k *Kubernetes) CreateServiceIfNotExists(svc *v1.Service) (*v1.Service, error) {
+	created, err := k.ClientSet.CoreV1().Services(svc.Namespace).Create(context.TODO(), svc, metav1.CreateOptions{})
 	if err == nil {
 		return created, nil
 	}
@@ -181,3 +179,116 @@ func (k *Kubernetes) GetPodsInNamespaces(namespaces []string) ([]v1.Pod, error) 
 	}
 	return pods, nil
 }
+
+func (k *Kubernetes) CreatePod(pod *v1.Pod) (*v1.Pod, error) {
+	ns := pod.Namespace
+	log.Debugf("creating pod %s/%s", ns, pod.Name)
+
+	createdPod, err := k.ClientSet.CoreV1().Pods(ns).Create(context.TODO(), pod, metav1.CreateOptions{})
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to update pod %s/%s", ns, pod.Name)
+	}
+	return createdPod, nil
+}
+
+func (k *Kubernetes) CreatePodIfNotExists(pod *v1.Pod) (*v1.Pod, error) {
+	created, err := k.ClientSet.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+	if err == nil {
+		return created, nil
+	}
+	log.Warnf("%+v", err)
+	if err.Error() == fmt.Sprintf(`pods "%s" already exists`, pod.Name) {
+		return nil, nil
+	}
+	return nil, err
+}
+
+// ExecuteRemoteCommand executes a remote shell command on the given pod
+// returns the output from stdout and stderr
+func (k *Kubernetes) ExecuteRemoteCommand(namespace string, pod string, container string, command []string) (string, string, error, error) {
+	kubeCfg := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		clientcmd.NewDefaultClientConfigLoadingRules(),
+		&clientcmd.ConfigOverrides{},
+	)
+	restCfg, err := kubeCfg.ClientConfig()
+	if err != nil {
+		return "", "", nil, errors.Wrapf(err, "unable to get rest config from kube config")
+	}
+
+	request := k.ClientSet.
+		CoreV1().
+		RESTClient().
+		Post().
+		Namespace(namespace).
+		Resource("pods").
+		Name(pod).
+		SubResource("exec").
+		Param("container", container).
+		VersionedParams(
+			&v1.PodExecOptions{
+				Container: container,
+				Command:   command,
+				Stdin:     false,
+				Stdout:    true,
+				Stderr:    true,
+				TTY:       true,
+			},
+			scheme.ParameterCodec)
+
+	exec, err := remotecommand.NewSPDYExecutor(restCfg, "POST", request.URL())
+	if err != nil {
+		return "", "", nil, errors.Wrapf(err, "unable to instantiate SPDYExecutor")
+	}
+
+	buf := &bytes.Buffer{}
+	errBuf := &bytes.Buffer{}
+	err = exec.Stream(remotecommand.StreamOptions{
+		Stdout: buf,
+		Stderr: errBuf,
+	})
+
+	out, errOut := buf.String(), errBuf.String()
+	return out, errOut, err, nil
+}
+
+/* TODO delete
+func (k *Kubernetes) ExecWithOptions(namespace string, pod string, container string, command []string) (string, string, error, error) {
+	kubeCfg := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		clientcmd.NewDefaultClientConfigLoadingRules(),
+		&clientcmd.ConfigOverrides{},
+	)
+	restCfg, err := kubeCfg.ClientConfig()
+	if err != nil {
+		return "", "", nil, errors.Wrapf(err, "unable to get rest config from kube config")
+	}
+
+	req := k.ClientSet.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Name(pod).
+		Namespace(namespace).
+		SubResource("exec").
+		Param("container", container)
+	req.VersionedParams(&v1.PodExecOptions{
+		Container: container,
+		Command:   command,
+		//Stdin:     options.Stdin != nil,
+		Stdout:    true,
+		Stderr:    true,
+		//TTY:       tty,
+	}, scheme.ParameterCodec)
+
+	var stdout, stderr bytes.Buffer
+	exec, err := remotecommand.NewSPDYExecutor(restCfg, "POST", req.URL())
+	if err != nil {
+		return "", "", nil, err
+	}
+	err = exec.Stream(remotecommand.StreamOptions{
+		//Stdin:  options.Stdin,
+		Stdout: &stdout,
+		Stderr: &stderr,
+		//Tty:    tty,
+	})
+
+	return stdout.String(), stderr.String(), err, nil
+}
+*/

@@ -65,8 +65,8 @@ func runProbeConnectivityCommand(args *ProbeConnectivityArgs) {
 	utils.DoOrDie(errors.Wrapf(err, "unable to unmarshal json"))
 
 	// 4. run probes
-	for _, result := range connectivity.RunProbes(explainedPolicies, config.Probes, config.Pods) {
-		log.Infof("probe on port %s, protocol %s", result.Port.Port.String(), result.Port.Protocol)
+	for _, result := range connectivity.RunSyntheticProbes(explainedPolicies, config.Probes, config.Pods) {
+		log.Infof("probe on port %d, protocol %s", result.Port.Port, result.Port.Protocol)
 
 		// 5. print out a result matrix
 		fmt.Println("Ingress:")

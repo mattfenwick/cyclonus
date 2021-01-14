@@ -2,11 +2,15 @@ package cli
 
 import (
 	"fmt"
+	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/netpol/connectivity"
 	"github.com/mattfenwick/cyclonus/pkg/netpol/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/netpol/netpolgen"
+	"github.com/mattfenwick/cyclonus/pkg/netpol/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	v1 "k8s.io/api/core/v1"
+	"time"
 )
 
 type GeneratorArgs struct {
@@ -32,28 +36,66 @@ func runGeneratorCommand(args *GeneratorArgs) {
 	kubePolicies := netpolgen.NewDefaultGenerator().IngressPolicies()
 	fmt.Printf("%d policies\n\n", len(kubePolicies))
 
-	panic(3)
-	probes := []*connectivity.ProtocolPort{}
-	podModel := connectivity.NewDefaultModel([]string{"x", "y", "z"}, []string{"a", "b", "c"})
-	for _, kubeIngressPolicy := range kubePolicies {
-		policy := matcher.BuildNetworkPolicy(kubeIngressPolicy)
-		// 4. run probes
-		for _, result := range connectivity.RunProbes(policy, probes, podModel) {
-			log.Infof("probe on port %s, protocol %s", result.Port.Port.String(), result.Port.Protocol)
+	port := &connectivity.ProtocolPort{
+		Protocol: v1.ProtocolTCP,
+		Port:     80,
+	}
+	// TODO don't use default model?
+	namespaces := []string{"x", "y", "z"}
+	podModel := connectivity.NewDefaultModel(namespaces, []string{"a", "b", "c"}, port.Port, port.Protocol)
+	kubernetes, err := kube.NewKubernetes()
+	utils.DoOrDie(err)
 
-			// 5. print out a result matrix
-			fmt.Println("Ingress:")
-			result.Ingress.Table().Render()
+	utils.DoOrDie(connectivity.CreateResources(kubernetes, podModel))
+	// TODO wait for pods to come up
+	time.Sleep(10 * time.Second)
 
-			fmt.Println("Egress:")
-			result.Egress.Table().Render()
-
-			fmt.Println("Combined:")
-			result.Combined.Table().Render()
+	namespacesToCleanSet := map[string]bool{}
+	namespacesToClean := []string{}
+	for _, kp := range kubePolicies {
+		if !namespacesToCleanSet[kp.Namespace] {
+			namespacesToCleanSet[kp.Namespace] = true
+			namespacesToClean = append(namespacesToClean, kp.Namespace)
 		}
+	}
+	for _, ns := range namespaces {
+		if !namespacesToCleanSet[ns] {
+			namespacesToCleanSet[ns] = true
+			namespacesToClean = append(namespacesToClean, ns)
+		}
+	}
 
-		// TODO run probes on cluster
+	for i, kubeIngressPolicy := range kubePolicies {
+		utils.DoOrDie(kubernetes.DeleteAllNetworkPoliciesInNamespaces(namespacesToClean))
 
-		// TODO compare measure results to "expected" (calculated) results
+		_, err = kubernetes.CreateNetworkPolicy(kubeIngressPolicy)
+		utils.DoOrDie(err)
+
+		// TODO wait for netpol to become 'active'
+		time.Sleep(1 * time.Second)
+
+		policy := matcher.BuildNetworkPolicy(kubeIngressPolicy)
+
+		log.Infof("probe on port %d, protocol %s", port.Port, port.Protocol)
+		synthetic := connectivity.RunSyntheticProbe(policy, port, podModel)
+		fmt.Println("Ingress:")
+		synthetic.Ingress.Table().Render()
+		fmt.Println("Egress:")
+		synthetic.Egress.Table().Render()
+		fmt.Println("Combined:")
+		synthetic.Combined.Table().Render()
+
+		kubeProbe := connectivity.RunKubeProbe(kubernetes, podModel, port.Port, port.Protocol, 5)
+		fmt.Printf("\n\nKube results:\n")
+		kubeProbe.Table().Render()
+
+		fmt.Printf("\n\nSynthetic vs combined:\n")
+		synthetic.Combined.Compare(kubeProbe).Table().Render()
+
+		fmt.Println()
+
+		if i > 2 {
+			panic(i)
+		}
 	}
 }
