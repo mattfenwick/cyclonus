@@ -83,39 +83,34 @@ func IsLabelsMatchLabelSelector(labels map[string]string, labelSelector metav1.L
 	return true
 }
 
-func IsIPInCIDR(ip string, cidr string) bool {
+func IsIPInCIDR(ip string, cidr string) (bool, error) {
 	_, cidrNet, err := net.ParseCIDR(cidr)
 	if err != nil {
-		panic(err)
+		return false, errors.Wrapf(err, "unable to parse CIDR '%s'", cidr)
 	}
 	trafficIP := net.ParseIP(ip)
 	if trafficIP == nil {
-		panic(errors.Errorf("unable to parse ip %s", ip))
+		return false, errors.Errorf("unable to parse IP '%s'", ip)
 	}
-	return cidrNet.Contains(trafficIP)
+	return cidrNet.Contains(trafficIP), nil
 }
 
-// IsIPBlockMatchForIP is completely untested.  TODO!
-func IsIPBlockMatchForIP(ip string, ipBlock *v1.IPBlock) bool {
-	_, cidrNet, err := net.ParseCIDR(ipBlock.CIDR)
+func IsIPAddressMatchForIPBlock(ip string, ipBlock *v1.IPBlock) (bool, error) {
+	isInCidr, err := IsIPInCIDR(ip, ipBlock.CIDR)
 	if err != nil {
-		panic(err)
+		return false, err
 	}
-	trafficIP := net.ParseIP(ip)
-	if trafficIP == nil {
-		panic(errors.Errorf("unable to parse ip %s", ip))
-	}
-	if !cidrNet.Contains(trafficIP) {
-		return false
+	if !isInCidr {
+		return false, nil
 	}
 	for _, except := range ipBlock.Except {
-		_, exceptNet, err := net.ParseCIDR(except)
+		isInExcept, err := IsIPInCIDR(ip, except)
 		if err != nil {
-			panic(err)
+			return false, err
 		}
-		if exceptNet.Contains(trafficIP) {
-			return false
+		if isInExcept {
+			return false, nil
 		}
 	}
-	return true
+	return true, nil
 }

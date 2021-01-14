@@ -41,8 +41,12 @@ func (i *IPBlockMatcher) MarshalJSON() (b []byte, e error) {
 }
 
 func (i *IPBlockMatcher) Allows(ip string, portProtocol *PortProtocol) bool {
-	return kube.IsIPBlockMatchForIP(ip, i.IPBlock) &&
-		i.Port.Allows(portProtocol.Port, portProtocol.Protocol)
+	isIpMatch, err := kube.IsIPAddressMatchForIPBlock(ip, i.IPBlock)
+	// TODO propagate this error instead of panic
+	if err != nil {
+		panic(err)
+	}
+	return isIpMatch && i.Port.Allows(portProtocol.Port, portProtocol.Protocol)
 }
 
 func (i *IPBlockMatcher) Combine(other *IPBlockMatcher) *IPBlockMatcher {

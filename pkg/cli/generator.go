@@ -10,6 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/yaml"
 	"time"
 )
 
@@ -94,6 +95,10 @@ func runGeneratorCommand(args *GeneratorArgs) {
 		t, f, nv := comparison.ValueCounts()
 		log.Infof("found %d true, %d false, %d no value", t, f, nv)
 		if f > 0 {
+			policyBytes, err := yaml.Marshal(kubeIngressPolicy)
+			utils.DoOrDie(err)
+			fmt.Printf("Discrepancy found for network policy:\n%s\n\n", policyBytes)
+
 			fmt.Println("Ingress:")
 			synthetic.Ingress.Table().Render()
 
