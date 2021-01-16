@@ -62,6 +62,14 @@ var (
 			},
 		},
 	}
+	AllowDNSRule = &Rule{
+		Ports: []NetworkPolicyPort{
+			{
+				Protocol: &udp,
+				Port:     &port53,
+			},
+		},
+	}
 )
 
 var (
@@ -149,8 +157,7 @@ var (
 )
 
 var (
-	emptySliceOfIngressRules = []NetworkPolicyIngressRule{}
-	emptySliceOfEgressRules  = []NetworkPolicyEgressRule{}
+	emptySliceOfRules = []*Rule{}
 )
 
 func DefaultTargets() []metav1.LabelSelector {

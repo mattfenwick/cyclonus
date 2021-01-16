@@ -68,62 +68,31 @@ func (g *Generator) PeerSlices() [][]NetworkPolicyPeer {
 	return slices
 }
 
-func (g *Generator) IngressRules() []NetworkPolicyIngressRule {
-	var is []NetworkPolicyIngressRule
+func (g *Generator) Rules() []*Rule {
+	var rules []*Rule
 	for _, ports := range g.PortSlices() {
 		for _, peers := range g.PeerSlices() {
-			is = append(is, NetworkPolicyIngressRule{
+			rules = append(rules, &Rule{
 				Ports: ports,
-				From:  peers,
+				Peers: peers,
 			})
 		}
 	}
-	return is
+	return rules
 }
 
-func (g *Generator) IngressRuleSlices() [][]NetworkPolicyIngressRule {
+func (g *Generator) RuleSlices() [][]*Rule {
 	// 0 length
-	slices := [][]NetworkPolicyIngressRule{nil, emptySliceOfIngressRules}
+	slices := [][]*Rule{nil, emptySliceOfRules}
 	// 1 length
-	for _, ingress := range g.IngressRules() {
-		slices = append(slices, []NetworkPolicyIngressRule{ingress})
+	for _, ingress := range g.Rules() {
+		slices = append(slices, []*Rule{ingress})
 	}
 	// 2 length
-	for i, ing1 := range g.IngressRules() {
-		for j, ing2 := range g.IngressRules() {
+	for i, ing1 := range g.Rules() {
+		for j, ing2 := range g.Rules() {
 			if i < j {
-				slices = append(slices, []NetworkPolicyIngressRule{ing1, ing2})
-			}
-		}
-	}
-	return slices
-}
-
-func (g *Generator) EgressRules() []NetworkPolicyEgressRule {
-	var is []NetworkPolicyEgressRule
-	for _, ports := range g.PortSlices() {
-		for _, peers := range g.PeerSlices() {
-			is = append(is, NetworkPolicyEgressRule{
-				Ports: ports,
-				To:    peers,
-			})
-		}
-	}
-	return is
-}
-
-func (g *Generator) EgressRuleSlices() [][]NetworkPolicyEgressRule {
-	// 0 length
-	slices := [][]NetworkPolicyEgressRule{nil, emptySliceOfEgressRules}
-	// 1 length
-	for _, egress := range g.EgressRules() {
-		slices = append(slices, []NetworkPolicyEgressRule{egress})
-	}
-	// 2 length
-	for i, eng1 := range g.EgressRules() {
-		for j, eng2 := range g.EgressRules() {
-			if i < j {
-				slices = append(slices, []NetworkPolicyEgressRule{eng1, eng2})
+				slices = append(slices, []*Rule{ing1, ing2})
 			}
 		}
 	}
@@ -182,85 +151,75 @@ func (g *Generator) VaryEgressPolicies(allowDNS bool) []*NetworkPolicy {
 
 // single policies, multidimensional generation
 
-func (g *Generator) IngressPolicies() []*NetworkPolicy {
+func (g *Generator) multidimensionalPolicies(isIngress bool, allowDNS bool) []*NetworkPolicy {
 	var policies []*NetworkPolicy
 	i := 0
-	for _, ingress := range g.IngressRuleSlices() {
+	for _, rules := range g.RuleSlices() {
 		for _, target := range g.Targets {
 			for _, ns := range g.Namespaces {
-				policies = append(policies, &NetworkPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      fmt.Sprintf("policy-%d", i),
-						Namespace: ns,
-					},
-					Spec: NetworkPolicySpec{
-						PodSelector: target,
-						Ingress:     ingress,
-						PolicyTypes: []PolicyType{PolicyTypeIngress},
-					},
-				})
+				var ingresses []*Rule
+				var egresses []*Rule
+				for _, rule := range rules {
+					if isIngress {
+						ingresses = append(ingresses, rule)
+					} else {
+						egresses = append(egresses, rule)
+					}
+				}
+				if !isIngress && allowDNS {
+					egresses = append(egresses, AllowDNSRule)
+				}
+				policies = append(policies, (&Netpol{
+					Name:         fmt.Sprintf("policy-%d", i),
+					Namespace:    ns,
+					PodSelector:  target,
+					IngressRules: ingresses,
+					EgressRules:  egresses,
+				}).NetworkPolicy())
 				i++
 			}
 		}
 	}
 	return policies
+}
+
+func (g *Generator) IngressPolicies() []*NetworkPolicy {
+	return g.multidimensionalPolicies(true, false)
 }
 
 func (g *Generator) EgressPolicies(allowDNS bool) []*NetworkPolicy {
-	var policies []*NetworkPolicy
-	i := 0
-	for _, egress := range g.EgressRuleSlices() {
-		for _, target := range g.Targets {
-			for _, ns := range g.Namespaces {
-				if allowDNS {
-					egress = append(egress, AllowDNSEgressRule)
-				}
-				policies = append(policies, &NetworkPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      fmt.Sprintf("policy-%d", i),
-						Namespace: ns,
-					},
-					Spec: NetworkPolicySpec{
-						PodSelector: target,
-						Egress:      egress,
-						PolicyTypes: []PolicyType{PolicyTypeEgress},
-					},
-				})
-				i++
-			}
-		}
-	}
-	return policies
+	return g.multidimensionalPolicies(false, allowDNS)
 }
 
 func (g *Generator) IngressEgressPolicies(allowDNS bool) []*NetworkPolicy {
-	var policies []*NetworkPolicy
-	i := 0
-	for _, ingress := range g.IngressRuleSlices() {
-		for _, egress := range g.EgressRuleSlices() {
-			for _, target := range g.Targets {
-				for _, ns := range g.Namespaces {
-					if allowDNS {
-						egress = append(egress, AllowDNSEgressRule)
-					}
-					policies = append(policies, &NetworkPolicy{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      fmt.Sprintf("policy-%d", i),
-							Namespace: ns,
-						},
-						Spec: NetworkPolicySpec{
-							PodSelector: target,
-							Ingress:     ingress,
-							Egress:      egress,
-							PolicyTypes: []PolicyType{PolicyTypeIngress, PolicyTypeEgress},
-						},
-					})
-					i++
-				}
-			}
-		}
-	}
-	return policies
+	panic("TODO -- how to get this to a workable number?")
+	//var policies []*NetworkPolicy
+	//i := 0
+	//for _, ingress := range g.IngressRuleSlices() {
+	//	for _, egress := range g.EgressRuleSlices() {
+	//		for _, target := range g.Targets {
+	//			for _, ns := range g.Namespaces {
+	//				if allowDNS {
+	//					egress = append(egress, AllowDNSEgressRule)
+	//				}
+	//				policies = append(policies, &NetworkPolicy{
+	//					ObjectMeta: metav1.ObjectMeta{
+	//						Name:      fmt.Sprintf("policy-%d", i),
+	//						Namespace: ns,
+	//					},
+	//					Spec: NetworkPolicySpec{
+	//						PodSelector: target,
+	//						Ingress:     ingress,
+	//						Egress:      egress,
+	//						PolicyTypes: []PolicyType{PolicyTypeIngress, PolicyTypeEgress},
+	//					},
+	//				})
+	//				i++
+	//			}
+	//		}
+	//	}
+	//}
+	//return policies
 }
 
 // multiple policies
