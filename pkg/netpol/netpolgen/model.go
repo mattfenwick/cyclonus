@@ -14,7 +14,7 @@ type Netpol struct {
 	EgressRules  []*Rule
 }
 
-func (n *Netpol) NetworkPolicy() NetworkPolicy {
+func (n *Netpol) NetworkPolicy() *NetworkPolicy {
 	var types []PolicyType
 	if len(n.IngressRules) == 0 && len(n.EgressRules) == 0 {
 		types = []PolicyType{PolicyTypeIngress}
@@ -34,7 +34,7 @@ func (n *Netpol) NetworkPolicy() NetworkPolicy {
 	for _, rule := range n.EgressRules {
 		egress = append(egress, rule.Egress())
 	}
-	return NetworkPolicy{
+	return &NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      n.Name,
 			Namespace: n.Namespace,
@@ -52,6 +52,18 @@ type Rule struct {
 	Ports []NetworkPolicyPort
 	Peers []NetworkPolicyPeer
 }
+
+//func RulesFromPortsAndPeers(ports []NetworkPolicyPort, peers []NetworkPolicyPeer) []*Rule {
+//	var rules []*Rule
+//	for _, port := range ports {
+//		for _, peer := range peers {
+//			rules = append(rules, &Rule{
+//				Ports: port,
+//				Peers: peer,
+//			})
+//		}
+//	}
+//}
 
 func (r *Rule) Ingress() NetworkPolicyIngressRule {
 	return NetworkPolicyIngressRule{

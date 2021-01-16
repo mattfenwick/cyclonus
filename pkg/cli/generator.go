@@ -68,15 +68,10 @@ func runGeneratorCommand(args *GeneratorArgs) {
 		//panic(errors.Errorf("no policies to test: neither ingress nor egress allowed: %+v", args))
 
 		// ingress
-		//kubePolicies = append(kubePolicies, generator.VaryNamespaceIngressPolicies()...)
-		//kubePolicies = append(kubePolicies, generator.VaryPeersIngressPolicies()...)
-		//kubePolicies = append(kubePolicies, generator.VaryPortsIngressPolicies()...)
-		//kubePolicies = append(kubePolicies, generator.VaryTargetIngressPolicies()...)
+		//kubePolicies = generator.VaryIngressPolicies()
+
 		// egress
-		kubePolicies = append(kubePolicies, generator.VaryNamespaceEgressPolicies(args.AllowDNS)...)
-		kubePolicies = append(kubePolicies, generator.VaryPeersEgressPolicies(args.AllowDNS)...)
-		kubePolicies = append(kubePolicies, generator.VaryPortsEgressPolicies(args.AllowDNS)...)
-		kubePolicies = append(kubePolicies, generator.VaryTargetEgressPolicies(args.AllowDNS)...)
+		kubePolicies = generator.VaryEgressPolicies(args.AllowDNS)
 	}
 	fmt.Printf("testing %d policies\n\n", len(kubePolicies))
 
