@@ -1,0 +1,68 @@
+package netpolgen
+
+import (
+	. "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+// Netpol helps us to avoid the To/From Ingress/Egress dance
+type Netpol struct {
+	Name         string
+	Namespace    string
+	PodSelector  metav1.LabelSelector
+	IngressRules []*Rule
+	EgressRules  []*Rule
+}
+
+func (n *Netpol) NetworkPolicy() NetworkPolicy {
+	var types []PolicyType
+	if len(n.IngressRules) == 0 && len(n.EgressRules) == 0 {
+		types = []PolicyType{PolicyTypeIngress}
+	} else {
+		if len(n.IngressRules) > 0 {
+			types = append(types, PolicyTypeIngress)
+		}
+		if len(n.EgressRules) > 0 {
+			types = append(types, PolicyTypeEgress)
+		}
+	}
+	var ingress []NetworkPolicyIngressRule
+	for _, rule := range n.IngressRules {
+		ingress = append(ingress, rule.Ingress())
+	}
+	var egress []NetworkPolicyEgressRule
+	for _, rule := range n.EgressRules {
+		egress = append(egress, rule.Egress())
+	}
+	return NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      n.Name,
+			Namespace: n.Namespace,
+		},
+		Spec: NetworkPolicySpec{
+			PodSelector: n.PodSelector,
+			Ingress:     ingress,
+			Egress:      egress,
+			PolicyTypes: types,
+		},
+	}
+}
+
+type Rule struct {
+	Ports []NetworkPolicyPort
+	Peers []NetworkPolicyPeer
+}
+
+func (r *Rule) Ingress() NetworkPolicyIngressRule {
+	return NetworkPolicyIngressRule{
+		Ports: r.Ports,
+		From:  r.Peers,
+	}
+}
+
+func (r *Rule) Egress() NetworkPolicyEgressRule {
+	return NetworkPolicyEgressRule{
+		Ports: r.Ports,
+		To:    r.Peers,
+	}
+}

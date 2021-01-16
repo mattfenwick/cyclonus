@@ -210,38 +210,54 @@ func egressExample(name string, ns string, target metav1.LabelSelector, ports []
 	}
 }
 
-func (g *Generator) VaryNamespaceEgressPolicies() []*NetworkPolicy {
+func (g *Generator) VaryNamespaceEgressPolicies(allowDNS bool) []*NetworkPolicy {
 	var policies []*NetworkPolicy
 	for i, ns := range g.Namespaces {
 		name := fmt.Sprintf("vary-ns-egress-%d", i)
-		policies = append(policies, egressExample(name, ns, g.TypicalTarget, g.TypicalPorts, g.TypicalPeers))
+		policy := egressExample(name, ns, g.TypicalTarget, g.TypicalPorts, g.TypicalPeers)
+		if allowDNS {
+			policy.Spec.Egress = append(policy.Spec.Egress, AllowDNSEgressRule)
+		}
+		policies = append(policies, policy)
 	}
 	return policies
 }
 
-func (g *Generator) VaryTargetEgressPolicies() []*NetworkPolicy {
+func (g *Generator) VaryTargetEgressPolicies(allowDNS bool) []*NetworkPolicy {
 	var policies []*NetworkPolicy
 	for i, target := range g.Targets {
 		name := fmt.Sprintf("vary-target-egress-%d", i)
-		policies = append(policies, egressExample(name, g.TypicalNamespace, target, g.TypicalPorts, g.TypicalPeers))
+		policy := egressExample(name, g.TypicalNamespace, target, g.TypicalPorts, g.TypicalPeers)
+		if allowDNS {
+			policy.Spec.Egress = append(policy.Spec.Egress, AllowDNSEgressRule)
+		}
+		policies = append(policies, policy)
 	}
 	return policies
 }
 
-func (g *Generator) VaryPortsEgressPolicies() []*NetworkPolicy {
+func (g *Generator) VaryPortsEgressPolicies(allowDNS bool) []*NetworkPolicy {
 	var policies []*NetworkPolicy
 	for i, ports := range g.PortSlices() {
 		name := fmt.Sprintf("vary-ports-egress-%d", i)
-		policies = append(policies, egressExample(name, g.TypicalNamespace, g.TypicalTarget, ports, g.TypicalPeers))
+		policy := egressExample(name, g.TypicalNamespace, g.TypicalTarget, ports, g.TypicalPeers)
+		if allowDNS {
+			policy.Spec.Egress = append(policy.Spec.Egress, AllowDNSEgressRule)
+		}
+		policies = append(policies, policy)
 	}
 	return policies
 }
 
-func (g *Generator) VaryPeersEgressPolicies() []*NetworkPolicy {
+func (g *Generator) VaryPeersEgressPolicies(allowDNS bool) []*NetworkPolicy {
 	var policies []*NetworkPolicy
 	for i, peers := range g.PeerSlices() {
 		name := fmt.Sprintf("vary-peers-egress-%d", i)
-		policies = append(policies, egressExample(name, g.TypicalNamespace, g.TypicalTarget, g.TypicalPorts, peers))
+		policy := egressExample(name, g.TypicalNamespace, g.TypicalTarget, g.TypicalPorts, peers)
+		if allowDNS {
+			policy.Spec.Egress = append(policy.Spec.Egress, AllowDNSEgressRule)
+		}
+		policies = append(policies, policy)
 	}
 	return policies
 }

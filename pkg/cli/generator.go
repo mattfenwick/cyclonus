@@ -73,10 +73,10 @@ func runGeneratorCommand(args *GeneratorArgs) {
 		//kubePolicies = append(kubePolicies, generator.VaryPortsIngressPolicies()...)
 		//kubePolicies = append(kubePolicies, generator.VaryTargetIngressPolicies()...)
 		// egress
-		kubePolicies = append(kubePolicies, generator.VaryNamespaceEgressPolicies()...)
-		kubePolicies = append(kubePolicies, generator.VaryPeersEgressPolicies()...)
-		kubePolicies = append(kubePolicies, generator.VaryPortsEgressPolicies()...)
-		kubePolicies = append(kubePolicies, generator.VaryTargetEgressPolicies()...)
+		kubePolicies = append(kubePolicies, generator.VaryNamespaceEgressPolicies(args.AllowDNS)...)
+		kubePolicies = append(kubePolicies, generator.VaryPeersEgressPolicies(args.AllowDNS)...)
+		kubePolicies = append(kubePolicies, generator.VaryPortsEgressPolicies(args.AllowDNS)...)
+		kubePolicies = append(kubePolicies, generator.VaryTargetEgressPolicies(args.AllowDNS)...)
 	}
 	fmt.Printf("testing %d policies\n\n", len(kubePolicies))
 
