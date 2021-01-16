@@ -10,11 +10,16 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"sigs.k8s.io/yaml"
 	"time"
 )
 
 type GeneratorArgs struct {
+	Ingress        bool
+	Egress         bool
+	AllowDNS       bool
+	PrintSynthetic bool
 }
 
 func setupGeneratorCommand() *cobra.Command {
@@ -30,19 +35,50 @@ func setupGeneratorCommand() *cobra.Command {
 		},
 	}
 
+	command.Flags().BoolVar(&args.Ingress, "ingress", true, "use ingress in policies")
+	command.Flags().BoolVar(&args.Egress, "egress", false, "use egress in policies")
+	command.Flags().BoolVar(&args.AllowDNS, "allow-dns", true, "if using egress, allow udp over port 53 for DNS resolution")
+	command.Flags().BoolVar(&args.PrintSynthetic, "print-synthetic", false, "if true, print synthetic results")
+
 	return command
 }
 
 func runGeneratorCommand(args *GeneratorArgs) {
 	namespaces := []string{"x", "y", "z"}
 	generator := &netpolgen.Generator{
-		Ports:      netpolgen.DefaultPorts(),
-		Peers:      netpolgen.DefaultPeers(),
-		Targets:    netpolgen.DefaultTargets(),
-		Namespaces: namespaces,
+		Ports:            netpolgen.DefaultPorts(),
+		Peers:            netpolgen.DefaultPeers(),
+		Targets:          netpolgen.DefaultTargets(),
+		Namespaces:       namespaces,
+		TypicalPorts:     netpolgen.TypicalPorts,
+		TypicalPeers:     netpolgen.TypicalPeers,
+		TypicalTarget:    netpolgen.TypicalTarget,
+		TypicalNamespace: netpolgen.TypicalNamespace,
 	}
-	kubePolicies := generator.IngressPolicies()
-	fmt.Printf("%d policies\n\n", len(kubePolicies))
+
+	var kubePolicies []*networkingv1.NetworkPolicy
+	if args.Ingress && args.Egress {
+		kubePolicies = generator.IngressEgressPolicies(args.AllowDNS)
+	} else if args.Ingress {
+		kubePolicies = generator.IngressPolicies()
+	} else if args.Egress {
+		kubePolicies = generator.EgressPolicies(args.AllowDNS)
+	} else {
+		// TODO clean this up
+		//panic(errors.Errorf("no policies to test: neither ingress nor egress allowed: %+v", args))
+
+		// ingress
+		//kubePolicies = append(kubePolicies, generator.VaryNamespaceIngressPolicies()...)
+		//kubePolicies = append(kubePolicies, generator.VaryPeersIngressPolicies()...)
+		//kubePolicies = append(kubePolicies, generator.VaryPortsIngressPolicies()...)
+		//kubePolicies = append(kubePolicies, generator.VaryTargetIngressPolicies()...)
+		// egress
+		kubePolicies = append(kubePolicies, generator.VaryNamespaceEgressPolicies()...)
+		kubePolicies = append(kubePolicies, generator.VaryPeersEgressPolicies()...)
+		kubePolicies = append(kubePolicies, generator.VaryPortsEgressPolicies()...)
+		kubePolicies = append(kubePolicies, generator.VaryTargetEgressPolicies()...)
+	}
+	fmt.Printf("testing %d policies\n\n", len(kubePolicies))
 
 	port := &connectivity.ProtocolPort{
 		Protocol: v1.ProtocolTCP,
@@ -72,33 +108,35 @@ func runGeneratorCommand(args *GeneratorArgs) {
 		}
 	}
 
-	for i, kubeIngressPolicy := range kubePolicies {
+	for i, kubePolicy := range kubePolicies {
 		utils.DoOrDie(kubernetes.DeleteAllNetworkPoliciesInNamespaces(namespacesToClean))
 
-		_, err = kubernetes.CreateNetworkPolicy(kubeIngressPolicy)
+		_, err = kubernetes.CreateNetworkPolicy(kubePolicy)
 		utils.DoOrDie(err)
 
 		// TODO wait for netpol to become 'active'
 		time.Sleep(1 * time.Second)
 
-		policy := matcher.BuildNetworkPolicy(kubeIngressPolicy)
+		policy := matcher.BuildNetworkPolicy(kubePolicy)
 
 		log.Infof("probe on port %d, protocol %s", port.Port, port.Protocol)
 		synthetic := connectivity.RunSyntheticProbe(policy, port, podModel)
 
 		kubeProbe := connectivity.RunKubeProbe(kubernetes, podModel, port.Port, port.Protocol, 5)
 
-		fmt.Printf("\n\nKube results for %s/%s:\n", kubeIngressPolicy.Namespace, kubeIngressPolicy.Name)
+		fmt.Printf("\n\nKube results for %s/%s:\n", kubePolicy.Namespace, kubePolicy.Name)
 		kubeProbe.Table().Render()
 
 		comparison := synthetic.Combined.Compare(kubeProbe)
 		t, f, nv := comparison.ValueCounts()
 		log.Infof("found %d true, %d false, %d no value", t, f, nv)
 		if f > 0 {
-			policyBytes, err := yaml.Marshal(kubeIngressPolicy)
+			policyBytes, err := yaml.Marshal(kubePolicy)
 			utils.DoOrDie(err)
 			fmt.Printf("Discrepancy found for network policy:\n%s\n\n", policyBytes)
+		}
 
+		if f > 0 || args.PrintSynthetic {
 			fmt.Println("Ingress:")
 			synthetic.Ingress.Table().Render()
 

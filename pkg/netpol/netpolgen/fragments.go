@@ -49,7 +49,19 @@ var (
 	tcp  = v1.ProtocolTCP
 	udp  = v1.ProtocolUDP
 
-	port99 = intstr.FromInt(80)
+	port53 = intstr.FromInt(53)
+	port80 = intstr.FromInt(80)
+)
+
+var (
+	AllowDNSEgressRule = NetworkPolicyEgressRule{
+		Ports: []NetworkPolicyPort{
+			{
+				Protocol: &udp,
+				Port:     &port53,
+			},
+		},
+	}
 )
 
 var (
@@ -57,30 +69,30 @@ var (
 		Protocol: nil,
 		Port:     nil,
 	}
-	protocolPort = NetworkPolicyPort{
+	sctpOnAnyPort = NetworkPolicyPort{
 		Protocol: &sctp,
 		Port:     nil,
 	}
-	portPort = NetworkPolicyPort{
+	implicitTCPOnPort80 = NetworkPolicyPort{
 		Protocol: nil,
-		Port:     &port99,
+		Port:     &port80,
 	}
-	portProtocolPort = NetworkPolicyPort{
+	explicitUDPOnPort80 = NetworkPolicyPort{
 		Protocol: &udp,
-		Port:     &port99,
+		Port:     &port80,
 	}
 )
 
 var (
-	noPorts = []NetworkPolicyPort{}
+	emptySliceOfPorts = []NetworkPolicyPort{}
 )
 
 func DefaultPorts() []NetworkPolicyPort {
 	return []NetworkPolicyPort{
 		emptyPort,
-		protocolPort,
-		portPort,
-		portProtocolPort,
+		sctpOnAnyPort,
+		implicitTCPOnPort80,
+		explicitUDPOnPort80,
 	}
 }
 
@@ -133,12 +145,12 @@ func DefaultPeers() []NetworkPolicyPeer {
 }
 
 var (
-	noPeers = []NetworkPolicyPeer{}
+	emptySliceOfPeers = []NetworkPolicyPeer{}
 )
 
 var (
-	noIngressRules = []NetworkPolicyIngressRule{}
-	noEgressRules  = []NetworkPolicyEgressRule{}
+	emptySliceOfIngressRules = []NetworkPolicyIngressRule{}
+	emptySliceOfEgressRules  = []NetworkPolicyEgressRule{}
 )
 
 func DefaultTargets() []metav1.LabelSelector {
@@ -162,57 +174,25 @@ func DefaultTargets() []metav1.LabelSelector {
 func DefaultNamespaces() []string {
 	return []string{
 		"x",
-		"default",
 		"y",
+		"z",
 	}
 }
 
 var (
-	illustrativeExample = &NetworkPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "abc",
-			Namespace: "xyz",
-		},
-		Spec: NetworkPolicySpec{
-			PodSelector: metav1.LabelSelector{
-				MatchLabels:      nil,
-				MatchExpressions: nil,
+	TypicalNamespace = "x"
+	TypicalTarget    = metav1.LabelSelector{
+		MatchLabels:      map[string]string{"pod": "a"},
+		MatchExpressions: nil,
+	}
+	TypicalPorts = []NetworkPolicyPort{{Protocol: &tcp, Port: &port80}}
+	TypicalPeers = []NetworkPolicyPeer{
+		{
+			PodSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"pod": "b"},
 			},
-			Ingress: []NetworkPolicyIngressRule{
-				{
-					Ports: []NetworkPolicyPort{
-						{
-							Protocol: &sctp,
-							Port:     &port99,
-						},
-					},
-					From: []NetworkPolicyPeer{
-						{
-							PodSelector: &metav1.LabelSelector{
-								MatchLabels:      nil,
-								MatchExpressions: nil,
-							},
-							NamespaceSelector: &metav1.LabelSelector{
-								MatchLabels:      nil,
-								MatchExpressions: nil,
-							},
-							IPBlock: nil,
-						},
-						{
-							PodSelector:       nil,
-							NamespaceSelector: nil,
-							IPBlock: &IPBlock{
-								CIDR:   "1.2.3.4/24",
-								Except: []string{"1.2.3.8/28"},
-							},
-						},
-					},
-				},
-			},
-			Egress: nil,
-			PolicyTypes: []PolicyType{
-				PolicyTypeIngress,
-				PolicyTypeEgress,
+			NamespaceSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"ns": "y"},
 			},
 		},
 	}
