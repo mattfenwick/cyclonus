@@ -1,6 +1,7 @@
 package netpolgen
 
 import (
+	"github.com/pkg/errors"
 	. "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -10,21 +11,22 @@ type Netpol struct {
 	Name         string
 	Namespace    string
 	PodSelector  metav1.LabelSelector
+	IsIngress    bool
+	IsEgress     bool
 	IngressRules []*Rule
 	EgressRules  []*Rule
 }
 
 func (n *Netpol) NetworkPolicy() *NetworkPolicy {
 	var types []PolicyType
-	if len(n.IngressRules) == 0 && len(n.EgressRules) == 0 {
-		types = []PolicyType{PolicyTypeIngress}
-	} else {
-		if len(n.IngressRules) > 0 {
-			types = append(types, PolicyTypeIngress)
-		}
-		if len(n.EgressRules) > 0 {
-			types = append(types, PolicyTypeEgress)
-		}
+	if n.IsIngress || len(n.IngressRules) > 0 {
+		types = append(types, PolicyTypeIngress)
+	}
+	if n.IsEgress || len(n.EgressRules) > 0 {
+		types = append(types, PolicyTypeEgress)
+	}
+	if len(types) == 0 {
+		panic(errors.Errorf("cannot have 0 policy types"))
 	}
 	var ingress []NetworkPolicyIngressRule
 	for _, rule := range n.IngressRules {

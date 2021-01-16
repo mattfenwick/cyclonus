@@ -107,17 +107,27 @@ func (g *Generator) varyPolicies(count *int, isIngress bool, nss []string, targe
 		for j, target := range targets {
 			for k, port := range ports {
 				for l, peer := range peers {
+					var ingress, egress []*Rule
+					var desc string
 					if isIngress {
-						name := fmt.Sprintf("vary-ingress-%d-%d-%d-%d-%d", *count, i, j, k, l)
-						policies = append(policies, (&Netpol{Name: name, Namespace: ns, PodSelector: target, IngressRules: []*Rule{{Ports: port, Peers: peer}}}).NetworkPolicy())
+						desc = "ingress"
+						ingress = []*Rule{{Ports: port, Peers: peer}}
 					} else {
-						name := fmt.Sprintf("vary-egress-%d-%d-%d-%d-%d", *count, i, j, k, l)
-						policies = append(policies, (&Netpol{Name: name, Namespace: ns, PodSelector: target, EgressRules: []*Rule{{Ports: port, Peers: peer}}}).NetworkPolicy())
+						desc = "egress"
+						egress = []*Rule{{Ports: port, Peers: peer}}
 					}
+					name := fmt.Sprintf("vary-%s-%d-%d-%d-%d-%d", desc, *count, i, j, k, l)
+					policies = append(policies, (&Netpol{Name: name, Namespace: ns, PodSelector: target, IngressRules: ingress, EgressRules: egress, IsIngress: len(ingress) > 0, IsEgress: len(egress) > 0}).NetworkPolicy())
 					*count++
 				}
 			}
 		}
+	}
+	// special case: empty ingress/egress
+	if isIngress {
+		policies = append(policies, (&Netpol{Name: "vary-ingress-empty", Namespace: g.TypicalNamespace, PodSelector: g.TypicalTarget, IsIngress: true, IngressRules: []*Rule{}}).NetworkPolicy())
+	} else {
+		policies = append(policies, (&Netpol{Name: "vary-egress-empty", Namespace: g.TypicalNamespace, PodSelector: g.TypicalTarget, IsEgress: true, EgressRules: []*Rule{}}).NetworkPolicy())
 	}
 	return policies
 }
