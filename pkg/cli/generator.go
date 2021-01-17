@@ -7,6 +7,7 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/netpol/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/netpol/netpolgen"
 	"github.com/mattfenwick/cyclonus/pkg/netpol/utils"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
@@ -16,8 +17,7 @@ import (
 )
 
 type GeneratorArgs struct {
-	Ingress        bool
-	Egress         bool
+	Mode           string
 	AllowDNS       bool
 	PrintSynthetic bool
 }
@@ -35,8 +35,9 @@ func setupGeneratorCommand() *cobra.Command {
 		},
 	}
 
-	command.Flags().BoolVar(&args.Ingress, "ingress", true, "use ingress in policies")
-	command.Flags().BoolVar(&args.Egress, "egress", false, "use egress in policies")
+	command.Flags().StringVar(&args.Mode, "mode", "", "mode used to generate network policies")
+	command.MarkFlagRequired("mode")
+
 	command.Flags().BoolVar(&args.AllowDNS, "allow-dns", true, "if using egress, allow udp over port 53 for DNS resolution")
 	command.Flags().BoolVar(&args.PrintSynthetic, "print-synthetic", false, "if true, print synthetic results")
 
@@ -57,21 +58,19 @@ func runGeneratorCommand(args *GeneratorArgs) {
 	}
 
 	var kubePolicies []*networkingv1.NetworkPolicy
-	if args.Ingress && args.Egress {
-		kubePolicies = generator.IngressEgressPolicies(args.AllowDNS)
-	} else if args.Ingress {
+	switch args.Mode {
+	//case "ingress-egress":
+	//	kubePolicies = generator.IngressEgressPolicies(args.AllowDNS)
+	case "ingress":
 		kubePolicies = generator.IngressPolicies()
-	} else if args.Egress {
+	case "egress":
 		kubePolicies = generator.EgressPolicies(args.AllowDNS)
-	} else {
-		// TODO clean this up
-		//panic(errors.Errorf("no policies to test: neither ingress nor egress allowed: %+v", args))
-
-		// ingress
+	case "vary-ingress": // TODO come up with a better name
 		kubePolicies = generator.VaryIngressPolicies()
-
-		// egress
-		//kubePolicies = generator.VaryEgressPolicies(args.AllowDNS)
+	case "vary-egress": // TODO come up with a better name
+		kubePolicies = generator.VaryEgressPolicies(args.AllowDNS)
+	default:
+		panic(errors.Errorf("invalid test mode %s", args.Mode))
 	}
 	fmt.Printf("testing %d policies\n\n", len(kubePolicies))
 
@@ -86,6 +85,7 @@ func runGeneratorCommand(args *GeneratorArgs) {
 
 	utils.DoOrDie(connectivity.CreateResources(kubernetes, podModel))
 	// TODO wait for pods to come up
+	log.Infof("waiting 10 seconds to make sure pods are up")
 	time.Sleep(10 * time.Second)
 
 	namespacesToCleanSet := map[string]bool{}
