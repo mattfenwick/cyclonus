@@ -1,6 +1,7 @@
 package netpolgen
 
 import (
+	"fmt"
 	v1 "k8s.io/api/core/v1"
 	. "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -105,20 +106,6 @@ func DefaultPorts() []NetworkPolicyPort {
 }
 
 var (
-	ipNoExcept = IPBlock{
-		CIDR:   "1.2.3.4/24",
-		Except: nil,
-	}
-	ipWithExcept = IPBlock{
-		CIDR:   "1.2.3.4/24",
-		Except: []string{"1.2.3.8/30", "1.2.3.20/30"},
-	}
-
-	ipPeer1 = NetworkPolicyPeer{IPBlock: &ipNoExcept}
-	ipPeer2 = NetworkPolicyPeer{IPBlock: &ipWithExcept}
-)
-
-var (
 	nilPodSelector         *metav1.LabelSelector
 	emptyPodSelector       = &metav1.LabelSelector{}
 	matchLabelsPodSelector = &metav1.LabelSelector{
@@ -134,7 +121,28 @@ var (
 	}
 )
 
-func DefaultPeers() []NetworkPolicyPeer {
+func DefaultIPBlockPeers(podIP string) []NetworkPolicyPeer {
+	cidr24 := fmt.Sprintf("%s/24", podIP)
+	//cidr26 := fmt.Sprintf("%s/26", podIP)
+	cidr28 := fmt.Sprintf("%s/28", podIP)
+	//cidr30 := fmt.Sprintf("%s/30", podIP)
+	return []NetworkPolicyPeer{
+		{
+			IPBlock: &IPBlock{
+				CIDR:   cidr24,
+				Except: nil,
+			},
+		},
+		{
+			IPBlock: &IPBlock{
+				CIDR:   cidr24,
+				Except: []string{cidr28},
+			},
+		},
+	}
+}
+
+func DefaultPodPeers(podIP string) []NetworkPolicyPeer {
 	var peers []NetworkPolicyPeer
 	for _, nsSel := range []*metav1.LabelSelector{nilNSSelector, emptyNSSelector, matchNSSelector} {
 		for _, podSel := range []*metav1.LabelSelector{nilPodSelector, emptyPodSelector, matchLabelsPodSelector} {
@@ -149,7 +157,7 @@ func DefaultPeers() []NetworkPolicyPeer {
 			}
 		}
 	}
-	return append(peers, ipPeer1, ipPeer2)
+	return append(peers, DefaultIPBlockPeers(podIP)...)
 }
 
 var (

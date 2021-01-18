@@ -64,6 +64,14 @@ type SpecificInternalMatcher struct {
 	NamespacePods map[string]*NamespacePodMatcher
 }
 
+func NewSpecificInternalMatcher(matchers ...*NamespacePodMatcher) *SpecificInternalMatcher {
+	sim := &SpecificInternalMatcher{NamespacePods: map[string]*NamespacePodMatcher{}}
+	for _, matcher := range matchers {
+		sim.Add(matcher)
+	}
+	return sim
+}
+
 func (a *SpecificInternalMatcher) Allows(peer *InternalPeer, portProtocol *PortProtocol) bool {
 	for _, podPeer := range a.NamespacePods {
 		if podPeer.Allows(peer, portProtocol) {

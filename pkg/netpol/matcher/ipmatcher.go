@@ -31,18 +31,15 @@ func CombineIPMatchers(a IPMatcher, b IPMatcher) IPMatcher {
 	}
 }
 
-type AllIPMatcher struct {
-	Port PortMatcher
-}
+type AllIPMatcher struct{}
 
 func (aip *AllIPMatcher) Allows(ip string, portProtocol *PortProtocol) bool {
-	return aip.Port.Allows(portProtocol.Port, portProtocol.Protocol)
+	return true
 }
 
 func (aip *AllIPMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
 		"Type": "All IP",
-		"Port": aip.Port,
 	})
 }
 
@@ -59,10 +56,25 @@ func (aip *NoneIPMatcher) MarshalJSON() (b []byte, e error) {
 }
 
 type SpecificIPMatcher struct {
-	IPBlocks map[string]*IPBlockMatcher
+	PortsForAllIPs PortMatcher
+	IPBlocks       map[string]*IPBlockMatcher
+}
+
+func NewSpecificIPMatcher(portsForAllIPs PortMatcher, blocks ...*IPBlockMatcher) *SpecificIPMatcher {
+	sip := &SpecificIPMatcher{
+		PortsForAllIPs: portsForAllIPs,
+		IPBlocks:       map[string]*IPBlockMatcher{},
+	}
+	for _, block := range blocks {
+		sip.AddIPMatcher(block)
+	}
+	return sip
 }
 
 func (sip *SpecificIPMatcher) Allows(ip string, portProtocol *PortProtocol) bool {
+	if sip.PortsForAllIPs.Allows(portProtocol.Port, portProtocol.Protocol) {
+		return true
+	}
 	for _, ipMatcher := range sip.IPBlocks {
 		if ipMatcher.Allows(ip, portProtocol) {
 			return true
@@ -73,8 +85,9 @@ func (sip *SpecificIPMatcher) Allows(ip string, portProtocol *PortProtocol) bool
 
 func (sip *SpecificIPMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
-		"Type":     "Specific IPs",
-		"IPBlocks": sip.IPBlocks,
+		"Type":           "Specific IPs",
+		"PortsForAllIPs": sip.PortsForAllIPs,
+		"IPBlocks":       sip.IPBlocks,
 	})
 }
 
@@ -90,7 +103,9 @@ func (sip *SpecificIPMatcher) Combine(other *SpecificIPMatcher) *SpecificIPMatch
 			ipMatchers[key] = ip
 		}
 	}
-	return &SpecificIPMatcher{IPBlocks: ipMatchers}
+	return &SpecificIPMatcher{
+		PortsForAllIPs: CombinePortMatchers(sip.PortsForAllIPs, other.PortsForAllIPs),
+		IPBlocks:       ipMatchers}
 }
 
 func (sip *SpecificIPMatcher) AddIPMatcher(ip *IPBlockMatcher) {

@@ -6,10 +6,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func NewDefaultGenerator() *Generator {
+func NewDefaultGenerator(podIP string) *Generator {
 	return &Generator{
 		Ports:            DefaultPorts(),
-		Peers:            DefaultPeers(),
+		PodPeers:         DefaultPodPeers(podIP),
 		Targets:          DefaultTargets(),
 		Namespaces:       DefaultNamespaces(),
 		TypicalPorts:     TypicalPorts,
@@ -22,7 +22,7 @@ func NewDefaultGenerator() *Generator {
 type Generator struct {
 	// multidimensional generation
 	Ports      []NetworkPolicyPort
-	Peers      []NetworkPolicyPeer
+	PodPeers   []NetworkPolicyPeer
 	Targets    []metav1.LabelSelector
 	Namespaces []string
 	// unidimensional typicals
@@ -54,12 +54,12 @@ func (g *Generator) PeerSlices() [][]NetworkPolicyPeer {
 	// 0 length
 	slices := [][]NetworkPolicyPeer{nil, emptySliceOfPeers}
 	// 1 length
-	for _, p := range g.Peers {
+	for _, p := range g.PodPeers {
 		slices = append(slices, []NetworkPolicyPeer{p})
 	}
 	// 2 length
-	for i, p1 := range g.Peers {
-		for j, p2 := range g.Peers {
+	for i, p1 := range g.PodPeers {
+		for j, p2 := range g.PodPeers {
 			if i < j {
 				slices = append(slices, []NetworkPolicyPeer{p1, p2})
 			}
@@ -123,40 +123,34 @@ func (g *Generator) varyPolicies(count *int, isIngress bool, nss []string, targe
 			}
 		}
 	}
-	// special case: empty ingress/egress
-	if isIngress {
-		policies = append(policies, (&Netpol{Name: "vary-ingress-empty", Namespace: g.TypicalNamespace, PodSelector: g.TypicalTarget, IsIngress: true, IngressRules: []*Rule{}}).NetworkPolicy())
-	} else {
-		policies = append(policies, (&Netpol{Name: "vary-egress-empty", Namespace: g.TypicalNamespace, PodSelector: g.TypicalTarget, IsEgress: true, EgressRules: []*Rule{}}).NetworkPolicy())
-	}
+	return policies
+}
+
+func (g *Generator) varyPoliciesWrapper(isIngress bool) []*NetworkPolicy {
+	var policies []*NetworkPolicy
+	count := 0
+	policies = append(policies, g.varyPolicies(&count, isIngress, g.Namespaces, []metav1.LabelSelector{g.TypicalTarget}, [][]NetworkPolicyPort{g.TypicalPorts}, [][]NetworkPolicyPeer{g.TypicalPeers})...)
+	policies = append(policies, g.varyPolicies(&count, isIngress, []string{g.TypicalNamespace}, g.Targets, [][]NetworkPolicyPort{g.TypicalPorts}, [][]NetworkPolicyPeer{g.TypicalPeers})...)
+	policies = append(policies, g.varyPolicies(&count, isIngress, []string{g.TypicalNamespace}, []metav1.LabelSelector{g.TypicalTarget}, g.PortSlices(), [][]NetworkPolicyPeer{g.TypicalPeers})...)
+	policies = append(policies, g.varyPolicies(&count, isIngress, []string{g.TypicalNamespace}, []metav1.LabelSelector{g.TypicalTarget}, [][]NetworkPolicyPort{g.TypicalPorts}, g.PeerSlices())...)
 	return policies
 }
 
 func (g *Generator) VaryIngressPolicies() []*NetworkPolicy {
-	isIngress := true
-	var policies []*NetworkPolicy
-	count := 0
-	policies = append(policies, g.varyPolicies(&count, isIngress, g.Namespaces, []metav1.LabelSelector{g.TypicalTarget}, [][]NetworkPolicyPort{g.TypicalPorts}, [][]NetworkPolicyPeer{g.TypicalPeers})...)
-	policies = append(policies, g.varyPolicies(&count, isIngress, []string{g.TypicalNamespace}, g.Targets, [][]NetworkPolicyPort{g.TypicalPorts}, [][]NetworkPolicyPeer{g.TypicalPeers})...)
-	policies = append(policies, g.varyPolicies(&count, isIngress, []string{g.TypicalNamespace}, []metav1.LabelSelector{g.TypicalTarget}, g.PortSlices(), [][]NetworkPolicyPeer{g.TypicalPeers})...)
-	policies = append(policies, g.varyPolicies(&count, isIngress, []string{g.TypicalNamespace}, []metav1.LabelSelector{g.TypicalTarget}, [][]NetworkPolicyPort{g.TypicalPorts}, g.PeerSlices())...)
-	return policies
+	policies := g.varyPoliciesWrapper(true)
+	// special case: empty ingress/egress
+	return append(policies, (&Netpol{Name: "vary-ingress-empty", Namespace: g.TypicalNamespace, PodSelector: g.TypicalTarget, IsIngress: true, IngressRules: []*Rule{}}).NetworkPolicy())
 }
 
 func (g *Generator) VaryEgressPolicies(allowDNS bool) []*NetworkPolicy {
-	isIngress := false
-	var policies []*NetworkPolicy
-	count := 0
-	policies = append(policies, g.varyPolicies(&count, isIngress, g.Namespaces, []metav1.LabelSelector{g.TypicalTarget}, [][]NetworkPolicyPort{g.TypicalPorts}, [][]NetworkPolicyPeer{g.TypicalPeers})...)
-	policies = append(policies, g.varyPolicies(&count, isIngress, []string{g.TypicalNamespace}, g.Targets, [][]NetworkPolicyPort{g.TypicalPorts}, [][]NetworkPolicyPeer{g.TypicalPeers})...)
-	policies = append(policies, g.varyPolicies(&count, isIngress, []string{g.TypicalNamespace}, []metav1.LabelSelector{g.TypicalTarget}, g.PortSlices(), [][]NetworkPolicyPeer{g.TypicalPeers})...)
-	policies = append(policies, g.varyPolicies(&count, isIngress, []string{g.TypicalNamespace}, []metav1.LabelSelector{g.TypicalTarget}, [][]NetworkPolicyPort{g.TypicalPorts}, g.PeerSlices())...)
+	policies := g.varyPoliciesWrapper(false)
 	if allowDNS {
 		for _, pol := range policies {
 			pol.Spec.Egress = append(pol.Spec.Egress, AllowDNSEgressRule)
 		}
 	}
-	return policies
+	// special case: empty ingress/egress
+	return append(policies, (&Netpol{Name: "vary-egress-empty", Namespace: g.TypicalNamespace, PodSelector: g.TypicalTarget, IsEgress: true, EgressRules: []*Rule{}}).NetworkPolicy())
 }
 
 // single policies, multidimensional generation

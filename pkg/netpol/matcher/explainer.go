@@ -68,11 +68,14 @@ func ExplainSpecificPeerMatcher(tp *SpecificPeerMatcher, indent string) []string
 func ExplainIPMatcher(ip IPMatcher, indent string) []string {
 	switch a := ip.(type) {
 	case *AllIPMatcher:
-		return append([]string{indent + "all ips"}, ExplainPortMatcher(a.Port, indent+"  ")...)
+		return []string{indent + "all ips"}
 	case *NoneIPMatcher:
 		return []string{indent + "no ips"}
 	case *SpecificIPMatcher:
-		lines := []string{indent + "IPBlock(s):"}
+		lines := []string{indent + "Ports for all IPs"}
+		lines = append(lines, ExplainPortMatcher(a.PortsForAllIPs, indent+"  ")...)
+		lines = append(lines, indent+"IPBlock(s):")
+		// TODO ensure consistent order
 		for _, ip := range a.IPBlocks {
 			lines = append(lines, ExplainIPBlockMatcher(ip, indent+"  ")...)
 		}
@@ -95,6 +98,8 @@ func ExplainIPBlockMatcher(ip *IPBlockMatcher, indent string) []string {
 func ExplainPortMatcher(pm PortMatcher, indent string) []string {
 	lines := []string{indent + "Port(s):"}
 	switch m := pm.(type) {
+	case *NonePortMatcher:
+		return append(lines, indent+"no ports")
 	case *AllPortMatcher:
 		return append(lines, ExplainAllPortMatcher(indent+"  ")...)
 	case *SpecificPortMatcher:
@@ -128,6 +133,7 @@ func ExplainInternalMatcher(i InternalMatcher, indent string) []string {
 	case *AllInternalMatcher:
 		lines = append(lines, indent+"all pods in all namespaces")
 	case *SpecificInternalMatcher:
+		// TODO ensure consistent order
 		for _, peer := range l.NamespacePods {
 			lines = append(lines, ExplainNamespacePod(peer, indent+"  ")...)
 		}

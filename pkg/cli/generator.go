@@ -46,9 +46,42 @@ func setupGeneratorCommand() *cobra.Command {
 
 func runGeneratorCommand(args *GeneratorArgs) {
 	namespaces := []string{"x", "y", "z"}
+	pods := []string{"a", "b", "c"}
+
+	port := &connectivity.ProtocolPort{
+		Protocol: v1.ProtocolTCP,
+		Port:     80,
+	}
+	// TODO don't use default model?
+	podModel := connectivity.NewDefaultModel(namespaces, pods, port.Port, port.Protocol)
+	kubernetes, err := kube.NewKubernetes()
+	utils.DoOrDie(err)
+
+	utils.DoOrDie(connectivity.CreateResources(kubernetes, podModel))
+	// TODO wait for pods to come up
+	log.Infof("waiting 10 seconds to make sure pods are up")
+	time.Sleep(10 * time.Second)
+
+	podList, err := kubernetes.GetPodsInNamespaces(namespaces)
+	utils.DoOrDie(err)
+	for _, pod := range podList {
+		ip := pod.Status.PodIP
+		if ip == "" {
+			panic(errors.Errorf("no ip found for pod %s/%s", pod.Namespace, pod.Name))
+		}
+		podModel.Namespaces[pod.Namespace].Pods[pod.Name].IP = ip
+	}
+
+	zcPod, err := kubernetes.GetPod("z", "c")
+	utils.DoOrDie(err)
+	if zcPod.Status.PodIP == "" {
+		panic(errors.Errorf("no ip found for pod z/c"))
+	}
+	zcIP := zcPod.Status.PodIP
+
 	generator := &netpolgen.Generator{
 		Ports:            netpolgen.DefaultPorts(),
-		Peers:            netpolgen.DefaultPeers(),
+		PodPeers:         netpolgen.DefaultPodPeers(zcIP),
 		Targets:          netpolgen.DefaultTargets(),
 		Namespaces:       namespaces,
 		TypicalPorts:     netpolgen.TypicalPorts,
@@ -73,20 +106,6 @@ func runGeneratorCommand(args *GeneratorArgs) {
 		panic(errors.Errorf("invalid test mode %s", args.Mode))
 	}
 	fmt.Printf("testing %d policies\n\n", len(kubePolicies))
-
-	port := &connectivity.ProtocolPort{
-		Protocol: v1.ProtocolTCP,
-		Port:     80,
-	}
-	// TODO don't use default model?
-	podModel := connectivity.NewDefaultModel(namespaces, []string{"a", "b", "c"}, port.Port, port.Protocol)
-	kubernetes, err := kube.NewKubernetes()
-	utils.DoOrDie(err)
-
-	utils.DoOrDie(connectivity.CreateResources(kubernetes, podModel))
-	// TODO wait for pods to come up
-	log.Infof("waiting 10 seconds to make sure pods are up")
-	time.Sleep(10 * time.Second)
 
 	namespacesToCleanSet := map[string]bool{}
 	namespacesToClean := []string{}

@@ -17,15 +17,12 @@ type PodModel struct {
 func NewDefaultModel(namespaces []string, podNames []string, port int, protocol v1.Protocol) *PodModel {
 	model := &PodModel{Namespaces: map[string]*Namespace{}}
 
-	// TODO figure out a better way to handle IPs
-	ipCounter := 5
-
 	for _, ns := range namespaces {
 		pods := map[string]*Pod{}
 		for _, podName := range podNames {
 			pods[podName] = &Pod{
 				Labels: map[string]string{"pod": podName},
-				IP:     fmt.Sprintf("192.168.1.%d", ipCounter),
+				IP:     "TODO",
 				Containers: []*Container{
 					{
 						Name:     fmt.Sprintf("cont-%d-%s", port, strings.ToLower(string(protocol))),
@@ -34,7 +31,6 @@ func NewDefaultModel(namespaces []string, podNames []string, port int, protocol 
 					},
 				},
 			}
-			ipCounter++
 		}
 		model.Namespaces[ns] = &Namespace{Pods: pods, Labels: map[string]string{"ns": ns}}
 	}

@@ -80,10 +80,8 @@ func BuildPeerMatcher(policyNamespace string, npPorts []networkingv1.NetworkPoli
 				Port:      port,
 			}
 			return &SpecificPeerMatcher{
-				IP: &AllIPMatcher{Port: port},
-				Internal: &SpecificInternalMatcher{NamespacePods: map[string]*NamespacePodMatcher{
-					matcher.PrimaryKey(): matcher,
-				}},
+				IP:       NewSpecificIPMatcher(port),
+				Internal: NewSpecificInternalMatcher(matcher),
 			}
 		}
 	} else {
@@ -103,7 +101,7 @@ func BuildPeerMatcher(policyNamespace string, npPorts []networkingv1.NetworkPoli
 			// process a valid netpol
 			if ip != nil {
 				ip.Port = port
-				matcher.IP = CombineIPMatchers(matcher.IP, &SpecificIPMatcher{IPBlocks: map[string]*IPBlockMatcher{ip.PrimaryKey(): ip}})
+				matcher.IP = CombineIPMatchers(matcher.IP, NewSpecificIPMatcher(&NonePortMatcher{}, ip))
 			} else {
 				// special case: if all ports, namespaces, and pods are allowed
 				switch port.(type) {
@@ -118,8 +116,7 @@ func BuildPeerMatcher(policyNamespace string, npPorts []networkingv1.NetworkPoli
 				}
 				// it's okay to continue processing additional matchers after hitting the special case,
 				//   since nothing can override an AllInternalMatcher
-				internal := &SpecificInternalMatcher{NamespacePods: map[string]*NamespacePodMatcher{}}
-				internal.Add(&NamespacePodMatcher{
+				internal := NewSpecificInternalMatcher(&NamespacePodMatcher{
 					Namespace: ns,
 					Pod:       pod,
 					Port:      port,

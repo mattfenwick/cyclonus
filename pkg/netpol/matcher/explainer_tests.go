@@ -29,9 +29,9 @@ func RunExplainerTests() {
 						MatchLabels:      map[string]string{"pod": "a"},
 						MatchExpressions: nil,
 					},
-					Ingress: []networkingv1.NetworkPolicyIngressRule{
+					Egress: []networkingv1.NetworkPolicyEgressRule{
 						{
-							From: []networkingv1.NetworkPolicyPeer{
+							To: []networkingv1.NetworkPolicyPeer{
 								{
 									PodSelector:       nil,
 									NamespaceSelector: nil,
@@ -46,6 +46,14 @@ func RunExplainerTests() {
 							Ports: []networkingv1.NetworkPolicyPort{
 								{
 									Protocol: &udp,
+									Port:     &port53,
+								},
+							},
+						},
+						{
+							Ports: []networkingv1.NetworkPolicyPort{
+								{
+									Protocol: &udp,
 									Port:     &port103,
 								},
 								{
@@ -53,7 +61,7 @@ func RunExplainerTests() {
 									Port:     nil,
 								},
 							},
-							From: []networkingv1.NetworkPolicyPeer{
+							To: []networkingv1.NetworkPolicyPeer{
 								{
 									PodSelector: &metav1.LabelSelector{
 										MatchLabels:      map[string]string{"pod": "b", "stuff": "c"},
@@ -76,8 +84,7 @@ func RunExplainerTests() {
 							},
 						},
 					},
-					Egress:      nil,
-					PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
+					PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
 				},
 			}
 			policies := BuildNetworkPolicies([]*networkingv1.NetworkPolicy{complicatedNetpol})
@@ -86,12 +93,20 @@ func RunExplainerTests() {
 			expected := `{"Namespace": "test-ns", "PodSelector": ["MatchLabels",["pod: a"],"MatchExpression",null]}
   source rules:
     test-ns/complicated-netpol
-  ingress:
+  egress:
+    Ports for all IPs
+      Port(s):
+        port 53 on protocol UDP
     IPBlock(s):
       IPBlock: cidr 1.2.3.4/24, except [1.2.3.8/30]
         Port(s):
           all ports all protocols
     Internal:
+      Namespace/Pod:
+        all namespaces
+        all pods
+        Port(s):
+          port 53 on protocol UDP
       Namespace/Pod:
         namespace test-ns
         pods matching ["MatchLabels",["pod: b","stuff: c"],"MatchExpression",null]
@@ -105,6 +120,9 @@ func RunExplainerTests() {
           port 103 on protocol UDP
           all ports on protocol SCTP
 `
+			if explanation != expected {
+				fmt.Printf("expected:\n\n%s\n\nexplanation:\n\n%s\n\n", expected, explanation)
+			}
 			Expect(explanation).To(Equal(expected))
 		})
 	})

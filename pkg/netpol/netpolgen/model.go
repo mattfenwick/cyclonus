@@ -37,6 +37,10 @@ func (n *Netpol) NetworkPolicy() *NetworkPolicy {
 		egress = append(egress, rule.Egress())
 	}
 	return &NetworkPolicy{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "NetworkPolicy",
+			APIVersion: "networking.k8s.io/v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      n.Name,
 			Namespace: n.Namespace,

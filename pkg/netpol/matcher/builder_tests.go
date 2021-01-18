@@ -9,7 +9,15 @@ import (
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+)
+
+var (
+	port53 = intstr.FromInt(53)
+	port80 = intstr.FromInt(80)
+
+	tcp = v1.ProtocolTCP
 )
 
 func RunBuilderTests() {
@@ -115,6 +123,44 @@ func RunBuilderTests() {
 			})
 			Expect(peer).To(Equal(&AllPeerMatcher{}))
 		})
+
+		It("allows to ips in IPBlock range and also to all pods/ips for DNS", func() {
+			peer := BuildEgressMatcher("abc", []networkingv1.NetworkPolicyEgressRule{
+				{
+					Ports: []networkingv1.NetworkPolicyPort{{Port: &port80, Protocol: &tcp}},
+					To: []networkingv1.NetworkPolicyPeer{
+						{
+							PodSelector: &metav1.LabelSelector{},
+						},
+						{
+							IPBlock: examples.IPBlock_192_168_242_213_24,
+						},
+					},
+				},
+				{
+					Ports: []networkingv1.NetworkPolicyPort{{Port: &port53, Protocol: &udp}},
+				},
+			})
+			port53UDPMatcher := &SpecificPortMatcher{Ports: []*PortProtocolMatcher{{Port: &port53, Protocol: v1.ProtocolUDP}}}
+			port80TCPMatcher := &SpecificPortMatcher{Ports: []*PortProtocolMatcher{{Port: &port80, Protocol: v1.ProtocolTCP}}}
+			ip := &IPBlockMatcher{
+				IPBlock: examples.IPBlock_192_168_242_213_24,
+				Port:    port80TCPMatcher,
+			}
+			Expect(peer).To(Equal(&SpecificPeerMatcher{
+				IP: NewSpecificIPMatcher(port53UDPMatcher, ip),
+				Internal: NewSpecificInternalMatcher(&NamespacePodMatcher{
+					Namespace: &ExactNamespaceMatcher{Namespace: "abc"},
+					Pod:       &AllPodMatcher{},
+					Port:      port80TCPMatcher,
+				}, &NamespacePodMatcher{
+					Namespace: &AllNamespaceMatcher{},
+					Pod:       &AllPodMatcher{},
+					Port:      port53UDPMatcher,
+				}),
+			}))
+			Expect(ip.Allows("192.168.242.249", &PortProtocol{Port: port80, Protocol: tcp})).To(Equal(true))
+		})
 	})
 
 	Describe("PeerMatcher from slice of NetworkPolicyPeer", func() {
@@ -140,10 +186,8 @@ func RunBuilderTests() {
 				Port:      portMatcher,
 			}
 			Expect(sds).To(Equal(&SpecificPeerMatcher{
-				IP: &AllIPMatcher{Port: portMatcher},
-				Internal: &SpecificInternalMatcher{NamespacePods: map[string]*NamespacePodMatcher{
-					matcher.PrimaryKey(): matcher,
-				}},
+				IP:       NewSpecificIPMatcher(portMatcher),
+				Internal: NewSpecificInternalMatcher(matcher),
 			}))
 		})
 
@@ -160,9 +204,7 @@ func RunBuilderTests() {
 				Port:    &AllPortMatcher{},
 			}
 			Expect(peer).To(Equal(&SpecificPeerMatcher{
-				IP: &SpecificIPMatcher{IPBlocks: map[string]*IPBlockMatcher{
-					ip.PrimaryKey(): ip,
-				}},
+				IP:       NewSpecificIPMatcher(&NonePortMatcher{}, ip),
 				Internal: &NoneInternalMatcher{},
 			}))
 		})

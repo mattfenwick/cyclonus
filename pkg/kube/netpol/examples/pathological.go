@@ -33,6 +33,8 @@ var (
 			"10.0.0.2/30",
 		},
 	}
+
+	IPBlock_192_168_242_213_24 = &networkingv1.IPBlock{CIDR: "192.168.242.213/24"}
 )
 
 // allow nothing (i.e. deny all)

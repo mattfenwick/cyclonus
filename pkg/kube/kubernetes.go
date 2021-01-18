@@ -180,6 +180,10 @@ func (k *Kubernetes) GetPodsInNamespaces(namespaces []string) ([]v1.Pod, error) 
 	return pods, nil
 }
 
+func (k *Kubernetes) GetPod(namespace string, pod string) (*v1.Pod, error) {
+	return k.ClientSet.CoreV1().Pods(namespace).Get(context.TODO(), pod, metav1.GetOptions{})
+}
+
 func (k *Kubernetes) CreatePod(pod *v1.Pod) (*v1.Pod, error) {
 	ns := pod.Namespace
 	log.Debugf("creating pod %s/%s", ns, pod.Name)
