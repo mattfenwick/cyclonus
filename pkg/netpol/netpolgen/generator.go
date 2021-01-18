@@ -117,7 +117,7 @@ func (g *Generator) varyPolicies(count *int, isIngress bool, nss []string, targe
 						egress = []*Rule{{Ports: port, Peers: peer}}
 					}
 					name := fmt.Sprintf("vary-%s-%d-%d-%d-%d-%d", desc, *count, i, j, k, l)
-					policies = append(policies, (&Netpol{Name: name, Namespace: ns, PodSelector: target, IngressRules: ingress, EgressRules: egress, IsIngress: len(ingress) > 0, IsEgress: len(egress) > 0}).NetworkPolicy())
+					policies = append(policies, (&Netpol{Name: name, Namespace: ns, PodSelector: target, IngressRules: ingress, EgressRules: egress, IsIngress: isIngress, IsEgress: !isIngress}).NetworkPolicy())
 					*count++
 				}
 			}
@@ -177,7 +177,9 @@ func (g *Generator) multidimensionalPolicies(isIngress bool, allowDNS bool) []*N
 					Name:         fmt.Sprintf("policy-%d", i),
 					Namespace:    ns,
 					PodSelector:  target,
+					IsIngress:    isIngress,
 					IngressRules: ingresses,
+					IsEgress:     !isIngress,
 					EgressRules:  egresses,
 				}).NetworkPolicy())
 				i++
