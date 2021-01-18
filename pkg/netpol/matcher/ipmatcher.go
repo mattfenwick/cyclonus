@@ -3,6 +3,7 @@ package matcher
 import (
 	"encoding/json"
 	"github.com/pkg/errors"
+	"sort"
 )
 
 type IPMatcher interface {
@@ -69,6 +70,17 @@ func NewSpecificIPMatcher(portsForAllIPs PortMatcher, blocks ...*IPBlockMatcher)
 		sip.AddIPMatcher(block)
 	}
 	return sip
+}
+
+func (sip *SpecificIPMatcher) SortedIPBlocks() []*IPBlockMatcher {
+	var blocks []*IPBlockMatcher
+	for _, block := range sip.IPBlocks {
+		blocks = append(blocks, block)
+	}
+	sort.Slice(blocks, func(i, j int) bool {
+		return blocks[i].PrimaryKey() < blocks[j].PrimaryKey()
+	})
+	return blocks
 }
 
 func (sip *SpecificIPMatcher) Allows(ip string, portProtocol *PortProtocol) bool {

@@ -1,5 +1,7 @@
 package matcher
 
+import "sort"
+
 // This is the root type
 type Policy struct {
 	Ingress map[string]*Target
@@ -8,6 +10,23 @@ type Policy struct {
 
 func NewPolicy() *Policy {
 	return &Policy{Ingress: map[string]*Target{}, Egress: map[string]*Target{}}
+}
+
+func (np *Policy) SortedTargets() ([]*Target, []*Target) {
+	var ingress, egress []*Target
+	for _, rule := range np.Ingress {
+		ingress = append(ingress, rule)
+	}
+	sort.Slice(ingress, func(i, j int) bool {
+		return ingress[i].GetPrimaryKey() < ingress[j].GetPrimaryKey()
+	})
+	for _, rule := range np.Egress {
+		egress = append(egress, rule)
+	}
+	sort.Slice(egress, func(i, j int) bool {
+		return egress[i].GetPrimaryKey() < egress[j].GetPrimaryKey()
+	})
+	return ingress, egress
 }
 
 func (np *Policy) AddTarget(isIngress bool, target *Target) *Target {

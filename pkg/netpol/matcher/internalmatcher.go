@@ -3,6 +3,7 @@ package matcher
 import (
 	"encoding/json"
 	"github.com/pkg/errors"
+	"sort"
 )
 
 type InternalMatcher interface {
@@ -70,6 +71,17 @@ func NewSpecificInternalMatcher(matchers ...*NamespacePodMatcher) *SpecificInter
 		sim.Add(matcher)
 	}
 	return sim
+}
+
+func (a *SpecificInternalMatcher) SortedNamespacePods() []*NamespacePodMatcher {
+	var matchers []*NamespacePodMatcher
+	for _, m := range a.NamespacePods {
+		matchers = append(matchers, m)
+	}
+	sort.Slice(matchers, func(i, j int) bool {
+		return matchers[i].PrimaryKey() < matchers[j].PrimaryKey()
+	})
+	return matchers
 }
 
 func (a *SpecificInternalMatcher) Allows(peer *InternalPeer, portProtocol *PortProtocol) bool {

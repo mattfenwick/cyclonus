@@ -9,13 +9,14 @@ import (
 
 func Explain(policies *Policy) string {
 	var lines []string
+	ingress, egress := policies.SortedTargets()
 	// 1. ingress
-	for _, t := range policies.Ingress {
+	for _, t := range ingress {
 		lines = append(lines, ExplainTarget(t, true)...)
 	}
 
 	// 2. egress
-	for _, t := range policies.Egress {
+	for _, t := range egress {
 		lines = append(lines, ExplainTarget(t, false)...)
 	}
 
@@ -75,8 +76,7 @@ func ExplainIPMatcher(ip IPMatcher, indent string) []string {
 		lines := []string{indent + "Ports for all IPs"}
 		lines = append(lines, ExplainPortMatcher(a.PortsForAllIPs, indent+"  ")...)
 		lines = append(lines, indent+"IPBlock(s):")
-		// TODO ensure consistent order
-		for _, ip := range a.IPBlocks {
+		for _, ip := range a.SortedIPBlocks() {
 			lines = append(lines, ExplainIPBlockMatcher(ip, indent+"  ")...)
 		}
 		return lines
@@ -133,8 +133,7 @@ func ExplainInternalMatcher(i InternalMatcher, indent string) []string {
 	case *AllInternalMatcher:
 		lines = append(lines, indent+"all pods in all namespaces")
 	case *SpecificInternalMatcher:
-		// TODO ensure consistent order
-		for _, peer := range l.NamespacePods {
+		for _, peer := range l.SortedNamespacePods() {
 			lines = append(lines, ExplainNamespacePod(peer, indent+"  ")...)
 		}
 	}
