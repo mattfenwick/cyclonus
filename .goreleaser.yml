@@ -1,0 +1,41 @@
+project_name: cyclonus
+release:
+  github:
+    owner: mattfenwick
+    name: Cyclonus
+builds:
+  - id: cyclonus
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+    env:
+      - CGO_ENABLED=0
+    main: cmd/cyclonus/main.go
+    ldflags: -s -w
+      -X github.com/mattfenwick/cyclonus/pkg/version.version={{.Version}}
+      -X github.com/mattfenwick/cyclonus/pkg/version.gitSHA={{.Commit}}
+      -X github.com/mattfenwick/cyclonus/pkg/version.buildTime={{.Date}}
+      -extldflags "-static"
+    flags: -tags netgo -installsuffix netgo
+    binary: "cyclonus_{{ .RawVersion }}"
+    hooks: {}
+archives:
+  - id: cyclonus
+    builds:
+      - cyclonus
+    format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+    wrap_in_directory: true
+    name_template: '{{ .Binary }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
+    files:
+      - LICENCE*
+      - README*
+      - CHANGELOG*
+checksum:
+  name_template: "cyclonus_{{ .RawVersion }}_checksums.txt"
+  algorithm: sha256

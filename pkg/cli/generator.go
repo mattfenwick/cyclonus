@@ -17,9 +17,9 @@ import (
 )
 
 type GeneratorArgs struct {
-	Mode           string
-	AllowDNS       bool
-	PrintSynthetic bool
+	Mode     string
+	AllowDNS bool
+	Noisy    bool
 }
 
 func setupGeneratorCommand() *cobra.Command {
@@ -36,10 +36,10 @@ func setupGeneratorCommand() *cobra.Command {
 	}
 
 	command.Flags().StringVar(&args.Mode, "mode", "", "mode used to generate network policies")
-	command.MarkFlagRequired("mode")
+	utils.DoOrDie(command.MarkFlagRequired("mode"))
 
 	command.Flags().BoolVar(&args.AllowDNS, "allow-dns", true, "if using egress, allow udp over port 53 for DNS resolution")
-	command.Flags().BoolVar(&args.PrintSynthetic, "print-synthetic", false, "if true, print synthetic results")
+	command.Flags().BoolVar(&args.Noisy, "noisy", false, "if true, print all results")
 
 	return command
 }
@@ -150,7 +150,7 @@ func runGeneratorCommand(args *GeneratorArgs) {
 			fmt.Printf("Discrepancy found for network policy:\n%s\n\n", policyBytes)
 		}
 
-		if f > 0 || args.PrintSynthetic {
+		if f > 0 || args.Noisy {
 			fmt.Println("Ingress:")
 			synthetic.Ingress.Table().Render()
 

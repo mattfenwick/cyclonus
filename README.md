@@ -13,8 +13,8 @@ Using hypothetical "traffic", generate a table of presumed connectivity by evalu
 policies.  Note: this does not use a kubernetes cluster.
 
 ```
-$ go run cmd/netpol-explainer/main.go probe \
-  --model-path cmd/netpol-explainer/probe-example.json \
+$ go run cmd/cyclonus/main.go probe \
+  --model-path cmd/cyclonus/probe-example.json \
   --policy-source examples
 
 Ingress:
@@ -67,7 +67,7 @@ Groups policies by target, divides rules into egress and ingress, and gives a ba
 policies.  This clarifies the interactions between "denies" and "allows" from multiple policies.
 
 ```
-$ go run cmd/netpol-explainer/main.go analyze \
+$ go run cmd/cyclonus/main.go analyze \
   --policy-source examples 
 
   {"Namespace": "default", "PodSelector": ["MatchLabels",["app: foo"],"MatchExpression",null]}
@@ -98,9 +98,9 @@ Given arbitrary traffic examples (from a source to a destination, including labe
 this command parses network policies and determines if the traffic is allowed or not.
 
 ```
-$ go run cmd/netpol-explainer/main.go traffic \
+$ go run cmd/cyclonus/main.go traffic \
   --policy-source examples \
-  --traffic-path cmd/netpol-explainer/traffic-example.json 
+  --traffic-path cmd/cyclonus/traffic-example.json 
 
 Traffic:
 {
