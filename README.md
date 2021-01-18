@@ -141,4 +141,33 @@ Is allowed: true
 
 Given a set of pods, this command determines which network policies affect those pods.
 
-TODO in progress 
+TODO in progress
+
+
+## How to Release Binaries
+
+See `goreleaser`'s requirements [here](https://goreleaser.com/environment/).
+
+Get a [GitHub Personal Access Token](https://github.com/settings/tokens/new) and add the `repo` scope.
+Set `GITHUB_TOKEN` to this value:
+
+```bash
+export GITHUB_TOKEN=...
+```
+
+[See here for more information on github tokens](https://help.github.com/articles/creating-an-access-token-for-command-line-use/).
+
+Choose a tag/release name, create and push a tag:
+
+```bash
+TAG=v0.0.1
+
+git tag $TAG
+git push origin $TAG
+```
+
+Cut a release:
+
+```bash
+goreleaser release --rm-dist
+```
