@@ -61,7 +61,7 @@ func AllowNothingTo(namespace string, toLabels map[string]string) *networkingv1.
 func AllowNothingToEmptyIngress(namespace string, targetLabels map[string]string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("wtf-is-this-to-%s", LabelString(targetLabels)),
+			Name:      fmt.Sprintf("allow-nothing-to-v2-%s", LabelString(targetLabels)),
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{

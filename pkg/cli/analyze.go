@@ -32,7 +32,7 @@ func setupAnalyzePoliciesCommand() *cobra.Command {
 
 	command.Flags().StringVar(&args.PolicyPath, "policy-path", "", "only set if policy-source = file; path to network polic(ies)")
 
-	command.Flags().StringVar(&args.Format, "format", "", "output format; human-readable if empty (options: json)")
+	command.Flags().StringVar(&args.Format, "format", "table", "output format (options: json, table)")
 
 	return command
 }
@@ -47,6 +47,8 @@ func runAnalyzePoliciesCommand(args *AnalyzePoliciesArgs) {
 	switch args.Format {
 	case "json":
 		printJSON(explainedPolicies)
+	case "table":
+		matcher.TableExplainer(explainedPolicies).Render()
 	default:
 		fmt.Printf("%s\n\n", matcher.Explain(explainedPolicies))
 	}
