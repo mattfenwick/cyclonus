@@ -61,7 +61,7 @@ func TargetsTableLines(table *tablewriter.Table, targets []*Target, isIngress bo
 						"",
 						"",
 						"",
-						strings.Join(append([]string{block.IPBlock.CIDR}, block.IPBlock.Except...), "\n"),
+						strings.Join(append([]string{block.IPBlock.CIDR}, fmt.Sprintf("except %+v", block.IPBlock.Except)), "\n"),
 						strings.Join(pps, "\n"),
 						"",
 					})
