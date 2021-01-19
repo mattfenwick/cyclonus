@@ -54,6 +54,7 @@ func TargetsTableLines(table *tablewriter.Table, targets []*Target, isIngress bo
 			case *NoneIPMatcher:
 				table.Append([]string{"", "", "", "no ips", "no ports, no protocols", ""})
 			case *SpecificIPMatcher:
+				table.Append([]string{"", "", "", "ports for all IPs", strings.Join(PortMatcherTableLines(ip.PortsForAllIPs), "\n"), ""})
 				for _, block := range ip.SortedIPBlocks() {
 					pps := PortMatcherTableLines(block.Port)
 					table.Append([]string{
@@ -120,7 +121,7 @@ func PortMatcherTableLines(pm PortMatcher) []string {
 	case *SpecificPortMatcher:
 		var pps []string
 		for _, portProtocol := range port.Ports {
-			if portProtocol.Port != nil {
+			if portProtocol.Port == nil {
 				pps = append(pps, "all ports on protocol "+string(portProtocol.Protocol))
 			} else {
 				pps = append(pps, "port "+portProtocol.Port.String()+" on protocol "+string(portProtocol.Protocol))

@@ -127,13 +127,22 @@ func runGeneratorCommand(args *GeneratorArgs) {
 	for i, kubePolicy := range kubePolicies {
 		utils.DoOrDie(kubernetes.DeleteAllNetworkPoliciesInNamespaces(namespacesToClean))
 
+		policy := matcher.BuildNetworkPolicy(kubePolicy)
+
+		if args.Noisy {
+			policyBytes, err := yaml.Marshal(kubePolicy)
+			utils.DoOrDie(err)
+			fmt.Printf("Creating network policy:\n%s\n\n", policyBytes)
+
+			fmt.Printf("%s\n\n", matcher.Explain(policy))
+			matcher.TableExplainer(policy).Render()
+		}
+
 		_, err = kubernetes.CreateNetworkPolicy(kubePolicy)
 		utils.DoOrDie(err)
 
 		// TODO wait for netpol to become 'active'
 		time.Sleep(1 * time.Second)
-
-		policy := matcher.BuildNetworkPolicy(kubePolicy)
 
 		log.Infof("probe on port %d, protocol %s", port.Port, port.Protocol)
 		synthetic := connectivity.RunSyntheticProbe(policy, port, podModel)
@@ -145,11 +154,10 @@ func runGeneratorCommand(args *GeneratorArgs) {
 
 		comparison := synthetic.Combined.Compare(kubeProbe)
 		t, f, nv, checked := comparison.ValueCounts(args.IgnoreLoopback)
-		log.Infof("found %d true, %d false, %d no value from %d total", t, f, nv, checked)
 		if f > 0 {
-			policyBytes, err := yaml.Marshal(kubePolicy)
-			utils.DoOrDie(err)
-			fmt.Printf("Discrepancy found for network policy:\n%s\n\n", policyBytes)
+			fmt.Printf("Discrepancy found: %d wrong, %d no value, %d correct out of %d total\n", f, t, nv, checked)
+		} else {
+			fmt.Printf("found %d true, %d false, %d no value from %d total\n", t, f, nv, checked)
 		}
 
 		if f > 0 || args.Noisy {
