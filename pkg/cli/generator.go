@@ -17,9 +17,10 @@ import (
 )
 
 type GeneratorArgs struct {
-	Mode     string
-	AllowDNS bool
-	Noisy    bool
+	Mode           string
+	AllowDNS       bool
+	Noisy          bool
+	IgnoreLoopback bool
 }
 
 func setupGeneratorCommand() *cobra.Command {
@@ -40,6 +41,7 @@ func setupGeneratorCommand() *cobra.Command {
 
 	command.Flags().BoolVar(&args.AllowDNS, "allow-dns", true, "if using egress, allow udp over port 53 for DNS resolution")
 	command.Flags().BoolVar(&args.Noisy, "noisy", false, "if true, print all results")
+	command.Flags().BoolVar(&args.IgnoreLoopback, "ignore-loopback", false, "if true, ignore loopback for truthtable correctness verification")
 
 	return command
 }
@@ -142,8 +144,8 @@ func runGeneratorCommand(args *GeneratorArgs) {
 		kubeProbe.Table().Render()
 
 		comparison := synthetic.Combined.Compare(kubeProbe)
-		t, f, nv := comparison.ValueCounts()
-		log.Infof("found %d true, %d false, %d no value", t, f, nv)
+		t, f, nv, checked := comparison.ValueCounts(args.IgnoreLoopback)
+		log.Infof("found %d true, %d false, %d no value from %d total", t, f, nv, checked)
 		if f > 0 {
 			policyBytes, err := yaml.Marshal(kubePolicy)
 			utils.DoOrDie(err)

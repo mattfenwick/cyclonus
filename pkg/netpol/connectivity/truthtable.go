@@ -100,10 +100,13 @@ func (tt *TruthTable) Get(from string, to string) bool {
 	return val
 }
 
-func (tt *TruthTable) ValueCounts() (int, int, int) {
-	trueCount, falseCount, noValueCount := 0, 0, 0
+func (tt *TruthTable) ValueCounts(ignoreLoopback bool) (int, int, int, int) {
+	trueCount, falseCount, noValueCount, totalChecked := 0, 0, 0, 0
 	for _, from := range tt.Froms {
 		for _, to := range tt.Tos {
+			if ignoreLoopback && from == to {
+				continue
+			}
 			if _, ok := tt.Values[from][to]; !ok {
 				noValueCount++
 			} else if tt.Values[from][to] {
@@ -111,9 +114,10 @@ func (tt *TruthTable) ValueCounts() (int, int, int) {
 			} else {
 				falseCount++
 			}
+			totalChecked++
 		}
 	}
-	return trueCount, falseCount, noValueCount
+	return trueCount, falseCount, noValueCount, totalChecked
 }
 
 // Compare is used to check two truth tables for equality, returning its
