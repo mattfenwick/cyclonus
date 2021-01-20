@@ -34,7 +34,7 @@ func SetupGeneratorCommand() *cobra.Command {
 		Long:  "generate network policies including corner cases by combinations of fragments",
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, as []string) {
-			runGeneratorCommand(args)
+			RunGeneratorCommand(args)
 		},
 	}
 
@@ -50,7 +50,7 @@ func SetupGeneratorCommand() *cobra.Command {
 	return command
 }
 
-func runGeneratorCommand(args *GeneratorArgs) {
+func RunGeneratorCommand(args *GeneratorArgs) {
 	namespaces := []string{"x", "y", "z"}
 	pods := []string{"a", "b", "c"}
 

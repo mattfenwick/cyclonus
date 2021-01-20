@@ -33,7 +33,7 @@ func SetupSyntheticProbeConnectivityCommand() *cobra.Command {
 		Long:  "probe connectivity against a cluster model; does not use a real cluster",
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, as []string) {
-			runProbeSyntheticConnectivityCommand(args)
+			RunProbeSyntheticConnectivityCommand(args)
 		},
 	}
 
@@ -49,7 +49,7 @@ func SetupSyntheticProbeConnectivityCommand() *cobra.Command {
 	return command
 }
 
-func runProbeSyntheticConnectivityCommand(args *SyntheticProbeConnectivityArgs) {
+func RunProbeSyntheticConnectivityCommand(args *SyntheticProbeConnectivityArgs) {
 	// 1. source of policies
 	kubePolicies, err := readPolicies(args.PolicySource, args.Namespaces, args.PolicyPath)
 	utils.DoOrDie(err)

@@ -27,7 +27,7 @@ func SetupQueryTargetsCommand() *cobra.Command {
 		Long:  "given a pod with labels in a namespace with labels, determine which targets apply to the pod",
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, as []string) {
-			runQueryTargetsCommand(args)
+			RunQueryTargetsCommand(args)
 		},
 	}
 
@@ -48,7 +48,7 @@ type QueryTargetPod struct {
 	Labels    map[string]string
 }
 
-func runQueryTargetsCommand(args *QueryTargetsArgs) {
+func RunQueryTargetsCommand(args *QueryTargetsArgs) {
 	// 1. read policies
 	kubePolicies, err := readPolicies(args.PolicySource, args.Namespaces, args.PolicyPath)
 	utils.DoOrDie(err)

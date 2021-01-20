@@ -37,7 +37,7 @@ func SetupProbeCommand() *cobra.Command {
 		Short: "run a connectivity probe against kubernetes pods",
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, as []string) {
-			runProbeCommand(args)
+			RunProbeCommand(args)
 		},
 	}
 
@@ -57,7 +57,7 @@ func SetupProbeCommand() *cobra.Command {
 	return command
 }
 
-func runProbeCommand(args *ProbeArgs) {
+func RunProbeCommand(args *ProbeArgs) {
 	//if len(args.Ports) == 0 || len(args.Protocols) == 0 {
 	//	panic(errors.Errorf("found 0 ports or protocols, must have at least 1 of each"))
 	//}
