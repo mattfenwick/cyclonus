@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/mattfenwick/cyclonus/pkg/netpol/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
@@ -17,39 +18,62 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/remotecommand"
 	"os"
-	"path/filepath"
+	"path"
 )
 
 type Kubernetes struct {
-	ClientSet *kubernetes.Clientset
+	ClientSet  *kubernetes.Clientset
+	RestConfig *rest.Config
 }
 
-func NewKubernetes() (*Kubernetes, error) {
-	clientSet, err := Clientset()
+func PathToKubeConfig() string {
+	home, err := os.UserHomeDir()
+	utils.DoOrDie(err)
+	return path.Join(home, ".kube", "config")
+}
+
+func NewKubernetesForContext(context string) (*Kubernetes, error) {
+	kubeConfigPath := PathToKubeConfig()
+	log.Debugf("instantiating k8s Clientset from config path '%s' for context %s", kubeConfigPath, context)
+	kubeConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeConfigPath},
+		&clientcmd.ConfigOverrides{CurrentContext: context}).ClientConfig()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "unable to build config")
+	}
+	clientset, err := kubernetes.NewForConfig(kubeConfig)
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to instantiate Clientset")
 	}
 	return &Kubernetes{
-		ClientSet: clientSet,
+		ClientSet:  clientset,
+		RestConfig: kubeConfig,
 	}, nil
 }
 
-func Clientset() (*kubernetes.Clientset, error) {
-	config, err := rest.InClusterConfig()
+func NewKubernetesForDefaultContext() (*Kubernetes, error) {
+	//config, err := rest.InClusterConfig()
+	//if err != nil {
+	//	kubeconfig := PathToKubeConfig()
+	//	config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+	//	if err != nil {
+	//		return nil, errors.Wrapf(err, "unable to build config from flags, check that your KUBECONFIG file is correct !")
+	//	}
+	//}
+	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		&clientcmd.ClientConfigLoadingRules{ExplicitPath: PathToKubeConfig()},
+		&clientcmd.ConfigOverrides{}).ClientConfig()
 	if err != nil {
-		kubeconfig := filepath.Join(
-			os.Getenv("HOME"), ".kube", "config",
-		)
-		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
-		if err != nil {
-			return nil, errors.Wrapf(err, "unable to build config from flags, check that your KUBECONFIG file is correct !")
-		}
+		return nil, errors.Wrapf(err, "unable to build config")
 	}
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to instantiate clientset")
 	}
-	return clientset, nil
+	return &Kubernetes{
+		ClientSet:  clientset,
+		RestConfig: config,
+	}, nil
 }
 
 func (k *Kubernetes) CreateOrUpdateNamespace(ns *v1.Namespace) (*v1.Namespace, error) {
@@ -91,6 +115,18 @@ func (k *Kubernetes) DeleteAllNetworkPoliciesInNamespaces(nss []string) error {
 		}
 	}
 	return nil
+}
+
+func (k *Kubernetes) GetNetworkPoliciesInNamespaces(namespaces []string) ([]networkingv1.NetworkPolicy, error) {
+	var netpols []networkingv1.NetworkPolicy
+	for _, ns := range namespaces {
+		podList, err := k.ClientSet.NetworkingV1().NetworkPolicies(ns).List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to get netpols in namespace %s", ns)
+		}
+		netpols = append(netpols, podList.Items...)
+	}
+	return netpols, nil
 }
 
 func (k *Kubernetes) CreateNetworkPolicy(netpol *networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error) {
@@ -210,15 +246,6 @@ func (k *Kubernetes) CreatePodIfNotExists(pod *v1.Pod) (*v1.Pod, error) {
 // ExecuteRemoteCommand executes a remote shell command on the given pod
 // returns the output from stdout and stderr
 func (k *Kubernetes) ExecuteRemoteCommand(namespace string, pod string, container string, command []string) (string, string, error, error) {
-	kubeCfg := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		clientcmd.NewDefaultClientConfigLoadingRules(),
-		&clientcmd.ConfigOverrides{},
-	)
-	restCfg, err := kubeCfg.ClientConfig()
-	if err != nil {
-		return "", "", nil, errors.Wrapf(err, "unable to get rest config from kube config")
-	}
-
 	request := k.ClientSet.
 		CoreV1().
 		RESTClient().
@@ -239,7 +266,7 @@ func (k *Kubernetes) ExecuteRemoteCommand(namespace string, pod string, containe
 			},
 			scheme.ParameterCodec)
 
-	exec, err := remotecommand.NewSPDYExecutor(restCfg, "POST", request.URL())
+	exec, err := remotecommand.NewSPDYExecutor(k.RestConfig, "POST", request.URL())
 	if err != nil {
 		return "", "", nil, errors.Wrapf(err, "unable to instantiate SPDYExecutor")
 	}

@@ -80,7 +80,8 @@ func readPoliciesFromPath(policyPath string) ([]*networkingv1.NetworkPolicy, err
 }
 
 func readPoliciesFromKube(namespaces []string) ([]*networkingv1.NetworkPolicy, error) {
-	kubeClient, err := kube.NewKubernetes()
+	// TODO pass in kube client
+	kubeClient, err := kube.NewKubernetesForDefaultContext()
 	if err != nil {
 		return nil, err
 	}

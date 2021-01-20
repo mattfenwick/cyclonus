@@ -17,10 +17,12 @@ import (
 )
 
 type GeneratorArgs struct {
-	Mode           string
-	AllowDNS       bool
-	Noisy          bool
-	IgnoreLoopback bool
+	Mode                      string
+	AllowDNS                  bool
+	Noisy                     bool
+	IgnoreLoopback            bool
+	NetpolCreationWaitSeconds int
+	KubeContext               string
 }
 
 func setupGeneratorCommand() *cobra.Command {
@@ -42,6 +44,8 @@ func setupGeneratorCommand() *cobra.Command {
 	command.Flags().BoolVar(&args.AllowDNS, "allow-dns", true, "if using egress, allow udp over port 53 for DNS resolution")
 	command.Flags().BoolVar(&args.Noisy, "noisy", false, "if true, print all results")
 	command.Flags().BoolVar(&args.IgnoreLoopback, "ignore-loopback", false, "if true, ignore loopback for truthtable correctness verification")
+	command.Flags().IntVar(&args.NetpolCreationWaitSeconds, "netpol-creation-wait-seconds", 5, "number of seconds to wait after creating a network policy before running probes, to give the CNI time to update the cluster state")
+	command.Flags().StringVar(&args.KubeContext, "kube-context", "", "kubernetes context to use; if empty, uses default context")
 
 	return command
 }
@@ -56,7 +60,13 @@ func runGeneratorCommand(args *GeneratorArgs) {
 	}
 	// TODO don't use default model?
 	podModel := connectivity.NewDefaultModel(namespaces, pods, port.Port, port.Protocol)
-	kubernetes, err := kube.NewKubernetes()
+	var kubernetes *kube.Kubernetes
+	var err error
+	if args.KubeContext == "" {
+		kubernetes, err = kube.NewKubernetesForDefaultContext()
+	} else {
+		kubernetes, err = kube.NewKubernetesForContext(args.KubeContext)
+	}
 	utils.DoOrDie(err)
 
 	utils.DoOrDie(connectivity.CreateResources(kubernetes, podModel))
@@ -141,8 +151,8 @@ func runGeneratorCommand(args *GeneratorArgs) {
 		_, err = kubernetes.CreateNetworkPolicy(kubePolicy)
 		utils.DoOrDie(err)
 
-		// TODO wait for netpol to become 'active'
-		time.Sleep(1 * time.Second)
+		log.Infof("waiting %d seconds for network policy to create and become active", args.NetpolCreationWaitSeconds)
+		time.Sleep(time.Duration(args.NetpolCreationWaitSeconds) * time.Second)
 
 		log.Infof("probe on port %d, protocol %s", port.Port, port.Protocol)
 		synthetic := connectivity.RunSyntheticProbe(policy, port, podModel)
