@@ -9,16 +9,21 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"io/ioutil"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"sigs.k8s.io/yaml"
+	"time"
 )
 
 type ProbeArgs struct {
-	Namespaces     []string
-	Pods           []string
-	Noisy          bool
-	IgnoreLoopback bool
-	KubeContext    string
+	Namespaces                []string
+	Pods                      []string
+	Noisy                     bool
+	IgnoreLoopback            bool
+	KubeContext               string
+	NetpolCreationWaitSeconds int
+	PolicyPath                string
 	// TODO
 	//Ports                     []int
 	//Protocols                 []string
@@ -46,6 +51,8 @@ func setupProbeCommand() *cobra.Command {
 	command.Flags().BoolVar(&args.Noisy, "noisy", false, "if true, print all results")
 	command.Flags().BoolVar(&args.IgnoreLoopback, "ignore-loopback", false, "if true, ignore loopback for truthtable correctness verification")
 	command.Flags().StringVar(&args.KubeContext, "kube-context", "", "kubernetes context to use; if empty, uses default context")
+	command.Flags().IntVar(&args.NetpolCreationWaitSeconds, "netpol-creation-wait-seconds", 15, "number of seconds to wait after creating a network policy before running probes, to give the CNI time to update the cluster state")
+	command.Flags().StringVar(&args.PolicyPath, "policy-path", "", "path to yaml network policy to create in kube; if empty, will not create any policies")
 
 	return command
 }
@@ -85,6 +92,25 @@ func runProbeCommand(args *ProbeArgs) {
 		}
 		podModel.Namespaces[pod.Namespace].Pods[pod.Name].IP = ip
 		log.Infof("ip for pod %s/%s: %s", pod.Namespace, pod.Name, ip)
+	}
+
+	if args.PolicyPath != "" {
+		policyBytes, err := ioutil.ReadFile(args.PolicyPath)
+		utils.DoOrDie(err)
+
+		var kubePolicy networkingv1.NetworkPolicy
+		err = yaml.Unmarshal(policyBytes, &kubePolicy)
+		utils.DoOrDie(err)
+
+		if args.Noisy {
+			fmt.Printf("Creating network policy:\n%s\n\n", policyBytes)
+		}
+
+		_, err = kubernetes.CreateNetworkPolicy(&kubePolicy)
+		utils.DoOrDie(err)
+
+		log.Infof("waiting %d seconds for network policy to create and become active", args.NetpolCreationWaitSeconds)
+		time.Sleep(time.Duration(args.NetpolCreationWaitSeconds) * time.Second)
 	}
 
 	// read policies from kube
