@@ -14,13 +14,6 @@ nodes:
 - role: control-plane
 - role: worker
 - role: worker
-- role: worker
-- role: worker
-- role: worker
-- role: worker
-- role: worker
-- role: worker
-- role: worker
 EOF
 
 

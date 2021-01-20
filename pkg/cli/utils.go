@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"sigs.k8s.io/yaml"
+	"time"
 )
 
 func readPolicies(source string, namespaces []string, policyPath string) ([]*networkingv1.NetworkPolicy, error) {
@@ -146,6 +147,9 @@ func waitForPodsReady(kubernetes *kube.Kubernetes, namespaces []string, pods []s
 		if ready == len(namespaces)*len(pods) {
 			return
 		}
+
+		log.Infof("waiting for pods to be running and have IP addresses")
+		time.Sleep(time.Duration(sleep) * time.Second)
 	}
 	panic(errors.Errorf("pods not ready"))
 }
