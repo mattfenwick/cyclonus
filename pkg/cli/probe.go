@@ -74,7 +74,7 @@ func runProbeCommand(args *ProbeArgs) {
 	podModel := connectivity.NewDefaultModel(args.Namespaces, args.Pods, port.Port, port.Protocol)
 
 	utils.DoOrDie(connectivity.CreateResources(kubernetes, podModel))
-	waitForPodsReady(kubernetes, args.Namespaces, args.Pods)
+	waitForPodsReady(kubernetes, args.Namespaces, args.Pods, 60)
 
 	podList, err := kubernetes.GetPodsInNamespaces(args.Namespaces)
 	utils.DoOrDie(err)
@@ -84,6 +84,7 @@ func runProbeCommand(args *ProbeArgs) {
 			panic(errors.Errorf("no ip found for pod %s/%s", pod.Namespace, pod.Name))
 		}
 		podModel.Namespaces[pod.Namespace].Pods[pod.Name].IP = ip
+		log.Infof("ip for pod %s/%s: %s", pod.Namespace, pod.Name, ip)
 	}
 
 	// read policies from kube
@@ -107,7 +108,7 @@ func runProbeCommand(args *ProbeArgs) {
 	log.Infof("kube probe on port %d, protocol %s", port.Port, port.Protocol)
 	kubeProbe := connectivity.RunKubeProbe(kubernetes, podModel, port.Port, port.Protocol, 5)
 
-	fmt.Printf("\n\nKube results:")
+	fmt.Printf("\n\nKube results:\n")
 	kubeProbe.Table().Render()
 
 	comparison := synthetic.Combined.Compare(kubeProbe)
@@ -131,22 +132,4 @@ func runProbeCommand(args *ProbeArgs) {
 		fmt.Printf("\n\nSynthetic vs combined:\n")
 		comparison.Table().Render()
 	}
-}
-
-func waitForPodsReady(kubernetes *kube.Kubernetes, namespaces []string, pods []string) {
-	for i := 0; i < 20; i++ {
-		podList, err := kubernetes.GetPodsInNamespaces(namespaces)
-		utils.DoOrDie(err)
-
-		ready := 0
-		for _, pod := range podList {
-			if pod.Status.Phase == "Running" && pod.Status.PodIP != "" {
-				ready++
-			}
-		}
-		if ready == len(namespaces)*len(pods) {
-			return
-		}
-	}
-	panic(errors.Errorf("pods not ready"))
 }

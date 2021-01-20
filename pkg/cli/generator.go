@@ -70,9 +70,7 @@ func runGeneratorCommand(args *GeneratorArgs) {
 	utils.DoOrDie(err)
 
 	utils.DoOrDie(connectivity.CreateResources(kubernetes, podModel))
-	// TODO wait for pods to come up
-	log.Infof("waiting 10 seconds to make sure pods are up")
-	time.Sleep(10 * time.Second)
+	waitForPodsReady(kubernetes, namespaces, pods, 60)
 
 	podList, err := kubernetes.GetPodsInNamespaces(namespaces)
 	utils.DoOrDie(err)
@@ -82,6 +80,7 @@ func runGeneratorCommand(args *GeneratorArgs) {
 			panic(errors.Errorf("no ip found for pod %s/%s", pod.Namespace, pod.Name))
 		}
 		podModel.Namespaces[pod.Namespace].Pods[pod.Name].IP = ip
+		log.Infof("ip for pod %s/%s: %s", pod.Namespace, pod.Name, ip)
 	}
 
 	zcPod, err := kubernetes.GetPod("z", "c")
