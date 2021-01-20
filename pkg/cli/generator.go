@@ -25,7 +25,7 @@ type GeneratorArgs struct {
 	KubeContext               string
 }
 
-func setupGeneratorCommand() *cobra.Command {
+func SetupGeneratorCommand() *cobra.Command {
 	args := &GeneratorArgs{}
 
 	command := &cobra.Command{

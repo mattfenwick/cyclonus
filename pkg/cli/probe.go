@@ -29,7 +29,7 @@ type ProbeArgs struct {
 	//Protocols                 []string
 }
 
-func setupProbeCommand() *cobra.Command {
+func SetupProbeCommand() *cobra.Command {
 	args := &ProbeArgs{}
 
 	command := &cobra.Command{

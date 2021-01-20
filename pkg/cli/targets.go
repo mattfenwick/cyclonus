@@ -18,7 +18,7 @@ type QueryTargetsArgs struct {
 	PodPath      string
 }
 
-func setupQueryTargetsCommand() *cobra.Command {
+func SetupQueryTargetsCommand() *cobra.Command {
 	args := &QueryTargetsArgs{}
 
 	command := &cobra.Command{

@@ -24,7 +24,7 @@ type SyntheticProbeConnectivityConfig struct {
 	Probes []*connectivity.ProtocolPort
 }
 
-func setupSyntheticProbeConnectivityCommand() *cobra.Command {
+func SetupSyntheticProbeConnectivityCommand() *cobra.Command {
 	args := &SyntheticProbeConnectivityArgs{}
 
 	command := &cobra.Command{

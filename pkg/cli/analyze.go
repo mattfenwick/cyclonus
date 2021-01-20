@@ -14,7 +14,7 @@ type AnalyzePoliciesArgs struct {
 	Format       string
 }
 
-func setupAnalyzePoliciesCommand() *cobra.Command {
+func SetupAnalyzePoliciesCommand() *cobra.Command {
 	args := &AnalyzePoliciesArgs{}
 
 	command := &cobra.Command{

@@ -16,7 +16,7 @@ type QueryTrafficArgs struct {
 	PolicyPath   string
 }
 
-func setupQueryTrafficCommand() *cobra.Command {
+func SetupQueryTrafficCommand() *cobra.Command {
 	args := &QueryTrafficArgs{}
 
 	command := &cobra.Command{
