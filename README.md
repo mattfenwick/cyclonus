@@ -1,13 +1,150 @@
 # Cyclonus
 
-## network policy explainer
+## network policy explainer, prober, and fuzzer!
 
 Parse, explain, and probe network policies to understand their implications and help design
 policies that suit your needs!
 
+Grab the [latest release](https://github.com/mattfenwick/cyclonus/releases) to get started using Cyclonus!
+
 ## Examples
 
 ### Probe
+
+Run a connectivity probe against a Kubernetes cluster.
+
+
+```
+$ go run cmd/cyclonus/main.go probe --noisy=true
+
+INFO[2021-01-20T06:30:25-05:00] found 1 policies across namespaces [x y z]   
+{"Namespace": "x", "PodSelector": ["MatchLabels",["pod: a"],"MatchExpression",null]}
+  source rules:
+    x/vary-ingress-empty
+  all ingress blocked
+
+
++---------+------------------+---------------------+-----------------+------------------------+----------------------+
+|  TYPE   | TARGET NAMESPACE | TARGET POD SELECTOR |      PEER       |     PORT/PROTOCOL      |     SOURCE RULES     |
++---------+------------------+---------------------+-----------------+------------------------+----------------------+
+| Ingress | x                | Match labels:       |                 |                        | x/vary-ingress-empty |
+|         |                  |   pod: a            |                 |                        |                      |
++---------+------------------+---------------------+-----------------+------------------------+----------------------+
+|         |                  |                     | no pods, no ips | no ports, no protocols |                      |
++---------+------------------+---------------------+-----------------+------------------------+----------------------+
+INFO[2021-01-20T06:30:25-05:00] synthetic probe on port 80, protocol TCP     
+INFO[2021-01-20T06:30:25-05:00] running probe on port 80, protocol TCP       
+INFO[2021-01-20T06:30:25-05:00] kube probe on port 80, protocol TCP          
+
+
+Kube results:
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+|  -  | X/A | X/B | X/C | Y/A | Y/B | Y/C | Z/A | Z/B | Z/C |
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+| x/a | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| x/b | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| x/c | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| y/a | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| y/b | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| y/c | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| z/a | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| z/b | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| z/c | X   | .   | .   | .   | .   | .   | .   | .   | .   |
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+found 81 true, 0 false, 0 no value from 81 total
+```
+
+### Generator
+
+Generate network policies, install the policies one at a time in kubernetes, and compare actual measured connectivity
+to expected connectivity using a truth table.
+
+```
+$ go run cmd/cyclonus/main.go generator \
+  --mode vary-ingress \
+  --noisy=true \
+  --netpol-creation-wait-seconds 15
+
+... (snip) ...
+
+Kube results for x/vary-ingress-28-0-0-0-10:
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+|  -  | X/A | X/B | X/C | Y/A | Y/B | Y/C | Z/A | Z/B | Z/C |
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+| x/a | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| x/b | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| x/c | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| y/a | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| y/b | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| y/c | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| z/a | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| z/b | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| z/c | X   | .   | .   | .   | .   | .   | .   | .   | .   |
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+Discrepancy found: 9 wrong, 72 no value, 0 correct out of 81 total
+Ingress:
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+|  -  | X/A | X/B | X/C | Y/A | Y/B | Y/C | Z/A | Z/B | Z/C |
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+| x/a | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| x/b | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| x/c | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| y/a | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| y/b | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| y/c | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| z/a | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| z/b | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| z/c | .   | .   | .   | .   | .   | .   | .   | .   | .   |
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+Egress:
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+|  -  | X/A | X/B | X/C | Y/A | Y/B | Y/C | Z/A | Z/B | Z/C |
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+| x/a | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| x/b | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| x/c | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| y/a | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| y/b | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| y/c | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| z/a | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| z/b | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| z/c | .   | .   | .   | .   | .   | .   | .   | .   | .   |
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+Combined:
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+|  -  | X/A | X/B | X/C | Y/A | Y/B | Y/C | Z/A | Z/B | Z/C |
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+| x/a | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| x/b | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| x/c | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| y/a | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| y/b | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| y/c | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| z/a | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| z/b | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| z/c | .   | .   | .   | .   | .   | .   | .   | .   | .   |
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+
+Synthetic vs combined:
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+|  -  | X/A | X/B | X/C | Y/A | Y/B | Y/C | Z/A | Z/B | Z/C |
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+| x/a | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| x/b | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| x/c | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| y/a | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| y/b | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| y/c | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| z/a | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| z/b | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+| z/c | X   | .   | .   | .   | .   | .   | .   | .   | .   |
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+
+... (snip) ...
+
+```
+
+### Synthetic Probe
 
 Using hypothetical "traffic", generate a table of presumed connectivity by evaluating network
 policies.  Note: this does not use a kubernetes cluster.
@@ -70,26 +207,32 @@ policies.  This clarifies the interactions between "denies" and "allows" from mu
 $ go run cmd/cyclonus/main.go analyze \
   --policy-source examples 
 
-  {"Namespace": "default", "PodSelector": ["MatchLabels",["app: foo"],"MatchExpression",null]}
-    source rules:
-      default/allow-nothing
-    all ingress blocked
-  
-  {"Namespace": "default", "PodSelector": ["MatchLabels",["app: bookstore","role: api"],"MatchExpression",null]}
-    source rules:
-      default/allow-from-app-bookstore-to-app-bookstore-role-api
-    ingress:
-      Internal:
-        Namespace/Pod:
-          namespace default
-          pods matching ["MatchLabels",["app: bookstore"],"MatchExpression",null]
-          Port(s):
-            all ports all protocols
-    
-  {"Namespace": "default", "PodSelector": ["MatchLabels",null,"MatchExpression",null]}
-    source rules:
-      default/allow-no-egress-from-namespace
-    all egress blocked
++---------+------------------+---------------------+--------------------------+---------------------------+--------------------------------------+
+|  TYPE   | TARGET NAMESPACE | TARGET POD SELECTOR |           PEER           |       PORT/PROTOCOL       |            SOURCE RULES              |
++---------+------------------+---------------------+--------------------------+---------------------------+--------------------------------------+
+| Ingress | default          | Match labels:       |                          |                           | default/accidental-and               |
+|         |                  |   a: b              |                          |                           | default/accidental-or                |
++---------+------------------+---------------------+--------------------------+---------------------------+--------------------------------------+
+|         |                  |                     | no ips                   | no ports, no protocols    |                                      |
++---------+------------------+---------------------+--------------------------+---------------------------+--------------------------------------+
+|         |                  |                     | namespace: Match labels: | all ports, all protocols  |                                      |
+|         |                  |                     |   user: alice            |                           |                                      |
+|         |                  |                     | pods: Match labels:      |                           |                                      |
+|         |                  |                     |   role: client           |                           |                                      |
++---------+------------------+---------------------+--------------------------+---------------------------+--------------------------------------+
+|         |                  |                     | namespace: Match labels: | all ports, all protocols  |                                      |
+|         |                  |                     |   user: alice            |                           |                                      |
+|         |                  |                     | pods: all                |                           |                                      |
++---------+------------------+---------------------+--------------------------+---------------------------+--------------------------------------+
+|         |                  |                     | namespace: default       | all ports, all protocols  |                                      |
+|         |                  |                     | pods: Match labels:      |                           |                                      |
+|         |                  |                     |   role: client           |                           |                                      |
++---------+------------------+---------------------+--------------------------+---------------------------+--------------------------------------+
+| Ingress | default          | Match labels:       |                          |                           | default/allow-nothing-to-v2-all-web  |
+|         |                  |   all: web          |                          |                           |                                      |
++---------+------------------+---------------------+--------------------------+---------------------------+--------------------------------------+
+|         |                  |                     | no pods, no ips          | no ports, no protocols    |                                      |
++---------+------------------+---------------------+--------------------------+---------------------------+--------------------------------------+
 ```
 
 ## traffic
