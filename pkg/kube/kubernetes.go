@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/mattfenwick/cyclonus/pkg/netpol/utils"
+	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"

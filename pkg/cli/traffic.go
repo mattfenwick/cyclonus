@@ -3,8 +3,8 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/mattfenwick/cyclonus/pkg/netpol/matcher"
-	"github.com/mattfenwick/cyclonus/pkg/netpol/utils"
+	"github.com/mattfenwick/cyclonus/pkg/matcher"
+	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/spf13/cobra"
 	"io/ioutil"
 )

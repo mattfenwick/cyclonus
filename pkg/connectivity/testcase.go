@@ -3,8 +3,8 @@ package connectivity
 import (
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
-	"github.com/mattfenwick/cyclonus/pkg/netpol/matcher"
-	"github.com/mattfenwick/cyclonus/pkg/netpol/utils"
+	"github.com/mattfenwick/cyclonus/pkg/matcher"
+	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	v12 "k8s.io/api/core/v1"

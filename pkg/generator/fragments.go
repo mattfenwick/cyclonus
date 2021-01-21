@@ -1,4 +1,4 @@
-package netpolgen
+package generator
 
 import (
 	"fmt"

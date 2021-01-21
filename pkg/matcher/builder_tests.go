@@ -3,8 +3,8 @@ package matcher
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/mattfenwick/cyclonus/pkg/kube/netpol/examples"
-	"github.com/mattfenwick/cyclonus/pkg/netpol/utils"
+	"github.com/mattfenwick/cyclonus/pkg/kube/netpol"
+	"github.com/mattfenwick/cyclonus/pkg/utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
@@ -23,7 +23,7 @@ var (
 func RunBuilderTests() {
 	Describe("BuildTarget: Allow none -- nil egress/ingress", func() {
 		It("allow-no-ingress", func() {
-			ingress, egress := BuildTarget(examples.AllowNoIngress)
+			ingress, egress := BuildTarget(netpol.AllowNoIngress)
 
 			Expect(ingress.Peer).To(Equal(&NonePeerMatcher{}))
 			//Expect(target.Ingress).To(Equal(&PeerMatcher{Matchers: []*NamespacePodMatcher{}}))
@@ -31,14 +31,14 @@ func RunBuilderTests() {
 		})
 
 		It("allow-no-egress", func() {
-			ingress, egress := BuildTarget(examples.AllowNoEgress)
+			ingress, egress := BuildTarget(netpol.AllowNoEgress)
 
 			Expect(egress.Peer).To(Equal(&NonePeerMatcher{}))
 			Expect(ingress).To(BeNil())
 		})
 
 		It("allow-neither", func() {
-			ingress, egress := BuildTarget(examples.AllowNoIngressAllowNoEgress)
+			ingress, egress := BuildTarget(netpol.AllowNoIngressAllowNoEgress)
 
 			Expect(ingress.Peer).To(Equal(&NonePeerMatcher{}))
 			Expect(egress.Peer).To(Equal(&NonePeerMatcher{}))
@@ -47,21 +47,21 @@ func RunBuilderTests() {
 
 	Describe("BuildTarget: Allow none -- empty ingress/egress", func() {
 		It("allow-no-ingress", func() {
-			ingress, egress := BuildTarget(examples.AllowNoIngress_EmptyIngress)
+			ingress, egress := BuildTarget(netpol.AllowNoIngress_EmptyIngress)
 
 			Expect(ingress.Peer).To(Equal(&NonePeerMatcher{}))
 			Expect(egress).To(BeNil())
 		})
 
 		It("allow-no-egress", func() {
-			ingress, egress := BuildTarget(examples.AllowNoEgress_EmptyEgress)
+			ingress, egress := BuildTarget(netpol.AllowNoEgress_EmptyEgress)
 
 			Expect(egress.Peer).To(Equal(&NonePeerMatcher{}))
 			Expect(ingress).To(BeNil())
 		})
 
 		It("allow-neither", func() {
-			ingress, egress := BuildTarget(examples.AllowNoIngressAllowNoEgress_EmptyEgressEmptyIngress)
+			ingress, egress := BuildTarget(netpol.AllowNoIngressAllowNoEgress_EmptyEgressEmptyIngress)
 
 			Expect(ingress.Peer).To(Equal(&NonePeerMatcher{}))
 			Expect(egress.Peer).To(Equal(&NonePeerMatcher{}))
@@ -70,21 +70,21 @@ func RunBuilderTests() {
 
 	Describe("BuildTarget: Allow all", func() {
 		It("allow-all-ingress", func() {
-			ingress, egress := BuildTarget(examples.AllowAllIngress)
+			ingress, egress := BuildTarget(netpol.AllowAllIngress)
 
 			Expect(egress).To(BeNil())
 			Expect(ingress.Peer).To(Equal(&AllPeerMatcher{}))
 		})
 
 		It("allow-all-egress", func() {
-			ingress, egress := BuildTarget(examples.AllowAllEgress)
+			ingress, egress := BuildTarget(netpol.AllowAllEgress)
 
 			Expect(egress.Peer).To(Equal(&AllPeerMatcher{}))
 			Expect(ingress).To(BeNil())
 		})
 
 		It("allow-all-both", func() {
-			ingress, egress := BuildTarget(examples.AllowAllIngressAllowAllEgress)
+			ingress, egress := BuildTarget(netpol.AllowAllIngressAllowAllEgress)
 
 			Expect(egress.Peer).To(Equal(&AllPeerMatcher{}))
 			Expect(ingress.Peer).To(Equal(&AllPeerMatcher{}))
@@ -133,7 +133,7 @@ func RunBuilderTests() {
 							PodSelector: &metav1.LabelSelector{},
 						},
 						{
-							IPBlock: examples.IPBlock_192_168_242_213_24,
+							IPBlock: netpol.IPBlock_192_168_242_213_24,
 						},
 					},
 				},
@@ -144,7 +144,7 @@ func RunBuilderTests() {
 			port53UDPMatcher := &SpecificPortMatcher{Ports: []*PortProtocolMatcher{{Port: &port53, Protocol: v1.ProtocolUDP}}}
 			port80TCPMatcher := &SpecificPortMatcher{Ports: []*PortProtocolMatcher{{Port: &port80, Protocol: v1.ProtocolTCP}}}
 			ip := &IPBlockMatcher{
-				IPBlock: examples.IPBlock_192_168_242_213_24,
+				IPBlock: netpol.IPBlock_192_168_242_213_24,
 				Port:    port80TCPMatcher,
 			}
 			Expect(peer).To(Equal(&SpecificPeerMatcher{
@@ -196,11 +196,11 @@ func RunBuilderTests() {
 				{
 					PodSelector:       nil,
 					NamespaceSelector: nil,
-					IPBlock:           examples.IPBlock_10_0_0_1_24,
+					IPBlock:           netpol.IPBlock_10_0_0_1_24,
 				},
 			})
 			ip := &IPBlockMatcher{
-				IPBlock: examples.IPBlock_10_0_0_1_24,
+				IPBlock: netpol.IPBlock_10_0_0_1_24,
 				Port:    &AllPortMatcher{},
 			}
 			Expect(peer).To(Equal(&SpecificPeerMatcher{
@@ -212,8 +212,8 @@ func RunBuilderTests() {
 		It("allows all ns/pods/ports, but no ips from a single peer with empty pod/ns selectors", func() {
 			peer := BuildPeerMatcher("abc", []networkingv1.NetworkPolicyPort{}, []networkingv1.NetworkPolicyPeer{
 				{
-					PodSelector:       examples.SelectorEmpty,
-					NamespaceSelector: examples.SelectorEmpty,
+					PodSelector:       netpol.SelectorEmpty,
+					NamespaceSelector: netpol.SelectorEmpty,
 					IPBlock:           nil,
 				},
 			})
@@ -226,7 +226,7 @@ func RunBuilderTests() {
 		It("allows ns/pods, but no ips from a single namespace/pod", func() {
 			peer := BuildPeerMatcher("abc", []networkingv1.NetworkPolicyPort{}, []networkingv1.NetworkPolicyPeer{
 				{
-					PodSelector:       examples.SelectorEmpty,
+					PodSelector:       netpol.SelectorEmpty,
 					NamespaceSelector: nil,
 					IPBlock:           nil,
 				},
@@ -251,7 +251,7 @@ func RunBuilderTests() {
 			all := &AllPeerMatcher{}
 			none := &NonePeerMatcher{}
 			ip := &IPBlockMatcher{
-				IPBlock: examples.IPBlock_10_0_0_1_24,
+				IPBlock: netpol.IPBlock_10_0_0_1_24,
 				Port:    &AllPortMatcher{},
 			}
 			someIps := &SpecificPeerMatcher{
@@ -296,7 +296,7 @@ func RunBuilderTests() {
 			none := &NoneInternalMatcher{}
 			np1 := &NamespacePodMatcher{
 				Namespace: &AllNamespaceMatcher{},
-				Pod:       &LabelSelectorPodMatcher{Selector: *examples.SelectorAB},
+				Pod:       &LabelSelectorPodMatcher{Selector: *netpol.SelectorAB},
 				Port:      &AllPortMatcher{},
 			}
 			some1 := &SpecificInternalMatcher{NamespacePods: map[string]*NamespacePodMatcher{
@@ -317,72 +317,72 @@ func RunBuilderTests() {
 
 	Describe("Namespace/Pod/IPBlock matcher from NetworkPolicyPeer", func() {
 		It("allow all pods in policy namespace", func() {
-			ip, ns, pod := BuildIPBlockNamespacePodMatcher(examples.Namespace, examples.AllowAllPodsInPolicyNamespacePeer)
+			ip, ns, pod := BuildIPBlockNamespacePodMatcher(netpol.Namespace, netpol.AllowAllPodsInPolicyNamespacePeer)
 			Expect(ip).To(BeNil())
-			Expect(ns).To(Equal(&ExactNamespaceMatcher{Namespace: examples.Namespace}))
+			Expect(ns).To(Equal(&ExactNamespaceMatcher{Namespace: netpol.Namespace}))
 			Expect(pod).To(Equal(&AllPodMatcher{}))
 		})
 
 		It("allow all pods in all namespaces", func() {
-			ip, ns, pod := BuildIPBlockNamespacePodMatcher(examples.Namespace, examples.AllowAllPodsInAllNamespacesPeer)
+			ip, ns, pod := BuildIPBlockNamespacePodMatcher(netpol.Namespace, netpol.AllowAllPodsInAllNamespacesPeer)
 			Expect(ip).To(BeNil())
 			Expect(ns).To(Equal(&AllNamespaceMatcher{}))
 			Expect(pod).To(Equal(&AllPodMatcher{}))
 		})
 
 		It("allow all pods in matching namespace", func() {
-			ip, ns, pod := BuildIPBlockNamespacePodMatcher(examples.Namespace, examples.AllowAllPodsInMatchingNamespacesPeer)
+			ip, ns, pod := BuildIPBlockNamespacePodMatcher(netpol.Namespace, netpol.AllowAllPodsInMatchingNamespacesPeer)
 			Expect(ip).To(BeNil())
-			Expect(ns).To(Equal(&LabelSelectorNamespaceMatcher{Selector: *examples.SelectorAB}))
+			Expect(ns).To(Equal(&LabelSelectorNamespaceMatcher{Selector: *netpol.SelectorAB}))
 			Expect(pod).To(Equal(&AllPodMatcher{}))
 		})
 
 		It("allow all pods in policy namespace -- empty pod selector", func() {
-			ip, ns, pod := BuildIPBlockNamespacePodMatcher(examples.Namespace, examples.AllowAllPodsInPolicyNamespacePeer_EmptyPodSelector)
+			ip, ns, pod := BuildIPBlockNamespacePodMatcher(netpol.Namespace, netpol.AllowAllPodsInPolicyNamespacePeer_EmptyPodSelector)
 			Expect(ip).To(BeNil())
-			Expect(ns).To(Equal(&ExactNamespaceMatcher{Namespace: examples.Namespace}))
+			Expect(ns).To(Equal(&ExactNamespaceMatcher{Namespace: netpol.Namespace}))
 			Expect(pod).To(Equal(&AllPodMatcher{}))
 		})
 
 		It("allow all pods in all namespaces -- empty pod selector", func() {
-			ip, ns, pod := BuildIPBlockNamespacePodMatcher(examples.Namespace, examples.AllowAllPodsInAllNamespacesPeer_EmptyPodSelector)
+			ip, ns, pod := BuildIPBlockNamespacePodMatcher(netpol.Namespace, netpol.AllowAllPodsInAllNamespacesPeer_EmptyPodSelector)
 			Expect(ip).To(BeNil())
 			Expect(ns).To(Equal(&AllNamespaceMatcher{}))
 			Expect(pod).To(Equal(&AllPodMatcher{}))
 		})
 
 		It("allow all pods in matching namespace -- empty pod selector", func() {
-			ip, ns, pod := BuildIPBlockNamespacePodMatcher(examples.Namespace, examples.AllowAllPodsInMatchingNamespacesPeer_EmptyPodSelector)
+			ip, ns, pod := BuildIPBlockNamespacePodMatcher(netpol.Namespace, netpol.AllowAllPodsInMatchingNamespacesPeer_EmptyPodSelector)
 			Expect(ip).To(BeNil())
-			Expect(ns).To(Equal(&LabelSelectorNamespaceMatcher{Selector: *examples.SelectorAB}))
+			Expect(ns).To(Equal(&LabelSelectorNamespaceMatcher{Selector: *netpol.SelectorAB}))
 			Expect(pod).To(Equal(&AllPodMatcher{}))
 		})
 
 		It("allow matching pods in policy namespace", func() {
-			ip, ns, pod := BuildIPBlockNamespacePodMatcher(examples.Namespace, examples.AllowMatchingPodsInPolicyNamespacePeer)
+			ip, ns, pod := BuildIPBlockNamespacePodMatcher(netpol.Namespace, netpol.AllowMatchingPodsInPolicyNamespacePeer)
 			Expect(ip).To(BeNil())
-			Expect(ns).To(Equal(&ExactNamespaceMatcher{Namespace: examples.Namespace}))
-			Expect(pod).To(Equal(&LabelSelectorPodMatcher{Selector: *examples.SelectorCD}))
+			Expect(ns).To(Equal(&ExactNamespaceMatcher{Namespace: netpol.Namespace}))
+			Expect(pod).To(Equal(&LabelSelectorPodMatcher{Selector: *netpol.SelectorCD}))
 		})
 
 		It("allow matching pods in all namespaces", func() {
-			ip, ns, pod := BuildIPBlockNamespacePodMatcher(examples.Namespace, examples.AllowMatchingPodsInAllNamespacesPeer)
+			ip, ns, pod := BuildIPBlockNamespacePodMatcher(netpol.Namespace, netpol.AllowMatchingPodsInAllNamespacesPeer)
 			Expect(ip).To(BeNil())
 			Expect(ns).To(Equal(&AllNamespaceMatcher{}))
-			Expect(pod).To(Equal(&LabelSelectorPodMatcher{Selector: *examples.SelectorEF}))
+			Expect(pod).To(Equal(&LabelSelectorPodMatcher{Selector: *netpol.SelectorEF}))
 		})
 
 		It("allow matching pods in matching namespace", func() {
-			ip, ns, pod := BuildIPBlockNamespacePodMatcher(examples.Namespace, examples.AllowMatchingPodsInMatchingNamespacesPeer)
+			ip, ns, pod := BuildIPBlockNamespacePodMatcher(netpol.Namespace, netpol.AllowMatchingPodsInMatchingNamespacesPeer)
 			Expect(ip).To(BeNil())
-			Expect(ns).To(Equal(&LabelSelectorNamespaceMatcher{Selector: *examples.SelectorAB}))
-			Expect(pod).To(Equal(&LabelSelectorPodMatcher{Selector: *examples.SelectorGH}))
+			Expect(ns).To(Equal(&LabelSelectorNamespaceMatcher{Selector: *netpol.SelectorAB}))
+			Expect(pod).To(Equal(&LabelSelectorPodMatcher{Selector: *netpol.SelectorGH}))
 		})
 
 		It("allow ipblock", func() {
-			ip, ns, pod := BuildIPBlockNamespacePodMatcher(examples.Namespace, examples.AllowIPBlockPeer)
+			ip, ns, pod := BuildIPBlockNamespacePodMatcher(netpol.Namespace, netpol.AllowIPBlockPeer)
 			Expect(ip).To(Equal(&IPBlockMatcher{
-				IPBlock: examples.IPBlock_10_0_0_1_24,
+				IPBlock: netpol.IPBlock_10_0_0_1_24,
 				Port:    nil,
 			}))
 			Expect(ns).To(BeNil())
@@ -397,13 +397,13 @@ func RunBuilderTests() {
 		})
 
 		It("allow all ports on protocol", func() {
-			pm := BuildPortMatcher([]networkingv1.NetworkPolicyPort{examples.AllowAllPortsOnProtocol})
+			pm := BuildPortMatcher([]networkingv1.NetworkPolicyPort{netpol.AllowAllPortsOnProtocol})
 			Expect(pm).To(Equal(&SpecificPortMatcher{Ports: []*PortProtocolMatcher{{Port: nil, Protocol: v1.ProtocolSCTP}}}))
 		})
 
 		It("allow numbered port on protocol", func() {
 			portNumber := intstr.FromInt(9001)
-			pm := BuildPortMatcher([]networkingv1.NetworkPolicyPort{examples.AllowNumberedPortOnProtocol})
+			pm := BuildPortMatcher([]networkingv1.NetworkPolicyPort{netpol.AllowNumberedPortOnProtocol})
 			Expect(pm).To(Equal(&SpecificPortMatcher{[]*PortProtocolMatcher{{
 				Protocol: v1.ProtocolTCP,
 				Port:     &portNumber,
@@ -412,7 +412,7 @@ func RunBuilderTests() {
 
 		It("allow named port on protocol", func() {
 			portName := intstr.FromString("hello")
-			pm := BuildPortMatcher([]networkingv1.NetworkPolicyPort{examples.AllowNamedPortOnProtocol})
+			pm := BuildPortMatcher([]networkingv1.NetworkPolicyPort{netpol.AllowNamedPortOnProtocol})
 			Expect(pm).To(Equal(&SpecificPortMatcher{[]*PortProtocolMatcher{{
 				Protocol: v1.ProtocolUDP,
 				Port:     &portName,

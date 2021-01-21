@@ -1,4 +1,4 @@
-package netpolgen
+package generator
 
 import (
 	"fmt"
@@ -6,8 +6,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func NewDefaultGenerator(podIP string) *Generator {
-	return &Generator{
+func NewFragmentDefaultGenerator(podIP string) *FragmentGenerator {
+	return &FragmentGenerator{
 		Ports:            DefaultPorts(),
 		PodPeers:         DefaultPodPeers(podIP),
 		Targets:          DefaultTargets(),
@@ -19,7 +19,7 @@ func NewDefaultGenerator(podIP string) *Generator {
 	}
 }
 
-type Generator struct {
+type FragmentGenerator struct {
 	// multidimensional generation
 	Ports      []NetworkPolicyPort
 	PodPeers   []NetworkPolicyPeer
@@ -32,7 +32,7 @@ type Generator struct {
 	TypicalNamespace string
 }
 
-func (g *Generator) PortSlices() [][]NetworkPolicyPort {
+func (g *FragmentGenerator) PortSlices() [][]NetworkPolicyPort {
 	// length 0
 	slices := [][]NetworkPolicyPort{nil, emptySliceOfPorts}
 	// length 1
@@ -50,7 +50,7 @@ func (g *Generator) PortSlices() [][]NetworkPolicyPort {
 	return slices
 }
 
-func (g *Generator) PeerSlices() [][]NetworkPolicyPeer {
+func (g *FragmentGenerator) PeerSlices() [][]NetworkPolicyPeer {
 	// 0 length
 	slices := [][]NetworkPolicyPeer{nil, emptySliceOfPeers}
 	// 1 length
@@ -68,7 +68,7 @@ func (g *Generator) PeerSlices() [][]NetworkPolicyPeer {
 	return slices
 }
 
-func (g *Generator) Rules() []*Rule {
+func (g *FragmentGenerator) Rules() []*Rule {
 	var rules []*Rule
 	for _, ports := range g.PortSlices() {
 		for _, peers := range g.PeerSlices() {
@@ -81,7 +81,7 @@ func (g *Generator) Rules() []*Rule {
 	return rules
 }
 
-func (g *Generator) RuleSlices() [][]*Rule {
+func (g *FragmentGenerator) RuleSlices() [][]*Rule {
 	// 0 length
 	slices := [][]*Rule{nil, emptySliceOfRules}
 	// 1 length
@@ -101,7 +101,7 @@ func (g *Generator) RuleSlices() [][]*Rule {
 
 // single policies, unidimensional generation
 
-func (g *Generator) varyPolicies(count *int, isIngress bool, nss []string, targets []metav1.LabelSelector, ports [][]NetworkPolicyPort, peers [][]NetworkPolicyPeer) []*NetworkPolicy {
+func (g *FragmentGenerator) varyPolicies(count *int, isIngress bool, nss []string, targets []metav1.LabelSelector, ports [][]NetworkPolicyPort, peers [][]NetworkPolicyPeer) []*NetworkPolicy {
 	var policies []*NetworkPolicy
 	for i, ns := range nss {
 		for j, target := range targets {
@@ -126,7 +126,7 @@ func (g *Generator) varyPolicies(count *int, isIngress bool, nss []string, targe
 	return policies
 }
 
-func (g *Generator) varyPoliciesWrapper(isIngress bool) []*NetworkPolicy {
+func (g *FragmentGenerator) varyPoliciesWrapper(isIngress bool) []*NetworkPolicy {
 	var policies []*NetworkPolicy
 	count := 0
 	policies = append(policies, g.varyPolicies(&count, isIngress, g.Namespaces, []metav1.LabelSelector{g.TypicalTarget}, [][]NetworkPolicyPort{g.TypicalPorts}, [][]NetworkPolicyPeer{g.TypicalPeers})...)
@@ -136,13 +136,13 @@ func (g *Generator) varyPoliciesWrapper(isIngress bool) []*NetworkPolicy {
 	return policies
 }
 
-func (g *Generator) VaryIngressPolicies() []*NetworkPolicy {
+func (g *FragmentGenerator) VaryIngressPolicies() []*NetworkPolicy {
 	policies := g.varyPoliciesWrapper(true)
 	// special case: empty ingress/egress
 	return append(policies, (&Netpol{Name: "vary-ingress-empty", Namespace: g.TypicalNamespace, PodSelector: g.TypicalTarget, IsIngress: true, IngressRules: []*Rule{}}).NetworkPolicy())
 }
 
-func (g *Generator) VaryEgressPolicies(allowDNS bool) []*NetworkPolicy {
+func (g *FragmentGenerator) VaryEgressPolicies(allowDNS bool) []*NetworkPolicy {
 	policies := g.varyPoliciesWrapper(false)
 	if allowDNS {
 		for _, pol := range policies {
@@ -155,7 +155,7 @@ func (g *Generator) VaryEgressPolicies(allowDNS bool) []*NetworkPolicy {
 
 // single policies, multidimensional generation
 
-func (g *Generator) multidimensionalPolicies(isIngress bool, allowDNS bool) []*NetworkPolicy {
+func (g *FragmentGenerator) multidimensionalPolicies(isIngress bool, allowDNS bool) []*NetworkPolicy {
 	var policies []*NetworkPolicy
 	i := 0
 	for _, rules := range g.RuleSlices() {
@@ -189,15 +189,15 @@ func (g *Generator) multidimensionalPolicies(isIngress bool, allowDNS bool) []*N
 	return policies
 }
 
-func (g *Generator) IngressPolicies() []*NetworkPolicy {
+func (g *FragmentGenerator) IngressPolicies() []*NetworkPolicy {
 	return g.multidimensionalPolicies(true, false)
 }
 
-func (g *Generator) EgressPolicies(allowDNS bool) []*NetworkPolicy {
+func (g *FragmentGenerator) EgressPolicies(allowDNS bool) []*NetworkPolicy {
 	return g.multidimensionalPolicies(false, allowDNS)
 }
 
-func (g *Generator) IngressEgressPolicies(allowDNS bool) []*NetworkPolicy {
+func (g *FragmentGenerator) IngressEgressPolicies(allowDNS bool) []*NetworkPolicy {
 	panic("TODO -- how to get this to a workable number?")
 	//var policies []*NetworkPolicy
 	//i := 0
@@ -230,14 +230,14 @@ func (g *Generator) IngressEgressPolicies(allowDNS bool) []*NetworkPolicy {
 
 // multiple policies
 
-func (g *Generator) IngressPolicySlices() [][]*NetworkPolicy {
+func (g *FragmentGenerator) IngressPolicySlices() [][]*NetworkPolicy {
 	panic("TODO")
 }
 
-func (g *Generator) EgressPolicySlices() [][]*NetworkPolicy {
+func (g *FragmentGenerator) EgressPolicySlices() [][]*NetworkPolicy {
 	panic("TODO")
 }
 
-func (g *Generator) IngressEgressPolicySlices() [][]*NetworkPolicy {
+func (g *FragmentGenerator) IngressEgressPolicySlices() [][]*NetworkPolicy {
 	panic("TODO")
 }

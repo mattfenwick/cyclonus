@@ -1,4 +1,4 @@
-package netpolgen
+package generator
 
 import (
 	"github.com/pkg/errors"

@@ -2,10 +2,10 @@ package cli
 
 import (
 	"fmt"
+	"github.com/mattfenwick/cyclonus/pkg/connectivity"
+	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
-	"github.com/mattfenwick/cyclonus/pkg/netpol/connectivity"
-	"github.com/mattfenwick/cyclonus/pkg/netpol/netpolgen"
-	"github.com/mattfenwick/cyclonus/pkg/netpol/utils"
+	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -87,15 +87,15 @@ func RunGeneratorCommand(args *GeneratorArgs) {
 	}
 	zcIP := zcPod.Status.PodIP
 
-	generator := &netpolgen.Generator{
-		Ports:            netpolgen.DefaultPorts(),
-		PodPeers:         netpolgen.DefaultPodPeers(zcIP),
-		Targets:          netpolgen.DefaultTargets(),
+	generator := &generator.FragmentGenerator{
+		Ports:            generator.DefaultPorts(),
+		PodPeers:         generator.DefaultPodPeers(zcIP),
+		Targets:          generator.DefaultTargets(),
 		Namespaces:       namespaces,
-		TypicalPorts:     netpolgen.TypicalPorts,
-		TypicalPeers:     netpolgen.TypicalPeers,
-		TypicalTarget:    netpolgen.TypicalTarget,
-		TypicalNamespace: netpolgen.TypicalNamespace,
+		TypicalPorts:     generator.TypicalPorts,
+		TypicalPeers:     generator.TypicalPeers,
+		TypicalTarget:    generator.TypicalTarget,
+		TypicalNamespace: generator.TypicalNamespace,
 	}
 
 	var kubePolicies []*networkingv1.NetworkPolicy

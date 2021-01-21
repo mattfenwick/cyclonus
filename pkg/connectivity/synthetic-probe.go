@@ -1,7 +1,7 @@
 package connectivity
 
 import (
-	"github.com/mattfenwick/cyclonus/pkg/netpol/matcher"
+	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"

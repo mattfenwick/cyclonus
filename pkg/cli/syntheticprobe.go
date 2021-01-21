@@ -3,9 +3,9 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/mattfenwick/cyclonus/pkg/netpol/connectivity"
-	"github.com/mattfenwick/cyclonus/pkg/netpol/matcher"
-	"github.com/mattfenwick/cyclonus/pkg/netpol/utils"
+	"github.com/mattfenwick/cyclonus/pkg/connectivity"
+	"github.com/mattfenwick/cyclonus/pkg/matcher"
+	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"

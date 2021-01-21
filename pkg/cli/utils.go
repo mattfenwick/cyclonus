@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
-	"github.com/mattfenwick/cyclonus/pkg/kube/netpol/examples"
-	"github.com/mattfenwick/cyclonus/pkg/netpol/utils"
+	"github.com/mattfenwick/cyclonus/pkg/kube/netpol"
+	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
@@ -26,7 +26,7 @@ func readPolicies(source string, namespaces []string, policyPath string) ([]*net
 	case "file":
 		return readPoliciesFromPath(policyPath)
 	case "examples":
-		return examples.AllExamples, nil
+		return netpol.AllExamples, nil
 	default:
 		return nil, errors.Errorf("invalid policy source %s", source)
 	}
