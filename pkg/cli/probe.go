@@ -129,7 +129,7 @@ func RunProbeCommand(args *ProbeArgs) {
 	}
 
 	log.Infof("synthetic probe on port %d, protocol %s", port.Port, port.Protocol)
-	synthetic := connectivity.RunSyntheticProbe(policy, port, podModel)
+	synthetic := connectivity.RunSyntheticProbe(policy, port.Protocol, port.Port, podModel)
 
 	log.Infof("kube probe on port %d, protocol %s", port.Port, port.Protocol)
 	kubeProbe := connectivity.RunKubeProbe(kubernetes, podModel, port.Port, port.Protocol, 5)

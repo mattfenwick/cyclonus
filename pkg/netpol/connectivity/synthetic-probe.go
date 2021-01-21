@@ -7,14 +7,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-type ProtocolPort struct {
+type SyntheticProbeResult struct {
 	Protocol v1.Protocol
 	Port     int
-	//Port     intstr.IntOrString // TODO how to support
-}
-
-type SyntheticProbeResult struct {
-	Port     *ProtocolPort
 	Policies *matcher.Policy
 	Model    *PodModel
 	Ingress  *TruthTable
@@ -22,12 +17,12 @@ type SyntheticProbeResult struct {
 	Combined *TruthTable
 }
 
-func RunSyntheticProbe(policies *matcher.Policy, portProtocol *ProtocolPort, model *PodModel) *SyntheticProbeResult {
+func RunSyntheticProbe(policies *matcher.Policy, protocol v1.Protocol, port int, model *PodModel) *SyntheticProbeResult {
 	ingressTable := model.NewTruthTable()
 	egressTable := model.NewTruthTable()
 	combined := model.NewTruthTable()
 
-	log.Infof("running probe on port %d, protocol %s", portProtocol.Port, portProtocol.Protocol)
+	log.Infof("running probe on port %d, protocol %s", port, protocol)
 
 	for _, podFrom := range model.AllPods() {
 		for _, podTo := range model.AllPods() {
@@ -49,8 +44,8 @@ func RunSyntheticProbe(policies *matcher.Policy, portProtocol *ProtocolPort, mod
 					IP: podTo.Pod.IP,
 				},
 				PortProtocol: &matcher.PortProtocol{
-					Protocol: portProtocol.Protocol,
-					Port:     intstr.FromInt(portProtocol.Port),
+					Protocol: protocol,
+					Port:     intstr.FromInt(port),
 				},
 			}
 
@@ -64,7 +59,8 @@ func RunSyntheticProbe(policies *matcher.Policy, portProtocol *ProtocolPort, mod
 	}
 
 	return &SyntheticProbeResult{
-		Port:     portProtocol,
+		Port:     port,
+		Protocol: protocol,
 		Policies: policies,
 		Model:    model,
 		Ingress:  ingressTable,
@@ -73,10 +69,15 @@ func RunSyntheticProbe(policies *matcher.Policy, portProtocol *ProtocolPort, mod
 	}
 }
 
+type ProtocolPort struct {
+	Port     int
+	Protocol v1.Protocol
+}
+
 func RunSyntheticProbes(policies *matcher.Policy, ports []*ProtocolPort, model *PodModel) []*SyntheticProbeResult {
 	var results []*SyntheticProbeResult
 	for _, portProtocol := range ports {
-		results = append(results, RunSyntheticProbe(policies, portProtocol, model))
+		results = append(results, RunSyntheticProbe(policies, portProtocol.Protocol, portProtocol.Port, model))
 	}
 	return results
 }

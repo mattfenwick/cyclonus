@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/netpol/connectivity"
-	"github.com/mattfenwick/cyclonus/pkg/netpol/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/netpol/netpolgen"
 	"github.com/mattfenwick/cyclonus/pkg/netpol/utils"
 	"github.com/pkg/errors"
@@ -12,8 +11,6 @@ import (
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	"sigs.k8s.io/yaml"
-	"time"
 )
 
 type GeneratorArgs struct {
@@ -134,54 +131,17 @@ func RunGeneratorCommand(args *GeneratorArgs) {
 	}
 
 	for i, kubePolicy := range kubePolicies {
-		utils.DoOrDie(kubernetes.DeleteAllNetworkPoliciesInNamespaces(namespacesToClean))
-
-		policy := matcher.BuildNetworkPolicy(kubePolicy)
-
-		if args.Noisy {
-			policyBytes, err := yaml.Marshal(kubePolicy)
-			utils.DoOrDie(err)
-			fmt.Printf("Creating network policy:\n%s\n\n", policyBytes)
-
-			fmt.Printf("%s\n\n", matcher.Explain(policy))
-			matcher.TableExplainer(policy).Render()
+		testCase := &connectivity.TestCase{
+			KubePolicy:                kubePolicy,
+			Noisy:                     args.Noisy,
+			NetpolCreationWaitSeconds: args.NetpolCreationWaitSeconds,
+			Port:                      port.Port,
+			Protocol:                  port.Protocol,
+			PodModel:                  podModel,
+			IgnoreLoopback:            args.IgnoreLoopback,
+			NamespacesToClean:         namespacesToClean,
 		}
-
-		_, err = kubernetes.CreateNetworkPolicy(kubePolicy)
-		utils.DoOrDie(err)
-
-		log.Infof("waiting %d seconds for network policy to create and become active", args.NetpolCreationWaitSeconds)
-		time.Sleep(time.Duration(args.NetpolCreationWaitSeconds) * time.Second)
-
-		log.Infof("probe on port %d, protocol %s", port.Port, port.Protocol)
-		synthetic := connectivity.RunSyntheticProbe(policy, port, podModel)
-
-		kubeProbe := connectivity.RunKubeProbe(kubernetes, podModel, port.Port, port.Protocol, 5)
-
-		fmt.Printf("\n\nKube results for %s/%s:\n", kubePolicy.Namespace, kubePolicy.Name)
-		kubeProbe.Table().Render()
-
-		comparison := synthetic.Combined.Compare(kubeProbe)
-		t, f, nv, checked := comparison.ValueCounts(args.IgnoreLoopback)
-		if f > 0 {
-			fmt.Printf("Discrepancy found: %d wrong, %d no value, %d correct out of %d total\n", f, t, nv, checked)
-		} else {
-			fmt.Printf("found %d true, %d false, %d no value from %d total\n", t, f, nv, checked)
-		}
-
-		if f > 0 || args.Noisy {
-			fmt.Println("Ingress:")
-			synthetic.Ingress.Table().Render()
-
-			fmt.Println("Egress:")
-			synthetic.Egress.Table().Render()
-
-			fmt.Println("Combined:")
-			synthetic.Combined.Table().Render()
-
-			fmt.Printf("\n\nSynthetic vs combined:\n")
-			comparison.Table().Render()
-		}
+		utils.DoOrDie(connectivity.TestNetworkPolicy(kubernetes, testCase))
 
 		fmt.Printf("\nfinished policy #%d\n\n", i)
 	}

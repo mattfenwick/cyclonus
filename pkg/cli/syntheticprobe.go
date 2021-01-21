@@ -66,7 +66,7 @@ func RunProbeSyntheticConnectivityCommand(args *SyntheticProbeConnectivityArgs) 
 
 	// 4. run probes
 	for _, result := range connectivity.RunSyntheticProbes(explainedPolicies, config.Probes, config.Pods) {
-		log.Infof("probe on port %d, protocol %s", result.Port.Port, result.Port.Protocol)
+		log.Infof("probe on port %d, protocol %s", result.Port, result.Protocol)
 
 		// 5. print out a result matrix
 		fmt.Println("Ingress:")
