@@ -1,8 +1,6 @@
 package matcher
 
 import (
-	"encoding/json"
-	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -80,11 +78,6 @@ spec:
 	})
 
 	Describe("Allowing a protocol should implicitly deny other protocols from ips", func() {
-		bs, err := json.MarshalIndent(allowAllOnSCTP, "", "  ")
-		Expect(err).To(BeNil())
-		fmt.Printf("%s\n\n", bs)
-		fmt.Printf("%s\n\n", Explain(allowAllOnSCTP))
-
 		It("should not allow TCP", func() {
 			tcpAllowed := allowAllOnSCTP.IsTrafficAllowed(&Traffic{
 				Source: &TrafficPeer{
@@ -155,7 +148,6 @@ spec:
 		policy := BuildNetworkPolicy(kubePolicy)
 
 		It("Should allow ips in cidr", func() {
-			fmt.Printf("policy: \n%s\n", Explain(policy))
 			Expect(policy.IsTrafficAllowed(&Traffic{
 				Source: &TrafficPeer{
 					Internal: &InternalPeer{

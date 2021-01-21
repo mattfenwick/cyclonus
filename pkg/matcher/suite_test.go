@@ -7,10 +7,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestModel(t *testing.T) {
+func TestMatcher(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunBuilderTests()
-	RunExplainerTests()
 	RunPolicyTests()
 	RunSpecs(t, "network policy matcher suite")
 }

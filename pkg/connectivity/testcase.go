@@ -2,6 +2,7 @@ package connectivity
 
 import (
 	"fmt"
+	"github.com/mattfenwick/cyclonus/pkg/explainer"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
@@ -37,8 +38,8 @@ func TestNetworkPolicy(kubernetes *kube.Kubernetes, testCase *TestCase) error {
 
 		logrus.Infof("Creating network policy:\n%s\n\n", policyBytes)
 
-		fmt.Printf("%s\n\n", matcher.Explain(policy))
-		matcher.TableExplainer(policy).Render()
+		fmt.Printf("%s\n\n", explainer.Explain(policy))
+		explainer.TableExplainer(policy).Render()
 	}
 
 	_, err := kubernetes.CreateNetworkPolicy(testCase.KubePolicy)

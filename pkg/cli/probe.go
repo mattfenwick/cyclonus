@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity"
+	"github.com/mattfenwick/cyclonus/pkg/explainer"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
@@ -124,8 +125,8 @@ func RunProbeCommand(args *ProbeArgs) {
 	policy := matcher.BuildNetworkPolicies(kubePoliciesPointers)
 
 	if args.Noisy {
-		fmt.Printf("%s\n\n", matcher.Explain(policy))
-		matcher.TableExplainer(policy).Render()
+		fmt.Printf("%s\n\n", explainer.Explain(policy))
+		explainer.TableExplainer(policy).Render()
 	}
 
 	log.Infof("synthetic probe on port %d, protocol %s", port.Port, port.Protocol)

@@ -1,4 +1,4 @@
-package kube
+package explainer
 
 import (
 	"testing"
@@ -9,6 +9,6 @@ import (
 
 func TestModel(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunIPAddressTests()
-	RunSpecs(t, "network policy matcher suite")
+	RunExplainerTests()
+	RunSpecs(t, "explainer suite")
 }

@@ -1,10 +1,10 @@
 package matcher
 
 import (
+	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func BuildNetworkPolicy(policy *networkingv1.NetworkPolicy) *Policy {
@@ -138,7 +138,7 @@ func BuildIPBlockNamespacePodMatcher(policyNamespace string, peer networkingv1.N
 
 	podSel := peer.PodSelector
 	var podMatcher PodMatcher
-	if podSel == nil || isLabelSelectorEmpty(*podSel) {
+	if podSel == nil || kube.IsLabelSelectorEmpty(*podSel) {
 		podMatcher = &AllPodMatcher{}
 	} else {
 		podMatcher = &LabelSelectorPodMatcher{Selector: *podSel}
@@ -148,7 +148,7 @@ func BuildIPBlockNamespacePodMatcher(policyNamespace string, peer networkingv1.N
 	var nsMatcher NamespaceMatcher
 	if nsSel == nil {
 		nsMatcher = &ExactNamespaceMatcher{Namespace: policyNamespace}
-	} else if isLabelSelectorEmpty(*nsSel) {
+	} else if kube.IsLabelSelectorEmpty(*nsSel) {
 		nsMatcher = &AllNamespaceMatcher{}
 	} else {
 		nsMatcher = &LabelSelectorNamespaceMatcher{Selector: *nsSel}
@@ -174,8 +174,4 @@ func BuildPortMatcher(npPorts []networkingv1.NetworkPolicyPort) PortMatcher {
 		}
 		return matcher
 	}
-}
-
-func isLabelSelectorEmpty(l metav1.LabelSelector) bool {
-	return len(l.MatchLabels) == 0 && len(l.MatchExpressions) == 0
 }

@@ -7,7 +7,7 @@ import (
 	v1 "k8s.io/api/networking/v1"
 )
 
-func RunMatchersTests() {
+func RunIPAddressTests() {
 	Describe("IPAddress and CIDRs", func() {
 		It("Determines whether an IP address is in a CIDR", func() {
 			testCases := []struct {

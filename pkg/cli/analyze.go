@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"github.com/mattfenwick/cyclonus/pkg/explainer"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/spf13/cobra"
@@ -48,8 +49,8 @@ func RunAnalyzePoliciesCommand(args *AnalyzePoliciesArgs) {
 	case "json":
 		printJSON(explainedPolicies)
 	case "table":
-		matcher.TableExplainer(explainedPolicies).Render()
+		explainer.TableExplainer(explainedPolicies).Render()
 	default:
-		fmt.Printf("%s\n\n", matcher.Explain(explainedPolicies))
+		fmt.Printf("%s\n\n", explainer.Explain(explainedPolicies))
 	}
 }

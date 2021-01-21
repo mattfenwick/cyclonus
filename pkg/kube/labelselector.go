@@ -1,10 +1,11 @@
 package kube
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/pkg/errors"
-	v1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"net"
+	"sort"
 )
 
 // IsNameMatch follows the kube pattern of "empty string means matches All"
@@ -83,34 +84,28 @@ func IsLabelsMatchLabelSelector(labels map[string]string, labelSelector metav1.L
 	return true
 }
 
-func IsIPInCIDR(ip string, cidr string) (bool, error) {
-	_, cidrNet, err := net.ParseCIDR(cidr)
-	if err != nil {
-		return false, errors.Wrapf(err, "unable to parse CIDR '%s'", cidr)
-	}
-	trafficIP := net.ParseIP(ip)
-	if trafficIP == nil {
-		return false, errors.Errorf("unable to parse IP '%s'", ip)
-	}
-	return cidrNet.Contains(trafficIP), nil
+func IsLabelSelectorEmpty(l metav1.LabelSelector) bool {
+	return len(l.MatchLabels) == 0 && len(l.MatchExpressions) == 0
 }
 
-func IsIPAddressMatchForIPBlock(ip string, ipBlock *v1.IPBlock) (bool, error) {
-	isInCidr, err := IsIPInCIDR(ip, ipBlock.CIDR)
+// SerializeLabelSelector deterministically converts a metav1.LabelSelector
+// into a string
+func SerializeLabelSelector(ls metav1.LabelSelector) string {
+	var labelKeys []string
+	for key := range ls.MatchLabels {
+		labelKeys = append(labelKeys, key)
+	}
+	sort.Slice(labelKeys, func(i, j int) bool {
+		return labelKeys[i] < labelKeys[j]
+	})
+	var keyVals []string
+	for _, key := range labelKeys {
+		keyVals = append(keyVals, fmt.Sprintf("%s: %s", key, ls.MatchLabels[key]))
+	}
+	// this is weird, but use an array to make the order deterministic
+	bytes, err := json.Marshal([]interface{}{"MatchLabels", keyVals, "MatchExpression", ls.MatchExpressions})
 	if err != nil {
-		return false, err
+		panic(errors.Wrapf(err, "unable to marshal json"))
 	}
-	if !isInCidr {
-		return false, nil
-	}
-	for _, except := range ipBlock.Except {
-		isInExcept, err := IsIPInCIDR(ip, except)
-		if err != nil {
-			return false, err
-		}
-		if isInExcept {
-			return false, nil
-		}
-	}
-	return true, nil
+	return string(bytes)
 }

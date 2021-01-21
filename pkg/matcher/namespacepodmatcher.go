@@ -106,7 +106,7 @@ func (p *LabelSelectorPodMatcher) MarshalJSON() (b []byte, e error) {
 }
 
 func (p *LabelSelectorPodMatcher) PrimaryKey() string {
-	return fmt.Sprintf(`{"type": "label-selector", "selector": "%s"}`, SerializeLabelSelector(p.Selector))
+	return fmt.Sprintf(`{"type": "label-selector", "selector": "%s"}`, kube.SerializeLabelSelector(p.Selector))
 }
 
 // namespaces
@@ -151,7 +151,7 @@ func (p *LabelSelectorNamespaceMatcher) MarshalJSON() (b []byte, e error) {
 }
 
 func (p *LabelSelectorNamespaceMatcher) PrimaryKey() string {
-	return fmt.Sprintf(`{"type": "label-selector", "selector": "%s"}`, SerializeLabelSelector(p.Selector))
+	return fmt.Sprintf(`{"type": "label-selector", "selector": "%s"}`, kube.SerializeLabelSelector(p.Selector))
 }
 
 type AllNamespaceMatcher struct{}

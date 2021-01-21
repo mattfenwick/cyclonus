@@ -1,7 +1,8 @@
-package matcher
+package explainer
 
 import (
 	"fmt"
+	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
@@ -12,6 +13,7 @@ import (
 
 var (
 	udp     = v1.ProtocolUDP
+	port53  = intstr.FromInt(53)
 	port103 = intstr.FromInt(103)
 	sctp    = v1.ProtocolSCTP
 )
@@ -87,7 +89,7 @@ func RunExplainerTests() {
 					PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
 				},
 			}
-			policies := BuildNetworkPolicies([]*networkingv1.NetworkPolicy{complicatedNetpol})
+			policies := matcher.BuildNetworkPolicies([]*networkingv1.NetworkPolicy{complicatedNetpol})
 			explanation := Explain(policies)
 			fmt.Printf("\n%s\n", explanation)
 			expected := `{"Namespace": "test-ns", "PodSelector": ["MatchLabels",["pod: a"],"MatchExpression",null]}

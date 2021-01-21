@@ -14,10 +14,13 @@ import (
 )
 
 var (
-	port53 = intstr.FromInt(53)
-	port80 = intstr.FromInt(80)
+	udp  = v1.ProtocolUDP
+	sctp = v1.ProtocolSCTP
+	tcp  = v1.ProtocolTCP
 
-	tcp = v1.ProtocolTCP
+	port53  = intstr.FromInt(53)
+	port80  = intstr.FromInt(80)
+	port103 = intstr.FromInt(103)
 )
 
 func RunBuilderTests() {

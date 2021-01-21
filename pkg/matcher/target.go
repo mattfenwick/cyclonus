@@ -46,7 +46,7 @@ func (t *Target) Combine(other *Target) *Target {
 // The primary key is a deterministic combination of PodSelector and namespace
 func (t *Target) GetPrimaryKey() string {
 	if t.primaryKey == "" {
-		t.primaryKey = fmt.Sprintf(`{"Namespace": "%s", "PodSelector": %s}`, t.Namespace, SerializeLabelSelector(t.PodSelector))
+		t.primaryKey = fmt.Sprintf(`{"Namespace": "%s", "PodSelector": %s}`, t.Namespace, kube.SerializeLabelSelector(t.PodSelector))
 	}
 	return t.primaryKey
 }
