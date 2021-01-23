@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity"
+	kube2 "github.com/mattfenwick/cyclonus/pkg/connectivity/kube"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
@@ -66,7 +67,7 @@ func RunGeneratorCommand(args *GeneratorArgs) {
 	}
 	utils.DoOrDie(err)
 
-	utils.DoOrDie(connectivity.CreateResources(kubernetes, podModel))
+	utils.DoOrDie(kube2.CreateResources(kubernetes, podModel))
 	waitForPodsReady(kubernetes, namespaces, pods, 60)
 
 	podList, err := kubernetes.GetPodsInNamespaces(namespaces)
@@ -130,6 +131,8 @@ func RunGeneratorCommand(args *GeneratorArgs) {
 		}
 	}
 
+	tester := connectivity.NewTester(kubernetes)
+
 	for i, kubePolicy := range kubePolicies {
 		testCase := &connectivity.TestCase{
 			KubePolicy:                kubePolicy,
@@ -141,7 +144,8 @@ func RunGeneratorCommand(args *GeneratorArgs) {
 			IgnoreLoopback:            args.IgnoreLoopback,
 			NamespacesToClean:         namespacesToClean,
 		}
-		utils.DoOrDie(connectivity.TestNetworkPolicy(kubernetes, testCase))
+		result := tester.TestNetworkPolicy(testCase)
+		utils.DoOrDie(result.Err)
 
 		fmt.Printf("\nfinished policy #%d\n\n", i)
 	}

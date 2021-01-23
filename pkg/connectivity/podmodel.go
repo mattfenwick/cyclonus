@@ -2,6 +2,7 @@ package connectivity
 
 import (
 	"fmt"
+	"github.com/mattfenwick/cyclonus/pkg/utils"
 	v1 "k8s.io/api/core/v1"
 	"sort"
 	"strings"
@@ -37,7 +38,7 @@ func NewDefaultModel(namespaces []string, podNames []string, port int, protocol 
 	return model
 }
 
-func (m *PodModel) NewTruthTable() *TruthTable {
+func (m *PodModel) NewTruthTable() *utils.TruthTable {
 	var podNames []string
 	for _, pod := range m.AllPodStrings() {
 		podNames = append(podNames, pod.String())
@@ -45,7 +46,7 @@ func (m *PodModel) NewTruthTable() *TruthTable {
 	sort.Slice(podNames, func(i, j int) bool {
 		return podNames[i] < podNames[j]
 	})
-	return NewTruthTableFromItems(podNames, nil)
+	return utils.NewTruthTableFromItems(podNames, nil)
 }
 
 func (m *PodModel) AllPodStrings() []PodString {

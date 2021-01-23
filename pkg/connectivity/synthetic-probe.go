@@ -2,6 +2,7 @@ package connectivity
 
 import (
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
+	"github.com/mattfenwick/cyclonus/pkg/utils"
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -12,9 +13,9 @@ type SyntheticProbeResult struct {
 	Port     int
 	Policies *matcher.Policy
 	Model    *PodModel
-	Ingress  *TruthTable
-	Egress   *TruthTable
-	Combined *TruthTable
+	Ingress  *utils.TruthTable
+	Egress   *utils.TruthTable
+	Combined *utils.TruthTable
 }
 
 func RunSyntheticProbe(policies *matcher.Policy, protocol v1.Protocol, port int, model *PodModel) *SyntheticProbeResult {

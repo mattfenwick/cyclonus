@@ -1,4 +1,4 @@
-package connectivity
+package utils
 
 import (
 	"github.com/olekukonko/tablewriter"

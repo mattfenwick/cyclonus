@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity"
+	kube2 "github.com/mattfenwick/cyclonus/pkg/connectivity/kube"
 	"github.com/mattfenwick/cyclonus/pkg/explainer"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
@@ -81,7 +82,7 @@ func RunProbeCommand(args *ProbeArgs) {
 	}
 	podModel := connectivity.NewDefaultModel(args.Namespaces, args.Pods, port.Port, port.Protocol)
 
-	utils.DoOrDie(connectivity.CreateResources(kubernetes, podModel))
+	utils.DoOrDie(kube2.CreateResources(kubernetes, podModel))
 	waitForPodsReady(kubernetes, args.Namespaces, args.Pods, 60)
 
 	podList, err := kubernetes.GetPodsInNamespaces(args.Namespaces)
@@ -133,12 +134,17 @@ func RunProbeCommand(args *ProbeArgs) {
 	synthetic := connectivity.RunSyntheticProbe(policy, port.Protocol, port.Port, podModel)
 
 	log.Infof("kube probe on port %d, protocol %s", port.Port, port.Protocol)
-	kubeProbe := connectivity.RunKubeProbe(kubernetes, podModel, port.Port, port.Protocol, 5)
+	kubeProbe := kube2.RunKubeProbe(kubernetes, &kube2.Request{
+		Model:           podModel,
+		Port:            port.Port,
+		Protocol:        port.Protocol,
+		NumberOfWorkers: 5,
+	})
 
 	fmt.Printf("\n\nKube results:\n")
-	kubeProbe.Table().Render()
+	kubeProbe.TruthTable().Table().Render()
 
-	comparison := synthetic.Combined.Compare(kubeProbe)
+	comparison := synthetic.Combined.Compare(kubeProbe.TruthTable())
 	t, f, nv, checked := comparison.ValueCounts(args.IgnoreLoopback)
 	if f > 0 {
 		fmt.Printf("Discrepancy found: %d wrong, %d no value, %d correct out of %d total\n", f, t, nv, checked)
