@@ -2,8 +2,8 @@ package cli
 
 import (
 	"fmt"
-	"github.com/mattfenwick/cyclonus/pkg/connectivity"
-	kube2 "github.com/mattfenwick/cyclonus/pkg/connectivity/kube"
+	connectivitykube "github.com/mattfenwick/cyclonus/pkg/connectivity/kube"
+	"github.com/mattfenwick/cyclonus/pkg/connectivity/synthetic"
 	"github.com/mattfenwick/cyclonus/pkg/explainer"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
@@ -76,25 +76,32 @@ func RunProbeCommand(args *ProbeArgs) {
 	}
 	utils.DoOrDie(err)
 
-	port := &connectivity.ProtocolPort{
-		Protocol: v1.ProtocolTCP,
-		Port:     80,
-	}
-	podModel := connectivity.NewDefaultModel(args.Namespaces, args.Pods, port.Port, port.Protocol)
+	port := 80
+	protocol := v1.ProtocolTCP
+	kubeResources := connectivitykube.NewDefaultResources(args.Namespaces, args.Pods, port, protocol)
 
-	utils.DoOrDie(kube2.CreateResources(kubernetes, podModel))
+	utils.DoOrDie(kubeResources.CreateResourcesInKube(kubernetes))
 	waitForPodsReady(kubernetes, args.Namespaces, args.Pods, 60)
 
 	podList, err := kubernetes.GetPodsInNamespaces(args.Namespaces)
 	utils.DoOrDie(err)
+	var syntheticPods []*synthetic.Pod
 	for _, pod := range podList {
 		ip := pod.Status.PodIP
 		if ip == "" {
 			panic(errors.Errorf("no ip found for pod %s/%s", pod.Namespace, pod.Name))
 		}
-		podModel.Namespaces[pod.Namespace].Pods[pod.Name].IP = ip
+		syntheticPods = append(syntheticPods, &synthetic.Pod{
+			Namespace: pod.Namespace,
+			Name:      pod.Name,
+			Labels:    pod.Labels,
+			IP:        ip,
+		})
 		log.Infof("ip for pod %s/%s: %s", pod.Namespace, pod.Name, ip)
 	}
+
+	syntheticResources, err := synthetic.NewResources(kubeResources.Namespaces, syntheticPods)
+	utils.DoOrDie(err)
 
 	if args.PolicyPath != "" {
 		policyBytes, err := ioutil.ReadFile(args.PolicyPath)
@@ -130,21 +137,26 @@ func RunProbeCommand(args *ProbeArgs) {
 		explainer.TableExplainer(policy).Render()
 	}
 
-	log.Infof("synthetic probe on port %d, protocol %s", port.Port, port.Protocol)
-	synthetic := connectivity.RunSyntheticProbe(policy, port.Protocol, port.Port, podModel)
+	log.Infof("synthetic probe on port %d, protocol %s", port, protocol)
+	syntheticResults := synthetic.RunSyntheticProbe(&synthetic.Request{
+		Protocol:  protocol,
+		Port:      port,
+		Policies:  policy,
+		Resources: syntheticResources,
+	})
 
-	log.Infof("kube probe on port %d, protocol %s", port.Port, port.Protocol)
-	kubeProbe := kube2.RunKubeProbe(kubernetes, &kube2.Request{
-		Model:           podModel,
-		Port:            port.Port,
-		Protocol:        port.Protocol,
+	log.Infof("kube probe on port %d, protocol %s", port, protocol)
+	kubeProbe := connectivitykube.RunKubeProbe(kubernetes, &connectivitykube.Request{
+		Resources:       kubeResources,
+		Port:            port,
+		Protocol:        protocol,
 		NumberOfWorkers: 5,
 	})
 
 	fmt.Printf("\n\nKube results:\n")
 	kubeProbe.TruthTable().Table().Render()
 
-	comparison := synthetic.Combined.Compare(kubeProbe.TruthTable())
+	comparison := syntheticResults.Combined.Compare(kubeProbe.TruthTable())
 	t, f, nv, checked := comparison.ValueCounts(args.IgnoreLoopback)
 	if f > 0 {
 		fmt.Printf("Discrepancy found: %d wrong, %d no value, %d correct out of %d total\n", f, t, nv, checked)
@@ -154,13 +166,13 @@ func RunProbeCommand(args *ProbeArgs) {
 
 	if f > 0 || args.Noisy {
 		fmt.Println("Ingress:")
-		synthetic.Ingress.Table().Render()
+		syntheticResults.Ingress.Table().Render()
 
 		fmt.Println("Egress:")
-		synthetic.Egress.Table().Render()
+		syntheticResults.Egress.Table().Render()
 
 		fmt.Println("Combined:")
-		synthetic.Combined.Table().Render()
+		syntheticResults.Combined.Table().Render()
 
 		fmt.Printf("\n\nSynthetic vs combined:\n")
 		comparison.Table().Render()

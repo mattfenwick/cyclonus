@@ -3,7 +3,8 @@ package cli
 import (
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity"
-	kube2 "github.com/mattfenwick/cyclonus/pkg/connectivity/kube"
+	connectivitykube "github.com/mattfenwick/cyclonus/pkg/connectivity/kube"
+	"github.com/mattfenwick/cyclonus/pkg/connectivity/synthetic"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
@@ -52,12 +53,11 @@ func RunGeneratorCommand(args *GeneratorArgs) {
 	namespaces := []string{"x", "y", "z"}
 	pods := []string{"a", "b", "c"}
 
-	port := &connectivity.ProtocolPort{
-		Protocol: v1.ProtocolTCP,
-		Port:     80,
-	}
-	// TODO don't use default model?
-	podModel := connectivity.NewDefaultModel(namespaces, pods, port.Port, port.Protocol)
+	protocol := v1.ProtocolTCP
+	port := 80
+
+	kubeResources := connectivitykube.NewDefaultResources(namespaces, pods, port, protocol)
+
 	var kubernetes *kube.Kubernetes
 	var err error
 	if args.KubeContext == "" {
@@ -67,19 +67,28 @@ func RunGeneratorCommand(args *GeneratorArgs) {
 	}
 	utils.DoOrDie(err)
 
-	utils.DoOrDie(kube2.CreateResources(kubernetes, podModel))
+	utils.DoOrDie(kubeResources.CreateResourcesInKube(kubernetes))
 	waitForPodsReady(kubernetes, namespaces, pods, 60)
 
 	podList, err := kubernetes.GetPodsInNamespaces(namespaces)
 	utils.DoOrDie(err)
+	var syntheticPods []*synthetic.Pod
 	for _, pod := range podList {
 		ip := pod.Status.PodIP
 		if ip == "" {
 			panic(errors.Errorf("no ip found for pod %s/%s", pod.Namespace, pod.Name))
 		}
-		podModel.Namespaces[pod.Namespace].Pods[pod.Name].IP = ip
+		syntheticPods = append(syntheticPods, &synthetic.Pod{
+			Namespace: pod.Namespace,
+			Name:      pod.Name,
+			Labels:    pod.Labels,
+			IP:        ip,
+		})
 		log.Infof("ip for pod %s/%s: %s", pod.Namespace, pod.Name, ip)
 	}
+
+	syntheticResources, err := synthetic.NewResources(kubeResources.Namespaces, syntheticPods)
+	utils.DoOrDie(err)
 
 	zcPod, err := kubernetes.GetPod("z", "c")
 	utils.DoOrDie(err)
@@ -88,7 +97,7 @@ func RunGeneratorCommand(args *GeneratorArgs) {
 	}
 	zcIP := zcPod.Status.PodIP
 
-	generator := &generator.FragmentGenerator{
+	fragGenerator := &generator.FragmentGenerator{
 		Ports:            generator.DefaultPorts(),
 		PodPeers:         generator.DefaultPodPeers(zcIP),
 		Targets:          generator.DefaultTargets(),
@@ -102,15 +111,15 @@ func RunGeneratorCommand(args *GeneratorArgs) {
 	var kubePolicies []*networkingv1.NetworkPolicy
 	switch args.Mode {
 	//case "ingress-egress":
-	//	kubePolicies = generator.IngressEgressPolicies(args.AllowDNS)
+	//	kubePolicies = fragGenerator.IngressEgressPolicies(args.AllowDNS)
 	case "ingress":
-		kubePolicies = generator.IngressPolicies()
+		kubePolicies = fragGenerator.IngressPolicies()
 	case "egress":
-		kubePolicies = generator.EgressPolicies(args.AllowDNS)
+		kubePolicies = fragGenerator.EgressPolicies(args.AllowDNS)
 	case "vary-ingress": // TODO come up with a better name
-		kubePolicies = generator.VaryIngressPolicies()
+		kubePolicies = fragGenerator.VaryIngressPolicies()
 	case "vary-egress": // TODO come up with a better name
-		kubePolicies = generator.VaryEgressPolicies(args.AllowDNS)
+		kubePolicies = fragGenerator.VaryEgressPolicies(args.AllowDNS)
 	default:
 		panic(errors.Errorf("invalid test mode %s", args.Mode))
 	}
@@ -138,9 +147,10 @@ func RunGeneratorCommand(args *GeneratorArgs) {
 			KubePolicy:                kubePolicy,
 			Noisy:                     args.Noisy,
 			NetpolCreationWaitSeconds: args.NetpolCreationWaitSeconds,
-			Port:                      port.Port,
-			Protocol:                  port.Protocol,
-			PodModel:                  podModel,
+			Port:                      port,
+			Protocol:                  protocol,
+			KubeResources:             kubeResources,
+			SyntheticResources:        syntheticResources,
 			IgnoreLoopback:            args.IgnoreLoopback,
 			NamespacesToClean:         namespacesToClean,
 		}

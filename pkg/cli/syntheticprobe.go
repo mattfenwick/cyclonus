@@ -3,13 +3,14 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/mattfenwick/cyclonus/pkg/connectivity"
+	"github.com/mattfenwick/cyclonus/pkg/connectivity/synthetic"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"io/ioutil"
+	v1 "k8s.io/api/core/v1"
 )
 
 type SyntheticProbeConnectivityArgs struct {
@@ -20,8 +21,11 @@ type SyntheticProbeConnectivityArgs struct {
 }
 
 type SyntheticProbeConnectivityConfig struct {
-	Pods   *connectivity.PodModel
-	Probes []*connectivity.ProtocolPort
+	Pods   *synthetic.Resources
+	Probes []*struct {
+		Protocol v1.Protocol
+		Port     int
+	}
 }
 
 func SetupSyntheticProbeConnectivityCommand() *cobra.Command {
@@ -65,8 +69,15 @@ func RunProbeSyntheticConnectivityCommand(args *SyntheticProbeConnectivityArgs) 
 	utils.DoOrDie(errors.Wrapf(err, "unable to unmarshal json"))
 
 	// 4. run probes
-	for _, result := range connectivity.RunSyntheticProbes(explainedPolicies, config.Probes, config.Pods) {
-		log.Infof("probe on port %d, protocol %s", result.Port, result.Protocol)
+	for _, probe := range config.Probes {
+		result := synthetic.RunSyntheticProbe(&synthetic.Request{
+			Protocol:  probe.Protocol,
+			Port:      probe.Port,
+			Policies:  explainedPolicies,
+			Resources: config.Pods,
+		})
+
+		log.Infof("probe on port %d, protocol %s", result.Request.Port, result.Request.Protocol)
 
 		// 5. print out a result matrix
 		fmt.Println("Ingress:")

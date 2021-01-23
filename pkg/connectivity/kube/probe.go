@@ -7,7 +7,7 @@ import (
 )
 
 func RunKubeProbe(k8s *kube.Kubernetes, request *Request) *Results {
-	podCount := len(request.Model.Pods)
+	podCount := len(request.Resources.Pods)
 	size := podCount * podCount
 
 	jobs := make(chan *Job, size)
@@ -15,7 +15,7 @@ func RunKubeProbe(k8s *kube.Kubernetes, request *Request) *Results {
 	for i := 0; i < request.NumberOfWorkers; i++ {
 		go probeWorker(k8s, jobs, results)
 	}
-	for _, job := range request.Model.Jobs {
+	for _, job := range request.Resources.Jobs {
 		jobs <- job
 	}
 	close(jobs)

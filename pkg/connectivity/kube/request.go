@@ -6,7 +6,7 @@ import (
 )
 
 type Request struct {
-	Model           *Resources
+	Resources       *Resources
 	Port            int
 	Protocol        v1.Protocol
 	NumberOfWorkers int
@@ -18,7 +18,7 @@ type Results struct {
 }
 
 func (k *Results) TruthTable() *utils.TruthTable {
-	reachability := k.Request.Model.NewTruthTable()
+	reachability := k.Request.Resources.NewTruthTable()
 	for _, result := range k.Results {
 		job := result.Job
 		reachability.Set(job.FromPod.PodString().String(), job.ToPod.PodString().String(), result.IsConnected)
