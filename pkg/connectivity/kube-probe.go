@@ -65,14 +65,6 @@ func KubePod(namespace string, name string, labels map[string]string, containers
 	}
 }
 
-// QualifiedServiceAddress returns the address that can be used to hit a service from
-// any namespace in the cluster
-//func QualifiedServiceAddress(serviceName string, namespace string, dnsDomain string) string {
-//	return fmt.Sprintf("%s.%s.svc.%s", serviceName, namespace, dnsDomain)
-func QualifiedServiceAddress(serviceName string, namespace string) string {
-	return fmt.Sprintf("%s.%s.svc.cluster.local", serviceName, namespace)
-}
-
 // Service returns a kube service spec
 func Service(namespace string, pod string, labels map[string]string, containers []*Container) *v1.Service {
 	service := &v1.Service{
@@ -133,7 +125,7 @@ type KubeProbeJob struct {
 }
 
 func (pj *KubeProbeJob) ToAddress() string {
-	return QualifiedServiceAddress(pj.ToPod.ServiceName(), pj.ToPod.NamespaceName)
+	return kube.QualifiedServiceAddress(pj.ToPod.ServiceName(), pj.ToPod.NamespaceName)
 }
 
 func (pj *KubeProbeJob) FromContainer() string {
