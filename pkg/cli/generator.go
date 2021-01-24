@@ -114,22 +114,25 @@ func RunGeneratorCommand(args *GeneratorArgs) {
 	}
 
 	tester := connectivity.NewTester(kubernetes)
+	printer := &connectivity.TestCasePrinter{
+		Noisy:          args.Noisy,
+		IgnoreLoopback: args.IgnoreLoopback,
+	}
 
 	for i, kubePolicy := range kubePolicies {
 		testCase := &connectivity.TestCase{
 			KubePolicy:                kubePolicy,
-			Noisy:                     args.Noisy,
 			NetpolCreationWaitSeconds: args.NetpolCreationWaitSeconds,
 			Port:                      port,
 			Protocol:                  protocol,
 			KubeResources:             kubeResources,
 			SyntheticResources:        syntheticResources,
-			IgnoreLoopback:            args.IgnoreLoopback,
 			NamespacesToClean:         namespacesToClean,
 		}
 		result := tester.TestNetworkPolicy(testCase)
 		utils.DoOrDie(result.Err)
 
+		printer.PrintTestCaseResult(result)
 		fmt.Printf("\nfinished policy #%d\n\n", i)
 	}
 }
