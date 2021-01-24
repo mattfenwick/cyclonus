@@ -6,12 +6,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func NewFragmentDefaultGenerator(podIP string) *FragmentGenerator {
+func NewDefaultFragmentGenerator(namespaces []string, podIP string) *FragmentGenerator {
 	return &FragmentGenerator{
 		Ports:            DefaultPorts(),
 		PodPeers:         DefaultPodPeers(podIP),
 		Targets:          DefaultTargets(),
-		Namespaces:       DefaultNamespaces(),
+		Namespaces:       namespaces,
 		TypicalPorts:     TypicalPorts,
 		TypicalPeers:     TypicalPeers,
 		TypicalTarget:    TypicalTarget,
@@ -101,7 +101,7 @@ func (g *FragmentGenerator) RuleSlices() [][]*Rule {
 
 // single policies, unidimensional generation
 
-func (g *FragmentGenerator) varyPolicies(count *int, isIngress bool, nss []string, targets []metav1.LabelSelector, ports [][]NetworkPolicyPort, peers [][]NetworkPolicyPeer) []*NetworkPolicy {
+func (g *FragmentGenerator) fragmentPolicies(count *int, isIngress bool, nss []string, targets []metav1.LabelSelector, ports [][]NetworkPolicyPort, peers [][]NetworkPolicyPeer) []*NetworkPolicy {
 	var policies []*NetworkPolicy
 	for i, ns := range nss {
 		for j, target := range targets {
@@ -116,7 +116,7 @@ func (g *FragmentGenerator) varyPolicies(count *int, isIngress bool, nss []strin
 						desc = "egress"
 						egress = []*Rule{{Ports: port, Peers: peer}}
 					}
-					name := fmt.Sprintf("vary-%s-%d-%d-%d-%d-%d", desc, *count, i, j, k, l)
+					name := fmt.Sprintf("fragment-%s-%d-%d-%d-%d-%d", desc, *count, i, j, k, l)
 					policies = append(policies, (&Netpol{Name: name, Namespace: ns, PodSelector: target, IngressRules: ingress, EgressRules: egress, IsIngress: isIngress, IsEgress: !isIngress}).NetworkPolicy())
 					*count++
 				}
@@ -126,31 +126,35 @@ func (g *FragmentGenerator) varyPolicies(count *int, isIngress bool, nss []strin
 	return policies
 }
 
-func (g *FragmentGenerator) varyPoliciesWrapper(isIngress bool) []*NetworkPolicy {
+func (g *FragmentGenerator) fragmentPoliciesWrapper(isIngress bool) []*NetworkPolicy {
 	var policies []*NetworkPolicy
 	count := 0
-	policies = append(policies, g.varyPolicies(&count, isIngress, g.Namespaces, []metav1.LabelSelector{g.TypicalTarget}, [][]NetworkPolicyPort{g.TypicalPorts}, [][]NetworkPolicyPeer{g.TypicalPeers})...)
-	policies = append(policies, g.varyPolicies(&count, isIngress, []string{g.TypicalNamespace}, g.Targets, [][]NetworkPolicyPort{g.TypicalPorts}, [][]NetworkPolicyPeer{g.TypicalPeers})...)
-	policies = append(policies, g.varyPolicies(&count, isIngress, []string{g.TypicalNamespace}, []metav1.LabelSelector{g.TypicalTarget}, g.PortSlices(), [][]NetworkPolicyPeer{g.TypicalPeers})...)
-	policies = append(policies, g.varyPolicies(&count, isIngress, []string{g.TypicalNamespace}, []metav1.LabelSelector{g.TypicalTarget}, [][]NetworkPolicyPort{g.TypicalPorts}, g.PeerSlices())...)
+	policies = append(policies, g.fragmentPolicies(&count, isIngress, g.Namespaces, []metav1.LabelSelector{g.TypicalTarget}, [][]NetworkPolicyPort{g.TypicalPorts}, [][]NetworkPolicyPeer{g.TypicalPeers})...)
+	policies = append(policies, g.fragmentPolicies(&count, isIngress, []string{g.TypicalNamespace}, g.Targets, [][]NetworkPolicyPort{g.TypicalPorts}, [][]NetworkPolicyPeer{g.TypicalPeers})...)
+	policies = append(policies, g.fragmentPolicies(&count, isIngress, []string{g.TypicalNamespace}, []metav1.LabelSelector{g.TypicalTarget}, g.PortSlices(), [][]NetworkPolicyPeer{g.TypicalPeers})...)
+	policies = append(policies, g.fragmentPolicies(&count, isIngress, []string{g.TypicalNamespace}, []metav1.LabelSelector{g.TypicalTarget}, [][]NetworkPolicyPort{g.TypicalPorts}, g.PeerSlices())...)
 	return policies
 }
 
-func (g *FragmentGenerator) VaryIngressPolicies() []*NetworkPolicy {
-	policies := g.varyPoliciesWrapper(true)
+func (g *FragmentGenerator) FragmentIngressPolicies() []*NetworkPolicy {
+	policies := g.fragmentPoliciesWrapper(true)
 	// special case: empty ingress/egress
-	return append(policies, (&Netpol{Name: "vary-ingress-empty", Namespace: g.TypicalNamespace, PodSelector: g.TypicalTarget, IsIngress: true, IngressRules: []*Rule{}}).NetworkPolicy())
+	return append(policies, (&Netpol{Name: "fragment-ingress-empty", Namespace: g.TypicalNamespace, PodSelector: g.TypicalTarget, IsIngress: true, IngressRules: []*Rule{}}).NetworkPolicy())
 }
 
-func (g *FragmentGenerator) VaryEgressPolicies(allowDNS bool) []*NetworkPolicy {
-	policies := g.varyPoliciesWrapper(false)
+func (g *FragmentGenerator) FragmentEgressPolicies(allowDNS bool) []*NetworkPolicy {
+	policies := g.fragmentPoliciesWrapper(false)
 	if allowDNS {
 		for _, pol := range policies {
 			pol.Spec.Egress = append(pol.Spec.Egress, AllowDNSEgressRule)
 		}
 	}
 	// special case: empty ingress/egress
-	return append(policies, (&Netpol{Name: "vary-egress-empty", Namespace: g.TypicalNamespace, PodSelector: g.TypicalTarget, IsEgress: true, EgressRules: []*Rule{}}).NetworkPolicy())
+	return append(policies, (&Netpol{Name: "fragment-egress-empty", Namespace: g.TypicalNamespace, PodSelector: g.TypicalTarget, IsEgress: true, EgressRules: []*Rule{}}).NetworkPolicy())
+}
+
+func (g *FragmentGenerator) FragmentPolicies(allowDNS bool) []*NetworkPolicy {
+	return append(g.FragmentIngressPolicies(), g.FragmentEgressPolicies(allowDNS)...)
 }
 
 // single policies, multidimensional generation
@@ -226,18 +230,4 @@ func (g *FragmentGenerator) IngressEgressPolicies(allowDNS bool) []*NetworkPolic
 	//	}
 	//}
 	//return policies
-}
-
-// multiple policies
-
-func (g *FragmentGenerator) IngressPolicySlices() [][]*NetworkPolicy {
-	panic("TODO")
-}
-
-func (g *FragmentGenerator) EgressPolicySlices() [][]*NetworkPolicy {
-	panic("TODO")
-}
-
-func (g *FragmentGenerator) IngressEgressPolicySlices() [][]*NetworkPolicy {
-	panic("TODO")
 }

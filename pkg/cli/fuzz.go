@@ -13,7 +13,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
-type GeneratorArgs struct {
+type FuzzArgs struct {
 	Mode                      string
 	AllowDNS                  bool
 	Noisy                     bool
@@ -23,15 +23,15 @@ type GeneratorArgs struct {
 }
 
 func SetupGeneratorCommand() *cobra.Command {
-	args := &GeneratorArgs{}
+	args := &FuzzArgs{}
 
 	command := &cobra.Command{
-		Use:   "generator",
-		Short: "generate network policies",
-		Long:  "generate network policies including corner cases by combinations of fragments",
+		Use:   "fuzz",
+		Short: "fuzz network policies",
+		Long:  "fuzz network policies by generating lots of test cases, running against kubernetes, and comparing to expected results",
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, as []string) {
-			RunGeneratorCommand(args)
+			RunFuzzCommand(args)
 		},
 	}
 
@@ -47,7 +47,7 @@ func SetupGeneratorCommand() *cobra.Command {
 	return command
 }
 
-func RunGeneratorCommand(args *GeneratorArgs) {
+func RunFuzzCommand(args *FuzzArgs) {
 	namespaces := []string{"x", "y", "z"}
 	pods := []string{"a", "b", "c"}
 
@@ -71,29 +71,17 @@ func RunGeneratorCommand(args *GeneratorArgs) {
 	}
 	zcIP := zcPod.Status.PodIP
 
-	fragGenerator := &generator.FragmentGenerator{
-		Ports:            generator.DefaultPorts(),
-		PodPeers:         generator.DefaultPodPeers(zcIP),
-		Targets:          generator.DefaultTargets(),
-		Namespaces:       namespaces,
-		TypicalPorts:     generator.TypicalPorts,
-		TypicalPeers:     generator.TypicalPeers,
-		TypicalTarget:    generator.TypicalTarget,
-		TypicalNamespace: generator.TypicalNamespace,
-	}
-
 	var kubePolicies []*networkingv1.NetworkPolicy
 	switch args.Mode {
-	//case "ingress-egress":
-	//	kubePolicies = fragGenerator.IngressEgressPolicies(args.AllowDNS)
+	case "simple-fragments":
+		fragGenerator := generator.NewDefaultFragmentGenerator(namespaces, zcIP)
+		kubePolicies = fragGenerator.FragmentPolicies(args.AllowDNS)
 	case "ingress":
+		fragGenerator := generator.NewDefaultFragmentGenerator(namespaces, zcIP)
 		kubePolicies = fragGenerator.IngressPolicies()
 	case "egress":
+		fragGenerator := generator.NewDefaultFragmentGenerator(namespaces, zcIP)
 		kubePolicies = fragGenerator.EgressPolicies(args.AllowDNS)
-	case "vary-ingress": // TODO come up with a better name
-		kubePolicies = fragGenerator.VaryIngressPolicies()
-	case "vary-egress": // TODO come up with a better name
-		kubePolicies = fragGenerator.VaryEgressPolicies(args.AllowDNS)
 	default:
 		panic(errors.Errorf("invalid test mode %s", args.Mode))
 	}
