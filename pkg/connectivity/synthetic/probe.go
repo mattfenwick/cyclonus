@@ -20,7 +20,7 @@ func RunSyntheticProbe(request *Request) *Result {
 				Source: &matcher.TrafficPeer{
 					Internal: &matcher.InternalPeer{
 						PodLabels:       podFrom.Labels,
-						NamespaceLabels: resources.Namespaces[podFrom.Name],
+						NamespaceLabels: resources.Namespaces[podFrom.Namespace],
 						Namespace:       podFrom.Namespace,
 					},
 					IP: podFrom.IP,
@@ -28,7 +28,7 @@ func RunSyntheticProbe(request *Request) *Result {
 				Destination: &matcher.TrafficPeer{
 					Internal: &matcher.InternalPeer{
 						PodLabels:       podTo.Labels,
-						NamespaceLabels: resources.Namespaces[podTo.Name],
+						NamespaceLabels: resources.Namespaces[podTo.Namespace],
 						Namespace:       podTo.Namespace,
 					},
 					IP: podTo.IP,
