@@ -7,6 +7,7 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -120,6 +121,7 @@ func RunGeneratorCommand(args *GeneratorArgs) {
 	}
 
 	for i, kubePolicy := range kubePolicies {
+		logrus.Infof("starting policy #%d", i)
 		testCase := &connectivity.TestCase{
 			KubePolicy:                kubePolicy,
 			NetpolCreationWaitSeconds: args.NetpolCreationWaitSeconds,
@@ -133,6 +135,6 @@ func RunGeneratorCommand(args *GeneratorArgs) {
 		utils.DoOrDie(result.Err)
 
 		printer.PrintTestCaseResult(result)
-		fmt.Printf("\nfinished policy #%d\n\n", i)
+		logrus.Infof("finished policy #%d", i)
 	}
 }
