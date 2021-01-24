@@ -16,7 +16,6 @@ import (
 	"os"
 	"path/filepath"
 	"sigs.k8s.io/yaml"
-	"time"
 )
 
 func readPolicies(source string, namespaces []string, policyPath string) ([]*networkingv1.NetworkPolicy, error) {
@@ -130,26 +129,4 @@ func SetUpLogger(logLevelStr string) error {
 	})
 	log.Infof("log level set to '%s'", log.GetLevel())
 	return nil
-}
-
-func waitForPodsReady(kubernetes *kube.Kubernetes, namespaces []string, pods []string, timeoutSeconds int) {
-	sleep := 5
-	for i := 0; i < timeoutSeconds; i += sleep {
-		podList, err := kubernetes.GetPodsInNamespaces(namespaces)
-		utils.DoOrDie(err)
-
-		ready := 0
-		for _, pod := range podList {
-			if pod.Status.Phase == "Running" && pod.Status.PodIP != "" {
-				ready++
-			}
-		}
-		if ready == len(namespaces)*len(pods) {
-			return
-		}
-
-		log.Infof("waiting for pods to be running and have IP addresses")
-		time.Sleep(time.Duration(sleep) * time.Second)
-	}
-	panic(errors.Errorf("pods not ready"))
 }

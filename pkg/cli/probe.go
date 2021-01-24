@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"github.com/mattfenwick/cyclonus/pkg/connectivity"
 	connectivitykube "github.com/mattfenwick/cyclonus/pkg/connectivity/kube"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/synthetic"
 	"github.com/mattfenwick/cyclonus/pkg/explainer"
@@ -78,29 +79,7 @@ func RunProbeCommand(args *ProbeArgs) {
 
 	port := 80
 	protocol := v1.ProtocolTCP
-	kubeResources := connectivitykube.NewDefaultResources(args.Namespaces, args.Pods, port, protocol)
-
-	utils.DoOrDie(kubeResources.CreateResourcesInKube(kubernetes))
-	waitForPodsReady(kubernetes, args.Namespaces, args.Pods, 60)
-
-	podList, err := kubernetes.GetPodsInNamespaces(args.Namespaces)
-	utils.DoOrDie(err)
-	var syntheticPods []*synthetic.Pod
-	for _, pod := range podList {
-		ip := pod.Status.PodIP
-		if ip == "" {
-			panic(errors.Errorf("no ip found for pod %s/%s", pod.Namespace, pod.Name))
-		}
-		syntheticPods = append(syntheticPods, &synthetic.Pod{
-			Namespace: pod.Namespace,
-			Name:      pod.Name,
-			Labels:    pod.Labels,
-			IP:        ip,
-		})
-		log.Infof("ip for pod %s/%s: %s", pod.Namespace, pod.Name, ip)
-	}
-
-	syntheticResources, err := synthetic.NewResources(kubeResources.Namespaces, syntheticPods)
+	kubeResources, syntheticResources, err := connectivity.SetupCluster(kubernetes, args.Namespaces, args.Pods, port, protocol)
 	utils.DoOrDie(err)
 
 	if args.PolicyPath != "" {

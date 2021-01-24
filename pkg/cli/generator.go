@@ -3,13 +3,10 @@ package cli
 import (
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity"
-	connectivitykube "github.com/mattfenwick/cyclonus/pkg/connectivity/kube"
-	"github.com/mattfenwick/cyclonus/pkg/connectivity/synthetic"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -56,8 +53,6 @@ func RunGeneratorCommand(args *GeneratorArgs) {
 	protocol := v1.ProtocolTCP
 	port := 80
 
-	kubeResources := connectivitykube.NewDefaultResources(namespaces, pods, port, protocol)
-
 	var kubernetes *kube.Kubernetes
 	var err error
 	if args.KubeContext == "" {
@@ -65,29 +60,7 @@ func RunGeneratorCommand(args *GeneratorArgs) {
 	} else {
 		kubernetes, err = kube.NewKubernetesForContext(args.KubeContext)
 	}
-	utils.DoOrDie(err)
-
-	utils.DoOrDie(kubeResources.CreateResourcesInKube(kubernetes))
-	waitForPodsReady(kubernetes, namespaces, pods, 60)
-
-	podList, err := kubernetes.GetPodsInNamespaces(namespaces)
-	utils.DoOrDie(err)
-	var syntheticPods []*synthetic.Pod
-	for _, pod := range podList {
-		ip := pod.Status.PodIP
-		if ip == "" {
-			panic(errors.Errorf("no ip found for pod %s/%s", pod.Namespace, pod.Name))
-		}
-		syntheticPods = append(syntheticPods, &synthetic.Pod{
-			Namespace: pod.Namespace,
-			Name:      pod.Name,
-			Labels:    pod.Labels,
-			IP:        ip,
-		})
-		log.Infof("ip for pod %s/%s: %s", pod.Namespace, pod.Name, ip)
-	}
-
-	syntheticResources, err := synthetic.NewResources(kubeResources.Namespaces, syntheticPods)
+	kubeResources, syntheticResources, err := connectivity.SetupCluster(kubernetes, namespaces, pods, port, protocol)
 	utils.DoOrDie(err)
 
 	zcPod, err := kubernetes.GetPod("z", "c")
