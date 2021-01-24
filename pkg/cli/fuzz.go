@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type FuzzArgs struct {
@@ -71,36 +72,34 @@ func RunFuzzCommand(args *FuzzArgs) {
 	}
 	zcIP := zcPod.Status.PodIP
 
-	var kubePolicies []*networkingv1.NetworkPolicy
+	var kubePolicySlices [][]*networkingv1.NetworkPolicy
 	switch args.Mode {
 	case "simple-fragments":
 		fragGenerator := generator.NewDefaultFragmentGenerator(namespaces, zcIP)
-		kubePolicies = fragGenerator.FragmentPolicies(args.AllowDNS)
+		kubePolicySlices = packIntoSlices(fragGenerator.FragmentPolicies(args.AllowDNS))
 	case "ingress":
 		fragGenerator := generator.NewDefaultFragmentGenerator(namespaces, zcIP)
-		kubePolicies = fragGenerator.IngressPolicies()
+		kubePolicySlices = packIntoSlices(fragGenerator.IngressPolicies())
 	case "egress":
 		fragGenerator := generator.NewDefaultFragmentGenerator(namespaces, zcIP)
-		kubePolicies = fragGenerator.EgressPolicies(args.AllowDNS)
+		kubePolicySlices = packIntoSlices(fragGenerator.EgressPolicies(args.AllowDNS))
+	case "conflicts":
+		gen := generator.ConflictGenerator{}
+		kubePolicySlices = gen.NetworkPolicies(&generator.NetpolTarget{
+			Namespace: "x",
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{"pod": "b"},
+			},
+		}, &generator.NetpolTarget{
+			Namespace: "y",
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{"pod": "c"},
+			},
+		})
 	default:
 		panic(errors.Errorf("invalid test mode %s", args.Mode))
 	}
-	fmt.Printf("testing %d policies\n\n", len(kubePolicies))
-
-	namespacesToCleanSet := map[string]bool{}
-	namespacesToClean := []string{}
-	for _, kp := range kubePolicies {
-		if !namespacesToCleanSet[kp.Namespace] {
-			namespacesToCleanSet[kp.Namespace] = true
-			namespacesToClean = append(namespacesToClean, kp.Namespace)
-		}
-	}
-	for _, ns := range namespaces {
-		if !namespacesToCleanSet[ns] {
-			namespacesToCleanSet[ns] = true
-			namespacesToClean = append(namespacesToClean, ns)
-		}
-	}
+	fmt.Printf("testing %d policies\n\n", len(kubePolicySlices))
 
 	tester := connectivity.NewTester(kubernetes)
 	printer := &connectivity.TestCasePrinter{
@@ -108,16 +107,16 @@ func RunFuzzCommand(args *FuzzArgs) {
 		IgnoreLoopback: args.IgnoreLoopback,
 	}
 
-	for i, kubePolicy := range kubePolicies {
+	for i, kubePolicy := range kubePolicySlices {
 		logrus.Infof("starting policy #%d", i)
 		testCase := &connectivity.TestCase{
-			KubePolicy:                kubePolicy,
+			KubePolicies:              kubePolicy,
 			NetpolCreationWaitSeconds: args.NetpolCreationWaitSeconds,
 			Port:                      port,
 			Protocol:                  protocol,
 			KubeResources:             kubeResources,
 			SyntheticResources:        syntheticResources,
-			NamespacesToClean:         namespacesToClean,
+			NamespacesToClean:         namespaces,
 		}
 		result := tester.TestNetworkPolicy(testCase)
 		utils.DoOrDie(result.Err)
@@ -125,4 +124,12 @@ func RunFuzzCommand(args *FuzzArgs) {
 		printer.PrintTestCaseResult(result)
 		logrus.Infof("finished policy #%d", i)
 	}
+}
+
+func packIntoSlices(netpols []*networkingv1.NetworkPolicy) [][]*networkingv1.NetworkPolicy {
+	var sos [][]*networkingv1.NetworkPolicy
+	for _, np := range netpols {
+		sos = append(sos, []*networkingv1.NetworkPolicy{np})
+	}
+	return sos
 }

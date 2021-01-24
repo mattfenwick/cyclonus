@@ -107,17 +107,21 @@ func (g *FragmentGenerator) fragmentPolicies(count *int, isIngress bool, nss []s
 		for j, target := range targets {
 			for k, port := range ports {
 				for l, peer := range peers {
-					var ingress, egress []*Rule
+					var ingress, egress *NetpolPeers
 					var desc string
 					if isIngress {
 						desc = "ingress"
-						ingress = []*Rule{{Ports: port, Peers: peer}}
+						ingress = &NetpolPeers{Rules: []*Rule{{Ports: port, Peers: peer}}}
 					} else {
 						desc = "egress"
-						egress = []*Rule{{Ports: port, Peers: peer}}
+						egress = &NetpolPeers{Rules: []*Rule{{Ports: port, Peers: peer}}}
 					}
 					name := fmt.Sprintf("fragment-%s-%d-%d-%d-%d-%d", desc, *count, i, j, k, l)
-					policies = append(policies, (&Netpol{Name: name, Namespace: ns, PodSelector: target, IngressRules: ingress, EgressRules: egress, IsIngress: isIngress, IsEgress: !isIngress}).NetworkPolicy())
+					policies = append(policies, (&Netpol{
+						Name:    name,
+						Target:  &NetpolTarget{Namespace: ns, PodSelector: target},
+						Ingress: ingress,
+						Egress:  egress}).NetworkPolicy())
 					*count++
 				}
 			}
@@ -139,18 +143,24 @@ func (g *FragmentGenerator) fragmentPoliciesWrapper(isIngress bool) []*NetworkPo
 func (g *FragmentGenerator) FragmentIngressPolicies() []*NetworkPolicy {
 	policies := g.fragmentPoliciesWrapper(true)
 	// special case: empty ingress/egress
-	return append(policies, (&Netpol{Name: "fragment-ingress-empty", Namespace: g.TypicalNamespace, PodSelector: g.TypicalTarget, IsIngress: true, IngressRules: []*Rule{}}).NetworkPolicy())
+	return append(policies, (&Netpol{
+		Name:    "fragment-ingress-empty",
+		Target:  &NetpolTarget{Namespace: g.TypicalNamespace, PodSelector: g.TypicalTarget},
+		Ingress: &NetpolPeers{}}).NetworkPolicy())
 }
 
 func (g *FragmentGenerator) FragmentEgressPolicies(allowDNS bool) []*NetworkPolicy {
 	policies := g.fragmentPoliciesWrapper(false)
 	if allowDNS {
 		for _, pol := range policies {
-			pol.Spec.Egress = append(pol.Spec.Egress, AllowDNSEgressRule)
+			pol.Spec.Egress = append(pol.Spec.Egress, AllowDNSRule.Egress())
 		}
 	}
 	// special case: empty ingress/egress
-	return append(policies, (&Netpol{Name: "fragment-egress-empty", Namespace: g.TypicalNamespace, PodSelector: g.TypicalTarget, IsEgress: true, EgressRules: []*Rule{}}).NetworkPolicy())
+	return append(policies, (&Netpol{
+		Name:   "fragment-egress-empty",
+		Target: &NetpolTarget{Namespace: g.TypicalNamespace, PodSelector: g.TypicalTarget},
+		Egress: &NetpolPeers{}}).NetworkPolicy())
 }
 
 func (g *FragmentGenerator) FragmentPolicies(allowDNS bool) []*NetworkPolicy {
@@ -165,26 +175,20 @@ func (g *FragmentGenerator) multidimensionalPolicies(isIngress bool, allowDNS bo
 	for _, rules := range g.RuleSlices() {
 		for _, target := range g.Targets {
 			for _, ns := range g.Namespaces {
-				var ingresses []*Rule
-				var egresses []*Rule
-				for _, rule := range rules {
-					if isIngress {
-						ingresses = append(ingresses, rule)
-					} else {
-						egresses = append(egresses, rule)
-					}
+				var ingress, egress *NetpolPeers
+				if isIngress {
+					ingress = &NetpolPeers{Rules: rules}
+				} else {
+					egress = &NetpolPeers{Rules: rules}
 				}
 				if !isIngress && allowDNS {
-					egresses = append(egresses, AllowDNSRule)
+					egress.Rules = append(egress.Rules, AllowDNSRule)
 				}
 				policies = append(policies, (&Netpol{
-					Name:         fmt.Sprintf("policy-%d", i),
-					Namespace:    ns,
-					PodSelector:  target,
-					IsIngress:    isIngress,
-					IngressRules: ingresses,
-					IsEgress:     !isIngress,
-					EgressRules:  egresses,
+					Name:    fmt.Sprintf("policy-%d", i),
+					Target:  &NetpolTarget{Namespace: ns, PodSelector: target},
+					Ingress: ingress,
+					Egress:  egress,
 				}).NetworkPolicy())
 				i++
 			}

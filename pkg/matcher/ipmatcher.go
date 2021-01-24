@@ -32,6 +32,7 @@ func CombineIPMatchers(a IPMatcher, b IPMatcher) IPMatcher {
 	}
 }
 
+// TODO why have this?  it's not used anywhere ... is there a way to write a NetworkPolicy that would actually need this?
 type AllIPMatcher struct{}
 
 func (aip *AllIPMatcher) Allows(ip string, portProtocol *PortProtocol) bool {

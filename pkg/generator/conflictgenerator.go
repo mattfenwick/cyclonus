@@ -1,0 +1,215 @@
+package generator
+
+import (
+	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+/*
+Conflicts:
+ - for traffic: allow ingress side, deny egress side (or vice versa)
+ - for ingress (or egress):
+   - deny all, plus allow layered on top
+   - deny all ips, allow all pods
+   - deny all pods, allow all ips
+     - allow all ips with 0.0.0.0/0
+     - is there another way to allow all ips?
+   - allow CIDR, deny smaller CIDR
+
+Denies: allow something else, and not allowing the specific traffic, should deny traffic
+ - allow nothing
+ - allow different port
+ - allow different protocol
+ - allow different IP
+ - allow different namespace/pod
+*/
+
+// allow all implicit (i.e. no rules)
+
+var (
+	ExplicitAllowAll = &NetpolPeers{
+		Rules: []*Rule{
+			{},
+		},
+	}
+	DenyAll = &NetpolPeers{
+		Rules: nil,
+	}
+	// DenyAll2 should be identical to DenyAll -- but just in case :)
+	DenyAll2 = &NetpolPeers{
+		Rules: []*Rule{},
+	}
+
+	AllowAllPodsRule = &Rule{
+		Peers: []networkingv1.NetworkPolicyPeer{
+			{
+				NamespaceSelector: &metav1.LabelSelector{},
+			},
+		},
+	}
+
+	AllowAllByPod = &NetpolPeers{
+		Rules: []*Rule{AllowAllPodsRule},
+	}
+
+	AllowAllByIPRule = &Rule{
+		Peers: []networkingv1.NetworkPolicyPeer{
+			{
+				IPBlock: &networkingv1.IPBlock{
+					CIDR: "0.0.0.0/0",
+				},
+			},
+		},
+	}
+
+	AllowAllByIP = &NetpolPeers{
+		Rules: []*Rule{AllowAllByIPRule},
+	}
+
+	DenyAllByIPRule = &Rule{
+		Peers: []networkingv1.NetworkPolicyPeer{
+			{
+				IPBlock: &networkingv1.IPBlock{
+					CIDR: "0.0.0.0/31",
+				},
+			},
+		},
+	}
+
+	DenyAllByIP = &NetpolPeers{
+		Rules: []*Rule{DenyAllByIPRule},
+	}
+
+	DenyAllByPodRule = &Rule{
+		Peers: []networkingv1.NetworkPolicyPeer{
+			{
+				PodSelector: nil,
+				NamespaceSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{"this-will-never-happen": "qrs123"},
+				},
+			},
+		},
+	}
+
+	DenyAllByPod = &NetpolPeers{
+		Rules: []*Rule{DenyAllByPodRule},
+	}
+)
+
+func AllowAllIngressDenyAllEgress(source *NetpolTarget, dest *NetpolTarget) []*Netpol {
+	return []*Netpol{
+		{
+			Name:   "deny-all-egress",
+			Target: source,
+			Egress: DenyAll,
+		},
+		{
+			Name:    "allow-all-ingress",
+			Target:  dest,
+			Ingress: ExplicitAllowAll,
+		},
+	}
+}
+
+func AllowAllEgressDenyAllIngress(source *NetpolTarget, dest *NetpolTarget) []*Netpol {
+	return []*Netpol{
+		{
+			Name:   "allow-all-egress",
+			Target: source,
+			Egress: ExplicitAllowAll,
+		},
+		{
+			Name:    "deny-all-ingress",
+			Target:  dest,
+			Ingress: DenyAll,
+		},
+	}
+}
+
+func DenyAllEgressAllowAllEgress(source *NetpolTarget) []*Netpol {
+	return []*Netpol{
+		{
+			Name:   "deny-all-egress",
+			Target: source,
+			Egress: DenyAll,
+		},
+		{
+			Name:   "allow-all-egress",
+			Target: source,
+			Egress: ExplicitAllowAll,
+		},
+	}
+}
+
+func DenyAllIngressAllowAllIngress(dest *NetpolTarget) []*Netpol {
+	return []*Netpol{
+		{Name: "deny-all-ingress", Target: dest, Ingress: DenyAll},
+		{Name: "allow-all-ingress", Target: dest, Ingress: ExplicitAllowAll},
+	}
+}
+
+func DenyAllEgressAllowAllEgressByPod(source *NetpolTarget) []*Netpol {
+	return []*Netpol{
+		{Name: "deny-all-egress", Target: source, Egress: DenyAll},
+		{Name: "allow-all-egress-by-pod", Target: source, Egress: AllowAllByPod},
+	}
+}
+
+func DenyAllEgressAllowAllEgressByIP(source *NetpolTarget) []*Netpol {
+	return []*Netpol{
+		{Name: "deny-all-egress", Target: source, Egress: DenyAll},
+		{Name: "allow-all-egress-by-ip", Target: source, Egress: AllowAllByIP},
+	}
+}
+
+func DenyAllEgressByIPAllowAllEgressByPod(source *NetpolTarget) []*Netpol {
+	return []*Netpol{
+		{Name: "deny-all-egress-by-ip", Target: source, Egress: DenyAllByIP},
+		{Name: "allow-all-egress-by-pod", Target: source, Egress: AllowAllByPod},
+	}
+}
+
+func DenyAllEgressByPodAllowAllEgressByIP(source *NetpolTarget) []*Netpol {
+	return []*Netpol{
+		{Name: "deny-all-egress-by-pod", Target: source, Egress: DenyAllByPod},
+		{Name: "allow-all-egress-by-ip", Target: source, Egress: AllowAllByIP},
+	}
+}
+
+func DenyAllEgressByIP(source *NetpolTarget) []*Netpol {
+	return []*Netpol{
+		{Name: "deny-all-egress-by-ip", Target: source, Egress: DenyAllByIP},
+	}
+}
+
+type ConflictGenerator struct {
+	AllowDNS bool
+}
+
+func (c *ConflictGenerator) NetworkPolicies(source *NetpolTarget, dest *NetpolTarget) [][]*networkingv1.NetworkPolicy {
+	policySlices := [][]*Netpol{
+		AllowAllIngressDenyAllEgress(source, dest),
+		AllowAllEgressDenyAllIngress(source, dest),
+		DenyAllEgressAllowAllEgress(source),
+		DenyAllIngressAllowAllIngress(dest),
+		DenyAllEgressAllowAllEgressByPod(source),
+		DenyAllEgressAllowAllEgressByIP(source),
+		DenyAllEgressByIPAllowAllEgressByPod(source),
+		DenyAllEgressByPodAllowAllEgressByIP(source),
+		DenyAllEgressByIP(source),
+	}
+
+	var kubeSlices [][]*networkingv1.NetworkPolicy
+	for _, slice := range policySlices {
+		kubeSlice := make([]*networkingv1.NetworkPolicy, len(slice))
+		for i, pol := range slice {
+			if pol.Egress != nil && c.AllowDNS {
+				pol.Egress.Rules = append(pol.Egress.Rules, AllowDNSRule)
+			}
+			kubeSlice[i] = pol.NetworkPolicy()
+		}
+		kubeSlices = append(kubeSlices, kubeSlice)
+	}
+
+	return kubeSlices
+}

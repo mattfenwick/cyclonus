@@ -6,36 +6,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Netpol helps us to avoid the To/From Ingress/Egress dance
+// Netpol helps us to avoid the To/From Ingress/Egress dance.  By splitting a NetworkPolicy into
+// Target and Peers, it makes them easier to manipulate.
 type Netpol struct {
-	Name         string
-	Namespace    string
-	PodSelector  metav1.LabelSelector
-	IsIngress    bool
-	IsEgress     bool
-	IngressRules []*Rule
-	EgressRules  []*Rule
+	Name    string
+	Target  *NetpolTarget
+	Ingress *NetpolPeers
+	Egress  *NetpolPeers
 }
 
 func (n *Netpol) NetworkPolicy() *NetworkPolicy {
-	var types []PolicyType
-	if n.IsIngress || len(n.IngressRules) > 0 {
-		types = append(types, PolicyTypeIngress)
-	}
-	if n.IsEgress || len(n.EgressRules) > 0 {
-		types = append(types, PolicyTypeEgress)
-	}
-	if len(types) == 0 {
-		panic(errors.Errorf("cannot have 0 policy types"))
-	}
-	var ingress []NetworkPolicyIngressRule
-	for _, rule := range n.IngressRules {
-		ingress = append(ingress, rule.Ingress())
-	}
-	var egress []NetworkPolicyEgressRule
-	for _, rule := range n.EgressRules {
-		egress = append(egress, rule.Egress())
-	}
 	return &NetworkPolicy{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "NetworkPolicy",
@@ -43,15 +23,46 @@ func (n *Netpol) NetworkPolicy() *NetworkPolicy {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      n.Name,
-			Namespace: n.Namespace,
+			Namespace: n.Target.Namespace,
 		},
-		Spec: NetworkPolicySpec{
-			PodSelector: n.PodSelector,
-			Ingress:     ingress,
-			Egress:      egress,
-			PolicyTypes: types,
-		},
+		Spec: *n.NetworkPolicySpec(),
 	}
+}
+
+func (n *Netpol) NetworkPolicySpec() *NetworkPolicySpec {
+	var types []PolicyType
+	var ingress []NetworkPolicyIngressRule
+	var egress []NetworkPolicyEgressRule
+	if n.Ingress != nil {
+		types = append(types, PolicyTypeIngress)
+		for _, rule := range n.Ingress.Rules {
+			ingress = append(ingress, rule.Ingress())
+		}
+	}
+	if n.Egress != nil {
+		types = append(types, PolicyTypeEgress)
+		for _, rule := range n.Egress.Rules {
+			egress = append(egress, rule.Egress())
+		}
+	}
+	if len(types) == 0 {
+		panic(errors.Errorf("cannot have 0 policy types"))
+	}
+	return &NetworkPolicySpec{
+		PodSelector: n.Target.PodSelector,
+		Ingress:     ingress,
+		Egress:      egress,
+		PolicyTypes: types,
+	}
+}
+
+type NetpolTarget struct {
+	Namespace   string
+	PodSelector metav1.LabelSelector
+}
+
+type NetpolPeers struct {
+	Rules []*Rule
 }
 
 type Rule struct {

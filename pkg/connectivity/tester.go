@@ -6,7 +6,6 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"time"
 )
@@ -22,17 +21,19 @@ func NewTester(kubernetes *kube.Kubernetes) *Tester {
 func (t *Tester) TestNetworkPolicy(testCase *TestCase) *TestCaseResult {
 	utils.DoOrDie(t.kubernetes.DeleteAllNetworkPoliciesInNamespaces(testCase.NamespacesToClean))
 
-	policy := matcher.BuildNetworkPolicy(testCase.KubePolicy)
+	policy := matcher.BuildNetworkPolicies(testCase.KubePolicies)
 
 	result := &TestCaseResult{
 		TestCase: testCase,
 		Policy:   policy,
 	}
 
-	_, err := t.kubernetes.CreateNetworkPolicy(testCase.KubePolicy)
-	if err != nil {
-		result.Err = errors.Wrapf(err, "unable to create network policy")
-		return result
+	for _, kubePolicy := range testCase.KubePolicies {
+		_, err := t.kubernetes.CreateNetworkPolicy(kubePolicy)
+		if err != nil {
+			result.Err = err
+			return result
+		}
 	}
 
 	logrus.Infof("waiting %d seconds for network policy to create and become active", testCase.NetpolCreationWaitSeconds)

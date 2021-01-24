@@ -72,7 +72,9 @@ func TargetsTableLines(table *tablewriter.Table, targets []*matcher.Target, isIn
 			}
 			switch internal := a.Internal.(type) {
 			case *matcher.AllInternalMatcher:
+				table.Append([]string{"", "", "", "all pods", "all ports, all protocols", ""})
 			case *matcher.NoneInternalMatcher:
+				table.Append([]string{"", "", "", "no pods", "no ports, no protocols", ""})
 			case *matcher.SpecificInternalMatcher:
 				for _, nsPodMatcher := range internal.NamespacePods {
 					var namespaces string

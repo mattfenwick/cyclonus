@@ -55,14 +55,6 @@ var (
 )
 
 var (
-	AllowDNSEgressRule = NetworkPolicyEgressRule{
-		Ports: []NetworkPolicyPort{
-			{
-				Protocol: &udp,
-				Port:     &port53,
-			},
-		},
-	}
 	AllowDNSRule = &Rule{
 		Ports: []NetworkPolicyPort{
 			{

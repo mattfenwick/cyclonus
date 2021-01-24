@@ -9,7 +9,7 @@ import (
 )
 
 type TestCase struct {
-	KubePolicy                *networkingv1.NetworkPolicy
+	KubePolicies              []*networkingv1.NetworkPolicy
 	NetpolCreationWaitSeconds int
 	Port                      int
 	Protocol                  v1.Protocol

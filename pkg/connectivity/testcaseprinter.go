@@ -20,7 +20,11 @@ func (t *TestCasePrinter) PrintTestCaseResult(result *TestCaseResult) {
 		explainer.TableExplainer(policy).Render()
 	}
 
-	fmt.Printf("\n\nKube results for %s/%s:\n", result.TestCase.KubePolicy.Namespace, result.TestCase.KubePolicy.Name)
+	fmt.Printf("\n\nKube results for:\n")
+	for _, netpol := range result.TestCase.KubePolicies {
+		fmt.Printf("  policy %s/%s:\n", netpol.Namespace, netpol.Name)
+	}
+
 	kubeProbe := result.KubeResult.TruthTable()
 	kubeProbe.Table().Render()
 
@@ -42,7 +46,7 @@ func (t *TestCasePrinter) PrintTestCaseResult(result *TestCaseResult) {
 		fmt.Println("Combined:")
 		result.SyntheticResult.Combined.Table().Render()
 
-		policyBytes, err := yaml.Marshal(result.TestCase.KubePolicy)
+		policyBytes, err := yaml.Marshal(result.TestCase.KubePolicies)
 		utils.DoOrDie(err)
 		fmt.Printf("Network policy:\n\n%s\n", policyBytes)
 
