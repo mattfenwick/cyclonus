@@ -24,7 +24,7 @@ func CombinePortMatchers(a PortMatcher, b PortMatcher) PortMatcher {
 		case *NonePortMatcher:
 			return a
 		case *SpecificPortMatcher:
-			return &SpecificPortMatcher{Ports: append(l.Ports, r.Ports...)}
+			return l.Combine(r)
 		default:
 			panic(errors.Errorf("invalid Port type %T", b))
 		}
@@ -64,11 +64,24 @@ type PortProtocolMatcher struct {
 	Protocol v1.Protocol
 }
 
-func (ppm *PortProtocolMatcher) Allows(port intstr.IntOrString, protocol v1.Protocol) bool {
-	if ppm.Port != nil {
-		return isPortMatch(*ppm.Port, port) && ppm.Protocol == protocol
+func (p *PortProtocolMatcher) Allows(port intstr.IntOrString, protocol v1.Protocol) bool {
+	if p.Port != nil {
+		return isPortMatch(*p.Port, port) && p.Protocol == protocol
 	}
-	return ppm.Protocol == protocol
+	return p.Protocol == protocol
+}
+
+func (p *PortProtocolMatcher) Equals(other *PortProtocolMatcher) bool {
+	if p.Protocol != other.Protocol {
+		return false
+	}
+	if p.Port == nil && other.Port == nil {
+		return true
+	}
+	if (p.Port == nil && other.Port != nil) || (p.Port != nil && other.Port == nil) {
+		return false
+	}
+	return isPortMatch(*p.Port, *other.Port)
 }
 
 // SpecificPortMatcher models the case where traffic must match a named or numbered port
@@ -76,8 +89,8 @@ type SpecificPortMatcher struct {
 	Ports []*PortProtocolMatcher
 }
 
-func (epp *SpecificPortMatcher) Allows(port intstr.IntOrString, protocol v1.Protocol) bool {
-	for _, matcher := range epp.Ports {
+func (s *SpecificPortMatcher) Allows(port intstr.IntOrString, protocol v1.Protocol) bool {
+	for _, matcher := range s.Ports {
 		if matcher.Allows(port, protocol) {
 			return true
 		}
@@ -85,11 +98,27 @@ func (epp *SpecificPortMatcher) Allows(port intstr.IntOrString, protocol v1.Prot
 	return false
 }
 
-func (epp *SpecificPortMatcher) MarshalJSON() (b []byte, e error) {
+func (s *SpecificPortMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
 		"Type":  "specific ports",
-		"Ports": epp.Ports,
+		"Ports": s.Ports,
 	})
+}
+
+func (s *SpecificPortMatcher) Combine(other *SpecificPortMatcher) *SpecificPortMatcher {
+	var pps []*PortProtocolMatcher
+	for _, pp := range s.Ports {
+		pps = append(pps, pp)
+	}
+	for _, otherPP := range other.Ports {
+		for _, pp := range pps {
+			if pp.Equals(otherPP) {
+				break
+			}
+			pps = append(pps, otherPP)
+		}
+	}
+	return &SpecificPortMatcher{Ports: pps}
 }
 
 func isPortMatch(a intstr.IntOrString, b intstr.IntOrString) bool {
