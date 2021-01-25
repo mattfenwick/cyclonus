@@ -14,7 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type FuzzArgs struct {
+type GenerateArgs struct {
 	Mode                      string
 	AllowDNS                  bool
 	Noisy                     bool
@@ -23,16 +23,16 @@ type FuzzArgs struct {
 	Context                   string
 }
 
-func SetupGeneratorCommand() *cobra.Command {
-	args := &FuzzArgs{}
+func SetupGenerateCommand() *cobra.Command {
+	args := &GenerateArgs{}
 
 	command := &cobra.Command{
-		Use:   "fuzz",
-		Short: "fuzz network policies",
-		Long:  "fuzz network policies by generating lots of test cases, running against kubernetes, and comparing to expected results",
+		Use:   "generate",
+		Short: "generate network policies",
+		Long:  "generate network policies, create and probe against kubernetes, and compare to expected results",
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, as []string) {
-			RunFuzzCommand(args)
+			RunGenerateCommand(args)
 		},
 	}
 
@@ -48,7 +48,7 @@ func SetupGeneratorCommand() *cobra.Command {
 	return command
 }
 
-func RunFuzzCommand(args *FuzzArgs) {
+func RunGenerateCommand(args *GenerateArgs) {
 	namespaces := []string{"x", "y", "z"}
 	pods := []string{"a", "b", "c"}
 

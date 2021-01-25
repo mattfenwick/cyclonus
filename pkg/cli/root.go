@@ -35,7 +35,7 @@ func SetupRootCommand() *cobra.Command {
 	command.AddCommand(SetupQueryTrafficCommand())
 	command.AddCommand(SetupSyntheticProbeConnectivityCommand())
 	command.AddCommand(SetupQueryTargetsCommand())
-	command.AddCommand(SetupGeneratorCommand())
+	command.AddCommand(SetupGenerateCommand())
 	command.AddCommand(SetupProbeCommand())
 
 	// TODO

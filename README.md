@@ -1,6 +1,6 @@
 # Cyclonus
 
-## network policy explainer, prober, and fuzzer!
+## network policy explainer, prober, and network policy generator!
 
 Parse, explain, and probe network policies to understand their implications and help design
 policies that suit your needs!
@@ -54,14 +54,14 @@ Kube results:
 found 81 true, 0 false, 0 no value from 81 total
 ```
 
-### Fuzzer
+### Generator
 
 Generate network policies, install the policies one at a time in kubernetes, and compare actual measured connectivity
 to expected connectivity using a truth table.
 
 ```
-$ go run cmd/cyclonus/main.go fuzz \
-  --mode vary-ingress \
+$ go run cmd/cyclonus/main.go generate \
+  --mode simple-fragments \
   --noisy=true \
   --netpol-creation-wait-seconds 15
 
