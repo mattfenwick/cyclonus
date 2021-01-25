@@ -176,9 +176,55 @@ func DenyAllEgressByPodAllowAllEgressByIP(source *NetpolTarget) []*Netpol {
 	}
 }
 
+func DenyAllIngressAllowAllIngressByPod(source *NetpolTarget) []*Netpol {
+	return []*Netpol{
+		{Name: "deny-all-ingress", Target: source, Ingress: DenyAll},
+		{Name: "allow-all-ingress-by-pod", Target: source, Ingress: AllowAllByPod},
+	}
+}
+
+func DenyAllIngressAllowAllIngressByIP(source *NetpolTarget) []*Netpol {
+	return []*Netpol{
+		{Name: "deny-all-ingress", Target: source, Ingress: DenyAll},
+		{Name: "allow-all-ingress-by-ip", Target: source, Ingress: AllowAllByIP},
+	}
+}
+
+func DenyAllIngressByIPAllowAllIngressByPod(source *NetpolTarget) []*Netpol {
+	return []*Netpol{
+		{Name: "deny-all-ingress-by-ip", Target: source, Ingress: DenyAllByIP},
+		{Name: "allow-all-ingress-by-pod", Target: source, Ingress: AllowAllByPod},
+	}
+}
+
+func DenyAllIngressByPodAllowAllIngressByIP(source *NetpolTarget) []*Netpol {
+	return []*Netpol{
+		{Name: "deny-all-ingress-by-pod", Target: source, Ingress: DenyAllByPod},
+		{Name: "allow-all-ingress-by-ip", Target: source, Ingress: AllowAllByIP},
+	}
+}
+
 func DenyAllEgressByIP(source *NetpolTarget) []*Netpol {
 	return []*Netpol{
 		{Name: "deny-all-egress-by-ip", Target: source, Egress: DenyAllByIP},
+	}
+}
+
+func DenyAllEgressByPod(source *NetpolTarget) []*Netpol {
+	return []*Netpol{
+		{Name: "deny-all-egress-by-ip", Target: source, Egress: DenyAllByPod},
+	}
+}
+
+func DenyAllIngressByIP(source *NetpolTarget) []*Netpol {
+	return []*Netpol{
+		{Name: "deny-all-ingress-by-ip", Target: source, Ingress: DenyAllByIP},
+	}
+}
+
+func DenyAllIngressByPod(source *NetpolTarget) []*Netpol {
+	return []*Netpol{
+		{Name: "deny-all-ingress-by-ip", Target: source, Ingress: DenyAllByPod},
 	}
 }
 
@@ -190,24 +236,41 @@ func (c *ConflictGenerator) NetworkPolicies(source *NetpolTarget, dest *NetpolTa
 	policySlices := [][]*Netpol{
 		AllowAllIngressDenyAllEgress(source, dest),
 		AllowAllEgressDenyAllIngress(source, dest),
+
 		DenyAllEgressAllowAllEgress(source),
 		DenyAllIngressAllowAllIngress(dest),
+
 		DenyAllEgressAllowAllEgressByPod(source),
 		DenyAllEgressAllowAllEgressByIP(source),
 		DenyAllEgressByIPAllowAllEgressByPod(source),
 		DenyAllEgressByPodAllowAllEgressByIP(source),
+
+		DenyAllIngressAllowAllIngressByPod(source),
+		DenyAllIngressAllowAllIngressByIP(source),
+		DenyAllIngressByIPAllowAllIngressByPod(source),
+		DenyAllIngressByPodAllowAllIngressByIP(source),
+
 		DenyAllEgressByIP(source),
+		DenyAllEgressByPod(source),
+
+		DenyAllIngressByIP(source),
+		DenyAllIngressByPod(source),
 	}
 
 	var kubeSlices [][]*networkingv1.NetworkPolicy
 	for _, slice := range policySlices {
 		kubeSlice := make([]*networkingv1.NetworkPolicy, len(slice))
 		for i, pol := range slice {
+			// TODO this isn't a very good solution -- destructively updates, plus adds multiple copies
 			if pol.Egress != nil && c.AllowDNS {
 				pol.Egress.Rules = append(pol.Egress.Rules, AllowDNSRule)
 			}
 			kubeSlice[i] = pol.NetworkPolicy()
 		}
+		// TODO this isn't a good solution -- if there's no egress, and this is added: egress gets blocked
+		//if c.AllowDNS {
+		//	kubeSlice = append(kubeSlice, (&Netpol{Name: "allow-dns", Target: source, Egress: AllowDNSPeers}).NetworkPolicy())
+		//}
 		kubeSlices = append(kubeSlices, kubeSlice)
 	}
 

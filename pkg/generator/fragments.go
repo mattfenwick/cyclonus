@@ -63,6 +63,10 @@ var (
 			},
 		},
 	}
+
+	AllowDNSPeers = &NetpolPeers{
+		Rules: []*Rule{AllowDNSRule},
+	}
 )
 
 var (
