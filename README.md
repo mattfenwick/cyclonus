@@ -54,13 +54,13 @@ Kube results:
 found 81 true, 0 false, 0 no value from 81 total
 ```
 
-### Generator
+### Fuzzer
 
 Generate network policies, install the policies one at a time in kubernetes, and compare actual measured connectivity
 to expected connectivity using a truth table.
 
 ```
-$ go run cmd/cyclonus/main.go generator \
+$ go run cmd/cyclonus/main.go fuzz \
   --mode vary-ingress \
   --noisy=true \
   --netpol-creation-wait-seconds 15
