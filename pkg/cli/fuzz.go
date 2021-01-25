@@ -20,7 +20,7 @@ type FuzzArgs struct {
 	Noisy                     bool
 	IgnoreLoopback            bool
 	NetpolCreationWaitSeconds int
-	KubeContext               string
+	Context                   string
 }
 
 func SetupGeneratorCommand() *cobra.Command {
@@ -43,7 +43,7 @@ func SetupGeneratorCommand() *cobra.Command {
 	command.Flags().BoolVar(&args.Noisy, "noisy", false, "if true, print all results")
 	command.Flags().BoolVar(&args.IgnoreLoopback, "ignore-loopback", false, "if true, ignore loopback for truthtable correctness verification")
 	command.Flags().IntVar(&args.NetpolCreationWaitSeconds, "netpol-creation-wait-seconds", 5, "number of seconds to wait after creating a network policy before running probes, to give the CNI time to update the cluster state")
-	command.Flags().StringVar(&args.KubeContext, "kube-context", "", "kubernetes context to use; if empty, uses default context")
+	command.Flags().StringVar(&args.Context, "context", "", "kubernetes context to use; if empty, uses default context")
 
 	return command
 }
@@ -57,10 +57,10 @@ func RunFuzzCommand(args *FuzzArgs) {
 
 	var kubernetes *kube.Kubernetes
 	var err error
-	if args.KubeContext == "" {
+	if args.Context == "" {
 		kubernetes, err = kube.NewKubernetesForDefaultContext()
 	} else {
-		kubernetes, err = kube.NewKubernetesForContext(args.KubeContext)
+		kubernetes, err = kube.NewKubernetesForContext(args.Context)
 	}
 	kubeResources, syntheticResources, err := connectivity.SetupCluster(kubernetes, namespaces, pods, port, protocol)
 	utils.DoOrDie(err)
