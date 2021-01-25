@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
-	"github.com/mattfenwick/cyclonus/pkg/kube/netpol"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -17,19 +16,6 @@ import (
 	"path/filepath"
 	"sigs.k8s.io/yaml"
 )
-
-func readPolicies(source string, namespaces []string, policyPath string) ([]*networkingv1.NetworkPolicy, error) {
-	switch source {
-	case "kube":
-		return readPoliciesFromKube(namespaces)
-	case "file":
-		return readPoliciesFromPath(policyPath)
-	case "examples":
-		return netpol.AllExamples, nil
-	default:
-		return nil, errors.Errorf("invalid policy source %s", source)
-	}
-}
 
 func readPoliciesFromPath(policyPath string) ([]*networkingv1.NetworkPolicy, error) {
 	var allPolicies []*networkingv1.NetworkPolicy
@@ -79,12 +65,7 @@ func readPoliciesFromPath(policyPath string) ([]*networkingv1.NetworkPolicy, err
 	return allPolicies, nil
 }
 
-func readPoliciesFromKube(namespaces []string) ([]*networkingv1.NetworkPolicy, error) {
-	// TODO pass in kube client
-	kubeClient, err := kube.NewKubernetesForDefaultContext()
-	if err != nil {
-		return nil, err
-	}
+func readPoliciesFromKube(kubeClient *kube.Kubernetes, namespaces []string) ([]*networkingv1.NetworkPolicy, error) {
 	if len(namespaces) == 0 {
 		list, err := kubeClient.ClientSet.NetworkingV1().NetworkPolicies(v1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {

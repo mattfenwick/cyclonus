@@ -3,9 +3,13 @@ package cli
 import (
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/explainer"
+	"github.com/mattfenwick/cyclonus/pkg/kube"
+	"github.com/mattfenwick/cyclonus/pkg/kube/netpol"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	networkingv1 "k8s.io/api/networking/v1"
 )
 
 type AnalyzePoliciesArgs struct {
@@ -13,6 +17,7 @@ type AnalyzePoliciesArgs struct {
 	Namespaces   []string
 	PolicyPath   string
 	Format       string
+	Context      string
 }
 
 func SetupAnalyzePoliciesCommand() *cobra.Command {
@@ -35,12 +40,32 @@ func SetupAnalyzePoliciesCommand() *cobra.Command {
 
 	command.Flags().StringVar(&args.Format, "format", "table", "output format (options: json, table)")
 
+	command.Flags().StringVar(&args.Context, "context", "", "only set if policy-source = kube; selects kube context to read policies from")
+
 	return command
 }
 
 func RunAnalyzePoliciesCommand(args *AnalyzePoliciesArgs) {
 	// 1. source of policies
-	kubePolicies, err := readPolicies(args.PolicySource, args.Namespaces, args.PolicyPath)
+	var kubePolicies []*networkingv1.NetworkPolicy
+	var err error
+	switch args.PolicySource {
+	case "kube":
+		var kubeClient *kube.Kubernetes
+		if args.Context == "" {
+			kubeClient, err = kube.NewKubernetesForDefaultContext()
+		} else {
+			kubeClient, err = kube.NewKubernetesForContext(args.Context)
+		}
+		utils.DoOrDie(err)
+		kubePolicies, err = readPoliciesFromKube(kubeClient, args.Namespaces)
+	case "file":
+		kubePolicies, err = readPoliciesFromPath(args.PolicyPath)
+	case "examples":
+		kubePolicies = netpol.AllExamples
+	default:
+		panic(errors.Errorf("invalid policy source %s", args.PolicySource))
+	}
 	utils.DoOrDie(err)
 
 	// 2. consume policies

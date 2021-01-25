@@ -84,7 +84,7 @@ func RunFuzzCommand(args *FuzzArgs) {
 		fragGenerator := generator.NewDefaultFragmentGenerator(namespaces, zcIP)
 		kubePolicySlices = packIntoSlices(fragGenerator.EgressPolicies(args.AllowDNS))
 	case "conflicts":
-		gen := generator.ConflictGenerator{}
+		gen := generator.ConflictGenerator{AllowDNS: args.AllowDNS}
 		kubePolicySlices = gen.NetworkPolicies(&generator.NetpolTarget{
 			Namespace: "x",
 			PodSelector: metav1.LabelSelector{
