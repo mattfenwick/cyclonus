@@ -1,7 +1,7 @@
 set -o errexit -o nounset -o pipefail
 set -xv
 
-CLUSTER_NAME=${CLUSTER_NAME:-calico-test}
+CLUSTER_NAME=${CLUSTER_NAME:-netpol-calico}
 
 cat << EOF > calico-conf.yaml
 

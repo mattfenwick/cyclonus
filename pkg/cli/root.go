@@ -32,6 +32,7 @@ func SetupRootCommand() *cobra.Command {
 	command.PersistentFlags().StringVarP(&flags.Verbosity, "verbosity", "v", "info", "log level; one of [info, debug, trace, warn, error, fatal, panic]")
 
 	command.AddCommand(SetupAnalyzePoliciesCommand())
+	command.AddCommand(SetupCompareCommand())
 	command.AddCommand(SetupQueryTrafficCommand())
 	command.AddCommand(SetupSyntheticProbeConnectivityCommand())
 	command.AddCommand(SetupQueryTargetsCommand())
