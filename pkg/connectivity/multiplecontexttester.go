@@ -8,10 +8,13 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
+	"github.com/olekukonko/tablewriter"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"os"
 	"sigs.k8s.io/yaml"
+	"strings"
 	"time"
 )
 
@@ -107,8 +110,10 @@ func (t *MultipleContextTester) testWorker(testCase *MultipleContextTestCase, co
 }
 
 type MultipleContextTestCasePrinter struct {
-	Noisy          bool
-	IgnoreLoopback bool
+	Noisy            bool
+	IgnoreLoopback   bool
+	Contexts         []string
+	DifferenceCounts [][]int
 }
 
 func (t *MultipleContextTestCasePrinter) PrintTestCaseResult(result *MultipleContextTestCaseResult) {
@@ -132,26 +137,44 @@ func (t *MultipleContextTestCasePrinter) PrintTestCaseResult(result *MultipleCon
 
 	foundDiscrepancy := false
 
-	for contextName, kubeResults := range result.KubeResults {
+	var falseCounts []int
+	for _, contextName := range t.Contexts {
+		kubeResults := result.KubeResults[contextName]
 		comparison := result.SyntheticResult.Combined.Compare(kubeResults.TruthTable())
-		_, falses, _, _ := comparison.ValueCounts(t.IgnoreLoopback)
+		trues, falses, nv, checked := comparison.ValueCounts(t.IgnoreLoopback)
 		if falses > 0 {
-			fmt.Printf("found %d discrepancies from expected in context %s\n", falses, contextName)
+			fmt.Printf("results for context %s:\n", contextName)
+			fmt.Printf("found %d true, %d false, %d no value from %d total\n", trues, falses, nv, checked)
 			foundDiscrepancy = true
 		}
+		falseCounts = append(falseCounts, falses)
 	}
+	t.DifferenceCounts = append(t.DifferenceCounts, falseCounts)
 
 	if foundDiscrepancy {
-		for context, kubeResults := range result.KubeResults {
-			kubeProbe := kubeResults.TruthTable()
-			comparison := result.SyntheticResult.Combined.Compare(kubeProbe)
-			trues, falses, nv, checked := comparison.ValueCounts(t.IgnoreLoopback)
-
-			fmt.Printf("results for context %s:\n", context)
-			fmt.Printf("found %d true, %d false, %d no value from %d total\n", trues, falses, nv, checked)
-			kubeProbe.Table().Render()
+		for _, contextName := range t.Contexts {
+			fmt.Printf("results for context %s:\n", contextName)
+			kubeResults := result.KubeResults[contextName]
+			kubeResults.TruthTable().Table().Render()
 		}
 	} else {
 		fmt.Println("no differences found for policy")
 	}
+}
+
+func (t *MultipleContextTestCasePrinter) PrintFinish() {
+	csv := []string{strings.Join(t.Contexts, ",")}
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(t.Contexts)
+	for _, falseCounts := range t.DifferenceCounts {
+		var row []string
+		for _, falses := range falseCounts {
+			row = append(row, fmt.Sprintf("%d", falses))
+		}
+		csv = append(csv, strings.Join(row, ","))
+		table.Append(row)
+	}
+	table.Render()
+
+	fmt.Printf("\n\n%s\n\n", strings.Join(csv, "\n"))
 }

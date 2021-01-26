@@ -13,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
+	"sort"
 )
 
 type CompareArgs struct {
@@ -89,9 +90,14 @@ func RunCompareCommand(args *CompareArgs) {
 
 	fmt.Printf("testing %d policies\n\n", len(kubePolicySlices))
 
+	contexts := args.Contexts
+	sort.Slice(contexts, func(i, j int) bool {
+		return contexts[i] < contexts[j]
+	})
 	tester := connectivity.NewMultipleContextTester()
 	printer := &connectivity.MultipleContextTestCasePrinter{
-		Noisy: args.Noisy,
+		Noisy:    args.Noisy,
+		Contexts: contexts,
 	}
 
 	for i, kubePolicy := range kubePolicySlices {
@@ -115,4 +121,6 @@ func RunCompareCommand(args *CompareArgs) {
 		printer.PrintTestCaseResult(result)
 		logrus.Infof("finished policy #%d", i)
 	}
+
+	printer.PrintFinish()
 }
