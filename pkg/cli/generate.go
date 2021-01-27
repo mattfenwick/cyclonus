@@ -62,7 +62,7 @@ func RunGenerateCommand(args *GenerateArgs) {
 	} else {
 		kubernetes, err = kube.NewKubernetesForContext(args.Context)
 	}
-	kubeResources, syntheticResources, err := connectivity.SetupCluster(kubernetes, namespaces, pods, port, protocol)
+	kubeResources, syntheticResources, err := connectivity.SetupClusterTODODelete(kubernetes, namespaces, pods, port, protocol)
 	utils.DoOrDie(err)
 
 	zcPod, err := kubernetes.GetPod("z", "c")

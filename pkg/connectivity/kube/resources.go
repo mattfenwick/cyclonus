@@ -46,6 +46,14 @@ func NewDefaultResources(namespaces []string, podNames []string, port int, proto
 	return r
 }
 
+func (r *Resources) NamespacesSlice() []string {
+	var nss []string
+	for ns := range r.Namespaces {
+		nss = append(nss, ns)
+	}
+	return nss
+}
+
 func (r *Resources) NewTruthTable() *utils.TruthTable {
 	var podNames []string
 	for _, pod := range r.Pods {

@@ -24,9 +24,30 @@ func NewResources(namespaces map[string]map[string]string, pods []*Pod) (*Resour
 	return model, nil
 }
 
-func (m *Resources) NewTruthTable() *utils.TruthTable {
+// UpdatePodLabel returns a new object with an updated pod.  It should not affect the original Resources object.
+func (r *Resources) UpdatePodLabel(ns string, podName string, key string, value string) (*Resources, error) {
+	var pods []*Pod
+	found := false
+	for _, existingPod := range r.Pods {
+		if existingPod.Namespace == ns && existingPod.Name == podName {
+			found = true
+			pods = append(pods, existingPod.UpdateLabel(key, value))
+		} else {
+			pods = append(pods, existingPod)
+		}
+	}
+	if !found {
+		return nil, errors.Errorf("no pod named %s/%s found", ns, podName)
+	}
+	return &Resources{
+		Namespaces: r.Namespaces,
+		Pods:       pods,
+	}, nil
+}
+
+func (r *Resources) NewTruthTable() *utils.TruthTable {
 	var podNames []string
-	for _, pod := range m.Pods {
+	for _, pod := range r.Pods {
 		podNames = append(podNames, pod.PodString().String())
 	}
 	sort.Slice(podNames, func(i, j int) bool {
@@ -44,6 +65,20 @@ type Pod struct {
 	Name      string
 	Labels    map[string]string
 	IP        string
+}
+
+func (p *Pod) UpdateLabel(key string, value string) *Pod {
+	labels := map[string]string{}
+	for k, v := range p.Labels {
+		labels[k] = v
+	}
+	labels[key] = value
+	return &Pod{
+		Namespace: p.Namespace,
+		Name:      p.Name,
+		Labels:    labels,
+		IP:        p.IP,
+	}
 }
 
 func (p *Pod) PodString() utils.PodString {

@@ -216,8 +216,19 @@ func (k *Kubernetes) GetPodsInNamespaces(namespaces []string) ([]v1.Pod, error) 
 	return pods, nil
 }
 
-func (k *Kubernetes) GetPod(namespace string, pod string) (*v1.Pod, error) {
-	return k.ClientSet.CoreV1().Pods(namespace).Get(context.TODO(), pod, metav1.GetOptions{})
+func (k *Kubernetes) GetPod(namespace string, podName string) (*v1.Pod, error) {
+	pod, err := k.ClientSet.CoreV1().Pods(namespace).Get(context.TODO(), podName, metav1.GetOptions{})
+	return pod, errors.Wrapf(err, "unable to get pod %s/%s", namespace, podName)
+}
+
+func (k *Kubernetes) UpdatePodLabel(namespace string, podName string, key string, value string) (*v1.Pod, error) {
+	pod, err := k.GetPod(namespace, podName)
+	if err != nil {
+		return nil, err
+	}
+	pod.Labels[key] = value
+	updatedPod, err := k.ClientSet.CoreV1().Pods(namespace).Update(context.TODO(), pod, metav1.UpdateOptions{})
+	return updatedPod, errors.Wrapf(err, "unable to update pod %s/%s", namespace, podName)
 }
 
 func (k *Kubernetes) CreatePod(pod *v1.Pod) (*v1.Pod, error) {
@@ -225,10 +236,7 @@ func (k *Kubernetes) CreatePod(pod *v1.Pod) (*v1.Pod, error) {
 	log.Debugf("creating pod %s/%s", ns, pod.Name)
 
 	createdPod, err := k.ClientSet.CoreV1().Pods(ns).Create(context.TODO(), pod, metav1.CreateOptions{})
-	if err != nil {
-		return nil, errors.Wrapf(err, "unable to update pod %s/%s", ns, pod.Name)
-	}
-	return createdPod, nil
+	return createdPod, errors.Wrapf(err, "unable to create pod %s/%s", ns, pod.Name)
 }
 
 func (k *Kubernetes) CreatePodIfNotExists(pod *v1.Pod) (*v1.Pod, error) {

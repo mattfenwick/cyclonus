@@ -66,7 +66,7 @@ func RunCompareCommand(args *CompareArgs) {
 	var syntheticResources *synthetic.Resources
 	var zcIP string
 	for context, kubeClient := range kubeClients {
-		kubernetesResources, synth, err := connectivity.SetupCluster(kubeClient, namespaces, pods, port, protocol)
+		kubernetesResources, synth, err := connectivity.SetupClusterTODODelete(kubeClient, namespaces, pods, port, protocol)
 		utils.DoOrDie(err)
 		// TODO this is a huge hack -- ips are going to be different from cluster to cluster, which means
 		//   that policies involving ips need to be different from cluster to cluster.  But here we're just

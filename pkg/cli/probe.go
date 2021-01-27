@@ -79,7 +79,7 @@ func RunProbeCommand(args *ProbeArgs) {
 
 	port := 80
 	protocol := v1.ProtocolTCP
-	kubeResources, syntheticResources, err := connectivity.SetupCluster(kubernetes, args.Namespaces, args.Pods, port, protocol)
+	kubeResources, syntheticResources, err := connectivity.SetupClusterTODODelete(kubernetes, args.Namespaces, args.Pods, port, protocol)
 	utils.DoOrDie(err)
 
 	if args.PolicyPath != "" {
