@@ -101,7 +101,7 @@ func RunGenerateCommand(args *GenerateArgs) {
 	}
 	fmt.Printf("testing %d policies\n\n", len(kubePolicySlices))
 
-	tester := connectivity.NewTester(kubernetes)
+	tester := connectivity.NewTester(kubernetes, namespaces)
 	printer := &connectivity.TestCasePrinter{
 		Noisy:          args.Noisy,
 		IgnoreLoopback: args.IgnoreLoopback,
@@ -116,7 +116,6 @@ func RunGenerateCommand(args *GenerateArgs) {
 			Protocol:                  protocol,
 			KubeResources:             kubeResources,
 			SyntheticResources:        syntheticResources,
-			NamespacesToClean:         namespaces,
 		}
 		result := tester.TestNetworkPolicy(testCase)
 		utils.DoOrDie(result.Err)

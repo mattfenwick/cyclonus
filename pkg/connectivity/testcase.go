@@ -15,7 +15,6 @@ type TestCase struct {
 	Protocol                  v1.Protocol
 	KubeResources             *connectivitykube.Resources
 	SyntheticResources        *synthetic.Resources
-	NamespacesToClean         []string
 }
 
 type TestCaseResult struct {

@@ -12,14 +12,15 @@ import (
 
 type Tester struct {
 	kubernetes *kube.Kubernetes
+	namespaces []string
 }
 
-func NewTester(kubernetes *kube.Kubernetes) *Tester {
-	return &Tester{kubernetes: kubernetes}
+func NewTester(kubernetes *kube.Kubernetes, namespaces []string) *Tester {
+	return &Tester{kubernetes: kubernetes, namespaces: namespaces}
 }
 
 func (t *Tester) TestNetworkPolicy(testCase *TestCase) *TestCaseResult {
-	utils.DoOrDie(t.kubernetes.DeleteAllNetworkPoliciesInNamespaces(testCase.NamespacesToClean))
+	utils.DoOrDie(t.kubernetes.DeleteAllNetworkPoliciesInNamespaces(t.namespaces))
 
 	policy := matcher.BuildNetworkPolicies(testCase.KubePolicies)
 
