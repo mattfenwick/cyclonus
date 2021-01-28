@@ -77,7 +77,7 @@ func RunProbeCommand(args *ProbeArgs) {
 		err = yaml.Unmarshal(policyBytes, &kubePolicy)
 		utils.DoOrDie(err)
 
-		actions = append(actions, &generator.Action{CreatePolicy: &generator.CreatePolicyAction{Policy: &kubePolicy}})
+		actions = append(actions, generator.CreatePolicy(&kubePolicy))
 	}
 
 	result := interpreter.ExecuteTestCase(generator.NewTestCase(actions))

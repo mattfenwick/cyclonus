@@ -55,14 +55,7 @@ func RunGenerateCommand(args *GenerateArgs) {
 	protocol := v1.ProtocolTCP
 	port := 80
 
-	var kubernetes *kube.Kubernetes
-	var err error
-	if args.Context == "" {
-		kubernetes, err = kube.NewKubernetesForDefaultContext()
-	} else {
-		kubernetes, err = kube.NewKubernetesForContext(args.Context)
-	}
-	kubeResources, syntheticResources, err := connectivity.SetupClusterTODODelete(kubernetes, namespaces, pods, port, protocol)
+	kubernetes, err := kube.NewKubernetes(args.Context)
 	utils.DoOrDie(err)
 
 	zcPod, err := kubernetes.GetPod("z", "c")
@@ -101,23 +94,21 @@ func RunGenerateCommand(args *GenerateArgs) {
 	}
 	fmt.Printf("testing %d policies\n\n", len(kubePolicySlices))
 
-	tester := connectivity.NewTester(kubernetes, namespaces)
-	printer := &connectivity.TestCasePrinter{
+	interpreter, err := connectivity.NewInterpreter(kubernetes, namespaces, pods, port, protocol)
+	utils.DoOrDie(err)
+	printer := &connectivity.Printer{
 		Noisy:          args.Noisy,
 		IgnoreLoopback: args.IgnoreLoopback,
 	}
 
 	for i, kubePolicy := range kubePolicySlices {
 		logrus.Infof("starting policy #%d", i)
-		testCase := &connectivity.TestCase{
-			KubePolicies:              kubePolicy,
-			NetpolCreationWaitSeconds: args.NetpolCreationWaitSeconds,
-			Port:                      port,
-			Protocol:                  protocol,
-			KubeResources:             kubeResources,
-			SyntheticResources:        syntheticResources,
+		var actions []*generator.Action
+		for _, policy := range kubePolicy {
+			actions = append(actions, generator.CreatePolicy(policy))
 		}
-		result := tester.TestNetworkPolicy(testCase)
+		testCase := generator.NewTestCase(actions)
+		result := interpreter.ExecuteTestCase(testCase)
 		utils.DoOrDie(result.Err)
 
 		printer.PrintTestCaseResult(result)
