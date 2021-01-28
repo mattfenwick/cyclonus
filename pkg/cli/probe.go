@@ -1,22 +1,16 @@
 package cli
 
 import (
-	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity"
-	connectivitykube "github.com/mattfenwick/cyclonus/pkg/connectivity/kube"
-	"github.com/mattfenwick/cyclonus/pkg/connectivity/synthetic"
-	"github.com/mattfenwick/cyclonus/pkg/explainer"
+	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
-	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"sigs.k8s.io/yaml"
-	"time"
 )
 
 type ProbeArgs struct {
@@ -27,9 +21,8 @@ type ProbeArgs struct {
 	KubeContext               string
 	NetpolCreationWaitSeconds int
 	PolicyPath                string
-	// TODO
-	//Ports                     []int
-	//Protocols                 []string
+	Port                      int
+	Protocol                  string
 }
 
 func SetupProbeCommand() *cobra.Command {
@@ -47,9 +40,8 @@ func SetupProbeCommand() *cobra.Command {
 	command.Flags().StringSliceVar(&args.Namespaces, "namespaces", []string{"x", "y", "z"}, "namespaces to create/use pods in")
 	command.Flags().StringSliceVar(&args.Pods, "pods", []string{"a", "b", "c"}, "pods to create in namespaces")
 
-	// TODO
-	//command.Flags().IntSliceVar(&args.Ports, "ports", []int{80}, "ports to run probes on")
-	//command.Flags().StringSliceVar(&args.Protocols, "protocols", []string{"tcp"}, "protocols to run probes on")
+	command.Flags().IntVar(&args.Port, "port", 80, "port to run probes on")
+	command.Flags().StringVar(&args.Protocol, "protocol", string(v1.ProtocolTCP), "protocol to run probes on")
 
 	command.Flags().BoolVar(&args.Noisy, "noisy", false, "if true, print all results")
 	command.Flags().BoolVar(&args.IgnoreLoopback, "ignore-loopback", false, "if true, ignore loopback for truthtable correctness verification")
@@ -61,9 +53,6 @@ func SetupProbeCommand() *cobra.Command {
 }
 
 func RunProbeCommand(args *ProbeArgs) {
-	//if len(args.Ports) == 0 || len(args.Protocols) == 0 {
-	//	panic(errors.Errorf("found 0 ports or protocols, must have at least 1 of each"))
-	//}
 	if len(args.Namespaces) == 0 || len(args.Pods) == 0 {
 		panic(errors.Errorf("found 0 namespaces or pods, must have at least 1 of each"))
 	}
@@ -77,10 +66,23 @@ func RunProbeCommand(args *ProbeArgs) {
 	}
 	utils.DoOrDie(err)
 
-	port := 80
-	protocol := v1.ProtocolTCP
-	kubeResources, syntheticResources, err := connectivity.SetupClusterTODODelete(kubernetes, args.Namespaces, args.Pods, port, protocol)
+	port := args.Port
+	var protocol v1.Protocol
+	switch args.Protocol {
+	case "tcp", "TCP":
+		protocol = v1.ProtocolTCP
+	case "udp", "UDP":
+		protocol = v1.ProtocolUDP
+	case "sctp", "SCTP":
+		protocol = v1.ProtocolSCTP
+	default:
+		panic(errors.Errorf("invalid protocol %s", args.Protocol))
+	}
+
+	interpreter, err := connectivity.NewInterpreter(kubernetes, args.Namespaces, args.Pods, port, protocol)
 	utils.DoOrDie(err)
+
+	actions := []*generator.Action{generator.ReadNetworkPolicies(args.Namespaces)}
 
 	if args.PolicyPath != "" {
 		policyBytes, err := ioutil.ReadFile(args.PolicyPath)
@@ -90,70 +92,14 @@ func RunProbeCommand(args *ProbeArgs) {
 		err = yaml.Unmarshal(policyBytes, &kubePolicy)
 		utils.DoOrDie(err)
 
-		if args.Noisy {
-			fmt.Printf("Creating network policy:\n%s\n\n", policyBytes)
-		}
-
-		_, err = kubernetes.CreateNetworkPolicy(&kubePolicy)
-		utils.DoOrDie(err)
-
-		log.Infof("waiting %d seconds for network policy to create and become active", args.NetpolCreationWaitSeconds)
-		time.Sleep(time.Duration(args.NetpolCreationWaitSeconds) * time.Second)
+		actions = append(actions, &generator.Action{CreatePolicy: &generator.CreatePolicyAction{Policy: &kubePolicy}})
 	}
 
-	// read policies from kube
-	kubePolicies, err := kubernetes.GetNetworkPoliciesInNamespaces(args.Namespaces)
-	utils.DoOrDie(err)
-	kubePoliciesPointers := make([]*networkingv1.NetworkPolicy, len(kubePolicies))
-	for i := range kubePolicies {
-		kubePoliciesPointers[i] = &kubePolicies[i]
+	result := interpreter.ExecuteTestCase(generator.NewTestCase(actions))
+
+	printer := connectivity.Printer{
+		Noisy:          args.Noisy,
+		IgnoreLoopback: args.IgnoreLoopback,
 	}
-	log.Infof("found %d policies across namespaces %+v", len(kubePolicies), args.Namespaces)
-	policy := matcher.BuildNetworkPolicies(kubePoliciesPointers)
-
-	if args.Noisy {
-		fmt.Printf("%s\n\n", explainer.Explain(policy))
-		explainer.TableExplainer(policy).Render()
-	}
-
-	log.Infof("synthetic probe on port %d, protocol %s", port, protocol)
-	syntheticResults := synthetic.RunSyntheticProbe(&synthetic.Request{
-		Protocol:  protocol,
-		Port:      port,
-		Policies:  policy,
-		Resources: syntheticResources,
-	})
-
-	log.Infof("kube probe on port %d, protocol %s", port, protocol)
-	kubeProbe := connectivitykube.RunKubeProbe(kubernetes, &connectivitykube.Request{
-		Resources:       kubeResources,
-		Port:            port,
-		Protocol:        protocol,
-		NumberOfWorkers: 5,
-	})
-
-	fmt.Printf("\n\nKube results:\n")
-	kubeProbe.TruthTable().Table().Render()
-
-	comparison := syntheticResults.Combined.Compare(kubeProbe.TruthTable())
-	t, f, nv, checked := comparison.ValueCounts(args.IgnoreLoopback)
-	if f > 0 {
-		fmt.Printf("Discrepancy found: %d wrong, %d no value, %d correct out of %d total\n", f, t, nv, checked)
-	} else {
-		fmt.Printf("found %d true, %d false, %d no value from %d total\n", t, f, nv, checked)
-	}
-
-	if f > 0 || args.Noisy {
-		fmt.Println("Ingress:")
-		syntheticResults.Ingress.Table().Render()
-
-		fmt.Println("Egress:")
-		syntheticResults.Egress.Table().Render()
-
-		fmt.Println("Combined:")
-		syntheticResults.Combined.Table().Render()
-
-		fmt.Printf("\n\nSynthetic vs combined:\n")
-		comparison.Table().Render()
-	}
+	printer.PrintTestCaseResult(result)
 }

@@ -36,6 +36,27 @@ type RemovePodLabelAction struct {
 	Key       string
 }
 
+type ReadNetworkPoliciesAction struct {
+	Namespaces []string
+}
+
+func CreatePolicy(policy *networkingv1.NetworkPolicy) *Action {
+	return &Action{CreatePolicy: &CreatePolicyAction{Policy: policy}}
+}
+
+func UpdatePodLabel(namespace string, pod string, key string, value string) *Action {
+	return &Action{UpdatePodLabel: &UpdatePodLabelAction{
+		Namespace: namespace,
+		Pod:       pod,
+		Key:       key,
+		Value:     value,
+	}}
+}
+
+func ReadNetworkPolicies(namespaces []string) *Action {
+	return &Action{ReadNetworkPolicies: &ReadNetworkPoliciesAction{Namespaces: namespaces}}
+}
+
 // Action: exactly one field must be non-null
 type Action struct {
 	CreatePolicy *CreatePolicyAction
@@ -44,10 +65,23 @@ type Action struct {
 	//UpdateNamespaceLabel *UpdateNamespaceLabelAction
 	//RemoveNamespaceLabel *RemoveNamespaceLabelAction
 	//RemovePodLabel *RemovePodLabelAction
-	UpdatePodLabel *UpdatePodLabelAction
+	UpdatePodLabel      *UpdatePodLabelAction
+	ReadNetworkPolicies *ReadNetworkPoliciesAction
 	// TODO create pod?  create namespace?
 }
 
-type TestCase struct {
+type TestStep struct {
 	Actions []*Action
+}
+
+type TestCase struct {
+	Steps []*TestStep
+}
+
+func NewTestCase(actions []*Action) *TestCase {
+	return &TestCase{Steps: []*TestStep{
+		{
+			Actions: actions,
+		},
+	}}
 }
