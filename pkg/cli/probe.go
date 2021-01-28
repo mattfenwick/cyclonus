@@ -57,27 +57,12 @@ func RunProbeCommand(args *ProbeArgs) {
 		panic(errors.Errorf("found 0 namespaces or pods, must have at least 1 of each"))
 	}
 
-	var kubernetes *kube.Kubernetes
-	var err error
-	if args.KubeContext == "" {
-		kubernetes, err = kube.NewKubernetesForDefaultContext()
-	} else {
-		kubernetes, err = kube.NewKubernetesForContext(args.KubeContext)
-	}
+	kubernetes, err := kube.NewKubernetes(args.KubeContext)
 	utils.DoOrDie(err)
 
 	port := args.Port
-	var protocol v1.Protocol
-	switch args.Protocol {
-	case "tcp", "TCP":
-		protocol = v1.ProtocolTCP
-	case "udp", "UDP":
-		protocol = v1.ProtocolUDP
-	case "sctp", "SCTP":
-		protocol = v1.ProtocolSCTP
-	default:
-		panic(errors.Errorf("invalid protocol %s", args.Protocol))
-	}
+	protocol, err := kube.ParseProtocol(args.Protocol)
+	utils.DoOrDie(err)
 
 	interpreter, err := connectivity.NewInterpreter(kubernetes, args.Namespaces, args.Pods, port, protocol)
 	utils.DoOrDie(err)

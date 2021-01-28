@@ -42,7 +42,7 @@ func NewInterpreter(kubernetes *kube.Kubernetes, namespaces []string, pods []str
 		kubeResources:            kubeResources,
 		syntheticResources:       syntheticResources,
 		namespaces:               namespaces,
-		perturbationWaitDuration: 5 * time.Second, // parameterize
+		perturbationWaitDuration: 5 * time.Second, // TODO parameterize
 		port:                     port,
 		protocol:                 protocol,
 	}, nil

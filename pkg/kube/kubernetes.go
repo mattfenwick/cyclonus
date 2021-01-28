@@ -32,6 +32,14 @@ func PathToKubeConfig() string {
 	return path.Join(home, ".kube", "config")
 }
 
+func NewKubernetes(maybeContext string) (*Kubernetes, error) {
+	if maybeContext == "" {
+		return NewKubernetesForDefaultContext()
+	} else {
+		return NewKubernetesForContext(maybeContext)
+	}
+}
+
 func NewKubernetesForContext(context string) (*Kubernetes, error) {
 	kubeConfigPath := PathToKubeConfig()
 	log.Debugf("instantiating k8s Clientset from config path '%s' for context %s", kubeConfigPath, context)
