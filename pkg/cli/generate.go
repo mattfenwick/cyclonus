@@ -94,7 +94,7 @@ func RunGenerateCommand(args *GenerateArgs) {
 	}
 	fmt.Printf("testing %d policies\n\n", len(kubePolicySlices))
 
-	interpreter, err := connectivity.NewInterpreter(kubernetes, namespaces, pods, port, protocol)
+	interpreter, err := connectivity.NewInterpreter(kubernetes, namespaces, pods, port, protocol, true, false, true)
 	utils.DoOrDie(err)
 	printer := &connectivity.Printer{
 		Noisy:          args.Noisy,

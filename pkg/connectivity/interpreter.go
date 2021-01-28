@@ -26,7 +26,7 @@ type Interpreter struct {
 	performPreProbe              bool
 }
 
-func NewInterpreter(kubernetes *kube.Kubernetes, namespaces []string, pods []string, port int, protocol v1.Protocol) (*Interpreter, error) {
+func NewInterpreter(kubernetes *kube.Kubernetes, namespaces []string, pods []string, port int, protocol v1.Protocol, deletePoliciesBeforeTestCase bool, verifyStateBeforeTestCase bool, performPreProbe bool) (*Interpreter, error) {
 	kubeResources := connectivitykube.NewDefaultResources(namespaces, pods, port, protocol)
 	err := SetupCluster(kubernetes, kubeResources)
 	if err != nil {
@@ -38,13 +38,16 @@ func NewInterpreter(kubernetes *kube.Kubernetes, namespaces []string, pods []str
 	}
 
 	return &Interpreter{
-		kubernetes:               kubernetes,
-		kubeResources:            kubeResources,
-		syntheticResources:       syntheticResources,
-		namespaces:               namespaces,
-		perturbationWaitDuration: 5 * time.Second, // TODO parameterize
-		port:                     port,
-		protocol:                 protocol,
+		kubernetes:                   kubernetes,
+		kubeResources:                kubeResources,
+		syntheticResources:           syntheticResources,
+		namespaces:                   namespaces,
+		perturbationWaitDuration:     5 * time.Second, // TODO parameterize
+		port:                         port,
+		protocol:                     protocol,
+		deletePoliciesBeforeTestCase: deletePoliciesBeforeTestCase,
+		verifyStateBeforeTestCase:    verifyStateBeforeTestCase,
+		performPreProbe:              performPreProbe,
 	}, nil
 }
 
@@ -107,6 +110,8 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 
 	// perform perturbations one at a time, and run a probe after each change
 	for _, step := range testCase.Steps {
+		// TODO grab actual netpols from kube and record in results, for extra debugging/sanity checks
+
 		for _, action := range step.Actions {
 			if action.CreatePolicy != nil {
 				// TODO blow up if it already exists?

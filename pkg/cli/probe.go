@@ -64,7 +64,7 @@ func RunProbeCommand(args *ProbeArgs) {
 	protocol, err := kube.ParseProtocol(args.Protocol)
 	utils.DoOrDie(err)
 
-	interpreter, err := connectivity.NewInterpreter(kubernetes, args.Namespaces, args.Pods, port, protocol)
+	interpreter, err := connectivity.NewInterpreter(kubernetes, args.Namespaces, args.Pods, port, protocol, false, false, false)
 	utils.DoOrDie(err)
 
 	actions := []*generator.Action{generator.ReadNetworkPolicies(args.Namespaces)}
