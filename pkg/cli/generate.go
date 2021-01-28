@@ -10,8 +10,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type GenerateArgs struct {
@@ -65,34 +63,18 @@ func RunGenerateCommand(args *GenerateArgs) {
 	}
 	zcIP := zcPod.Status.PodIP
 
-	var kubePolicySlices [][]*networkingv1.NetworkPolicy
+	var testCaseGenerator generator.TestCaseGenerator
 	switch args.Mode {
 	case "simple-fragments":
-		fragGenerator := generator.NewDefaultFragmentGenerator(namespaces, zcIP)
-		kubePolicySlices = packIntoSlices(fragGenerator.FragmentPolicies(args.AllowDNS))
-	case "ingress":
-		fragGenerator := generator.NewDefaultFragmentGenerator(namespaces, zcIP)
-		kubePolicySlices = packIntoSlices(fragGenerator.IngressPolicies())
-	case "egress":
-		fragGenerator := generator.NewDefaultFragmentGenerator(namespaces, zcIP)
-		kubePolicySlices = packIntoSlices(fragGenerator.EgressPolicies(args.AllowDNS))
+		testCaseGenerator = generator.NewDefaultFragmentGenerator(args.AllowDNS, namespaces, zcIP)
 	case "conflicts":
-		gen := generator.ConflictGenerator{AllowDNS: args.AllowDNS}
-		kubePolicySlices = gen.NetworkPolicies(&generator.NetpolTarget{
-			Namespace: "x",
-			PodSelector: metav1.LabelSelector{
-				MatchLabels: map[string]string{"pod": "b"},
-			},
-		}, &generator.NetpolTarget{
-			Namespace: "y",
-			PodSelector: metav1.LabelSelector{
-				MatchLabels: map[string]string{"pod": "c"},
-			},
-		})
+		testCaseGenerator = &generator.ConflictGenerator{
+			AllowDNS:    args.AllowDNS,
+			Source:      generator.NewNetpolTarget("x", map[string]string{"pod": "b"}, nil),
+			Destination: generator.NewNetpolTarget("y", map[string]string{"pod": "c"}, nil)}
 	default:
 		panic(errors.Errorf("invalid test mode %s", args.Mode))
 	}
-	fmt.Printf("testing %d policies\n\n", len(kubePolicySlices))
 
 	interpreter, err := connectivity.NewInterpreter(kubernetes, namespaces, pods, port, protocol, true, false, true)
 	utils.DoOrDie(err)
@@ -101,25 +83,17 @@ func RunGenerateCommand(args *GenerateArgs) {
 		IgnoreLoopback: args.IgnoreLoopback,
 	}
 
-	for i, kubePolicy := range kubePolicySlices {
-		logrus.Infof("starting policy #%d", i)
-		var actions []*generator.Action
-		for _, policy := range kubePolicy {
-			actions = append(actions, generator.CreatePolicy(policy))
-		}
-		testCase := generator.NewTestCase(actions)
+	testCases := testCaseGenerator.GenerateTestCases()
+	fmt.Printf("testing %d cases\n\n", len(testCases))
+	for i, testCase := range testCases {
+		logrus.Infof("starting test case #%d", i)
+
 		result := interpreter.ExecuteTestCase(testCase)
 		utils.DoOrDie(result.Err)
 
 		printer.PrintTestCaseResult(result)
 		logrus.Infof("finished policy #%d", i)
 	}
-}
 
-func packIntoSlices(netpols []*networkingv1.NetworkPolicy) [][]*networkingv1.NetworkPolicy {
-	var sos [][]*networkingv1.NetworkPolicy
-	for _, np := range netpols {
-		sos = append(sos, []*networkingv1.NetworkPolicy{np})
-	}
-	return sos
+	printer.PrintSummary()
 }

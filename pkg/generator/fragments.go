@@ -69,6 +69,14 @@ var (
 	}
 )
 
+func AllowDNSPolicy(source *NetpolTarget) *Netpol {
+	return &Netpol{
+		Name:   "allow-dns",
+		Target: source,
+		Egress: AllowDNSPeers,
+	}
+}
+
 var (
 	emptyPort = NetworkPolicyPort{
 		Protocol: nil,

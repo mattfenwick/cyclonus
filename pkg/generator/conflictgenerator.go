@@ -229,10 +229,16 @@ func DenyAllIngressByPod(source *NetpolTarget) []*Netpol {
 }
 
 type ConflictGenerator struct {
-	AllowDNS bool
+	AllowDNS    bool
+	Source      *NetpolTarget
+	Destination *NetpolTarget
 }
 
-func (c *ConflictGenerator) NetworkPolicies(source *NetpolTarget, dest *NetpolTarget) [][]*networkingv1.NetworkPolicy {
+func (c *ConflictGenerator) GenerateTestCases() []*TestCase {
+	return c.NetworkPolicies(c.Source, c.Destination)
+}
+
+func (c *ConflictGenerator) NetworkPolicies(source *NetpolTarget, dest *NetpolTarget) []*TestCase {
 	policySlices := [][]*Netpol{
 		AllowAllIngressDenyAllEgress(source, dest),
 		AllowAllEgressDenyAllIngress(source, dest),
@@ -257,22 +263,21 @@ func (c *ConflictGenerator) NetworkPolicies(source *NetpolTarget, dest *NetpolTa
 		DenyAllIngressByPod(source),
 	}
 
-	var kubeSlices [][]*networkingv1.NetworkPolicy
+	var testCases []*TestCase
 	for _, slice := range policySlices {
-		kubeSlice := make([]*networkingv1.NetworkPolicy, len(slice))
+		actions := make([]*Action, len(slice))
+		hasEgress := false
 		for i, pol := range slice {
-			// TODO this isn't a very good solution -- destructively updates, plus adds multiple copies
-			if pol.Egress != nil && c.AllowDNS {
-				pol.Egress.Rules = append(pol.Egress.Rules, AllowDNSRule)
+			if pol.Egress != nil {
+				hasEgress = true
 			}
-			kubeSlice[i] = pol.NetworkPolicy()
+			actions[i] = CreatePolicy(pol.NetworkPolicy())
 		}
-		// TODO this isn't a good solution -- if there's no egress, and this is added: egress gets blocked
-		//if c.AllowDNS {
-		//	kubeSlice = append(kubeSlice, (&Netpol{Name: "allow-dns", Target: source, Egress: AllowDNSPeers}).NetworkPolicy())
-		//}
-		kubeSlices = append(kubeSlices, kubeSlice)
+		if hasEgress && c.AllowDNS {
+			actions = append(actions, CreatePolicy(AllowDNSPolicy(source).NetworkPolicy()))
+		}
+		testCases = append(testCases, NewTestCase(actions))
 	}
 
-	return kubeSlices
+	return testCases
 }

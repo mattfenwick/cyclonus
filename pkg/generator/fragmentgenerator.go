@@ -6,8 +6,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func NewDefaultFragmentGenerator(namespaces []string, podIP string) *FragmentGenerator {
+func NewDefaultFragmentGenerator(allowDNS bool, namespaces []string, podIP string) *FragmentGenerator {
 	return &FragmentGenerator{
+		AllowDNS:         allowDNS,
 		Ports:            DefaultPorts(),
 		PodPeers:         DefaultPodPeers(podIP),
 		Targets:          DefaultTargets(),
@@ -20,6 +21,7 @@ func NewDefaultFragmentGenerator(namespaces []string, podIP string) *FragmentGen
 }
 
 type FragmentGenerator struct {
+	AllowDNS bool
 	// multidimensional generation
 	Ports      []NetworkPolicyPort
 	PodPeers   []NetworkPolicyPeer
@@ -149,9 +151,9 @@ func (g *FragmentGenerator) FragmentIngressPolicies() []*NetworkPolicy {
 		Ingress: &NetpolPeers{}}).NetworkPolicy())
 }
 
-func (g *FragmentGenerator) FragmentEgressPolicies(allowDNS bool) []*NetworkPolicy {
+func (g *FragmentGenerator) FragmentEgressPolicies() []*NetworkPolicy {
 	policies := g.fragmentPoliciesWrapper(false)
-	if allowDNS {
+	if g.AllowDNS {
 		for _, pol := range policies {
 			pol.Spec.Egress = append(pol.Spec.Egress, AllowDNSRule.Egress())
 		}
@@ -163,13 +165,21 @@ func (g *FragmentGenerator) FragmentEgressPolicies(allowDNS bool) []*NetworkPoli
 		Egress: &NetpolPeers{}}).NetworkPolicy())
 }
 
-func (g *FragmentGenerator) FragmentPolicies(allowDNS bool) []*NetworkPolicy {
-	return append(g.FragmentIngressPolicies(), g.FragmentEgressPolicies(allowDNS)...)
+func (g *FragmentGenerator) FragmentPolicies() []*NetworkPolicy {
+	return append(g.FragmentIngressPolicies(), g.FragmentEgressPolicies()...)
+}
+
+func (g *FragmentGenerator) GenerateTestCases() []*TestCase {
+	var testCases []*TestCase
+	for _, netpol := range g.FragmentPolicies() {
+		testCases = append(testCases, NewTestCase([]*Action{CreatePolicy(netpol)}))
+	}
+	return testCases
 }
 
 // single policies, multidimensional generation
 
-func (g *FragmentGenerator) multidimensionalPolicies(isIngress bool, allowDNS bool) []*NetworkPolicy {
+func (g *FragmentGenerator) multidimensionalPolicies(isIngress bool) []*NetworkPolicy {
 	var policies []*NetworkPolicy
 	i := 0
 	for _, rules := range g.RuleSlices() {
@@ -181,7 +191,7 @@ func (g *FragmentGenerator) multidimensionalPolicies(isIngress bool, allowDNS bo
 				} else {
 					egress = &NetpolPeers{Rules: rules}
 				}
-				if !isIngress && allowDNS {
+				if !isIngress && g.AllowDNS {
 					egress.Rules = append(egress.Rules, AllowDNSRule)
 				}
 				policies = append(policies, (&Netpol{
@@ -198,11 +208,11 @@ func (g *FragmentGenerator) multidimensionalPolicies(isIngress bool, allowDNS bo
 }
 
 func (g *FragmentGenerator) IngressPolicies() []*NetworkPolicy {
-	return g.multidimensionalPolicies(true, false)
+	return g.multidimensionalPolicies(true)
 }
 
-func (g *FragmentGenerator) EgressPolicies(allowDNS bool) []*NetworkPolicy {
-	return g.multidimensionalPolicies(false, allowDNS)
+func (g *FragmentGenerator) EgressPolicies() []*NetworkPolicy {
+	return g.multidimensionalPolicies(false)
 }
 
 func (g *FragmentGenerator) IngressEgressPolicies(allowDNS bool) []*NetworkPolicy {

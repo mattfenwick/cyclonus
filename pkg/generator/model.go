@@ -61,6 +61,16 @@ type NetpolTarget struct {
 	PodSelector metav1.LabelSelector
 }
 
+func NewNetpolTarget(namespace string, matchLabels map[string]string, matchExpressions []metav1.LabelSelectorRequirement) *NetpolTarget {
+	return &NetpolTarget{
+		Namespace: namespace,
+		PodSelector: metav1.LabelSelector{
+			MatchLabels:      matchLabels,
+			MatchExpressions: matchExpressions,
+		},
+	}
+}
+
 type NetpolPeers struct {
 	Rules []*Rule
 }

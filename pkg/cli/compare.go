@@ -13,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"sort"
 )
 
@@ -85,8 +86,8 @@ func RunCompareCommand(args *CompareArgs) {
 		kubeResources[context] = kubernetesResources
 	}
 
-	fragGenerator := generator.NewDefaultFragmentGenerator(namespaces, zcIP)
-	kubePolicySlices := packIntoSlices(fragGenerator.FragmentPolicies(true))
+	fragGenerator := generator.NewDefaultFragmentGenerator(true, namespaces, zcIP)
+	kubePolicySlices := packIntoSlices(fragGenerator.FragmentPolicies())
 
 	fmt.Printf("testing %d policies\n\n", len(kubePolicySlices))
 
@@ -123,4 +124,12 @@ func RunCompareCommand(args *CompareArgs) {
 	}
 
 	printer.PrintFinish()
+}
+
+func packIntoSlices(netpols []*networkingv1.NetworkPolicy) [][]*networkingv1.NetworkPolicy {
+	var sos [][]*networkingv1.NetworkPolicy
+	for _, np := range netpols {
+		sos = append(sos, []*networkingv1.NetworkPolicy{np})
+	}
+	return sos
 }

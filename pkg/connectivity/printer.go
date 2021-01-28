@@ -13,6 +13,10 @@ type Printer struct {
 	IgnoreLoopback bool
 }
 
+func (t *Printer) PrintSummary() {
+	fmt.Printf("TODO -- summary of number of passes, failures\n")
+}
+
 func (t *Printer) PrintTestCaseResult(result *Result) {
 	if result.Err != nil {
 		fmt.Printf("test case failed for %+v: %+v", result.TestCase, result.Err)

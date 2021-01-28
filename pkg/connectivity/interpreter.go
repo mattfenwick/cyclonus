@@ -167,7 +167,7 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 				NumberOfWorkers: 5,
 			}),
 			Policy:       parsedPolicy,
-			KubePolicies: append([]*networkingv1.NetworkPolicy{}, kubePolicies...),
+			KubePolicies: append([]*networkingv1.NetworkPolicy{}, kubePolicies...), // this looks weird, but just making a new copy to avoid accidentally mutating it elsewhere
 		}
 		result.Steps = append(result.Steps, stepResult)
 	}
