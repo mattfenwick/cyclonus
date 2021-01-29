@@ -28,6 +28,9 @@ func BuildNetworkPolicies(netpols []*networkingv1.NetworkPolicy) *Policy {
 func BuildTarget(netpol *networkingv1.NetworkPolicy) (*Target, *Target) {
 	var ingress *Target
 	var egress *Target
+	if len(netpol.Spec.PolicyTypes) == 0 {
+		panic(errors.Errorf("invalid network policy: need at least 1 type"))
+	}
 	for _, pType := range netpol.Spec.PolicyTypes {
 		switch pType {
 		case networkingv1.PolicyTypeIngress:

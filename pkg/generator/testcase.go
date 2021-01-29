@@ -1,6 +1,7 @@
 package generator
 
 import (
+	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
@@ -71,17 +72,22 @@ type Action struct {
 }
 
 type TestStep struct {
-	Actions []*Action
+	Port     int
+	Protocol v1.Protocol
+	Actions  []*Action
 }
 
 type TestCase struct {
-	Steps []*TestStep
+	Description string
+	Steps       []*TestStep
 }
 
-func NewTestCase(actions []*Action) *TestCase {
+func NewTestCase(port int, protocol v1.Protocol, actions []*Action) *TestCase {
 	return &TestCase{Steps: []*TestStep{
 		{
-			Actions: actions,
+			Port:     port,
+			Protocol: protocol,
+			Actions:  actions,
 		},
 	}}
 }

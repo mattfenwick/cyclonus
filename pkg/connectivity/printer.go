@@ -3,7 +3,9 @@ package connectivity
 import (
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/explainer"
+	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
+	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
@@ -23,20 +25,22 @@ func (t *Printer) PrintTestCaseResult(result *Result) {
 		return
 	}
 
-	if result.PreProbe != nil {
-		t.PrintStep(0, result.PreProbe)
+	stepCount := len(result.TestCase.Steps)
+	resultCount := len(result.Steps)
+	if stepCount != resultCount {
+		panic(errors.Errorf("found %d test steps, but %d result steps", stepCount, resultCount))
 	}
 
-	for i, step := range result.Steps {
-		t.PrintStep(i+1, step)
+	for i := range result.Steps {
+		t.PrintStep(i, result.TestCase.Steps[i], result.Steps[i])
 	}
 
 	fmt.Printf("\n\n")
 }
 
-func (t *Printer) PrintStep(i int, step *StepResult) {
-	fmt.Printf("  step %d:\n", i)
-	policy := step.Policy
+func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepResult) {
+	fmt.Printf("step %d on port %d, protocol %s:\n", i, step.Port, step.Protocol)
+	policy := stepResult.Policy
 
 	if t.Noisy {
 		//fmt.Printf("%s\n\n", explainer.Explain(policy))
@@ -44,14 +48,14 @@ func (t *Printer) PrintStep(i int, step *StepResult) {
 	}
 
 	fmt.Printf("\n\nKube results for:\n")
-	for _, netpol := range step.KubePolicies {
+	for _, netpol := range stepResult.KubePolicies {
 		fmt.Printf("  policy %s/%s:\n", netpol.Namespace, netpol.Name)
 	}
 
-	kubeProbe := step.KubeResult.TruthTable()
+	kubeProbe := stepResult.KubeResult.TruthTable()
 	kubeProbe.Table().Render()
 
-	comparison := step.SyntheticResult.Combined.Compare(kubeProbe)
+	comparison := stepResult.SyntheticResult.Combined.Compare(kubeProbe)
 	trues, falses, nv, checked := comparison.ValueCounts(t.IgnoreLoopback)
 	if falses > 0 {
 		fmt.Printf("Discrepancy found: %d wrong, %d no value, %d correct out of %d total\n", falses, trues, nv, checked)
@@ -67,12 +71,12 @@ func (t *Printer) PrintStep(i int, step *StepResult) {
 		//step.SyntheticResult.Egress.Table().Render()
 
 		fmt.Println("Expected:")
-		step.SyntheticResult.Combined.Table().Render()
+		stepResult.SyntheticResult.Combined.Table().Render()
 
-		if len(step.KubePolicies) > 0 {
+		if len(stepResult.KubePolicies) > 0 {
 			// TODO is this a bad idea?
 			// nil these out so the output isn't full of junk
-			for _, p := range step.KubePolicies {
+			for _, p := range stepResult.KubePolicies {
 				p.ManagedFields = nil
 				p.UID = ""
 				p.SelfLink = ""
@@ -81,7 +85,7 @@ func (t *Printer) PrintStep(i int, step *StepResult) {
 				p.Generation = 0
 			}
 
-			policyBytes, err := yaml.Marshal(step.KubePolicies)
+			policyBytes, err := yaml.Marshal(stepResult.KubePolicies)
 			utils.DoOrDie(err)
 			fmt.Printf("Network policy:\n\n%s\n", policyBytes)
 		} else {

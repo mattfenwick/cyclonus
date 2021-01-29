@@ -1,6 +1,7 @@
 package generator
 
 import (
+	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -276,7 +277,7 @@ func (c *ConflictGenerator) NetworkPolicies(source *NetpolTarget, dest *NetpolTa
 		if hasEgress && c.AllowDNS {
 			actions = append(actions, CreatePolicy(AllowDNSPolicy(source).NetworkPolicy()))
 		}
-		testCases = append(testCases, NewTestCase(actions))
+		testCases = append(testCases, NewTestCase(80, v1.ProtocolTCP, actions))
 	}
 
 	return testCases

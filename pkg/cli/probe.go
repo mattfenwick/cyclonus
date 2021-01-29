@@ -64,7 +64,7 @@ func RunProbeCommand(args *ProbeArgs) {
 	protocol, err := kube.ParseProtocol(args.Protocol)
 	utils.DoOrDie(err)
 
-	interpreter, err := connectivity.NewInterpreter(kubernetes, args.Namespaces, args.Pods, port, protocol, false, false, false)
+	interpreter, err := connectivity.NewInterpreter(kubernetes, args.Namespaces, args.Pods, port, protocol, false, false)
 	utils.DoOrDie(err)
 
 	actions := []*generator.Action{generator.ReadNetworkPolicies(args.Namespaces)}
@@ -80,7 +80,7 @@ func RunProbeCommand(args *ProbeArgs) {
 		actions = append(actions, generator.CreatePolicy(&kubePolicy))
 	}
 
-	result := interpreter.ExecuteTestCase(generator.NewTestCase(actions))
+	result := interpreter.ExecuteTestCase(generator.NewTestCase(port, protocol, actions))
 
 	printer := connectivity.Printer{
 		Noisy:          args.Noisy,

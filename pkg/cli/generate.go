@@ -56,6 +56,13 @@ func RunGenerateCommand(args *GenerateArgs) {
 	kubernetes, err := kube.NewKubernetes(args.Context)
 	utils.DoOrDie(err)
 
+	interpreter, err := connectivity.NewInterpreter(kubernetes, namespaces, pods, port, protocol, true, false)
+	utils.DoOrDie(err)
+	printer := &connectivity.Printer{
+		Noisy:          args.Noisy,
+		IgnoreLoopback: args.IgnoreLoopback,
+	}
+
 	zcPod, err := kubernetes.GetPod("z", "c")
 	utils.DoOrDie(err)
 	if zcPod.Status.PodIP == "" {
@@ -65,6 +72,8 @@ func RunGenerateCommand(args *GenerateArgs) {
 
 	var testCaseGenerator generator.TestCaseGenerator
 	switch args.Mode {
+	case "upstream":
+		testCaseGenerator = &generator.UpstreamE2EGenerator{}
 	case "simple-fragments":
 		testCaseGenerator = generator.NewDefaultFragmentGenerator(args.AllowDNS, namespaces, zcIP)
 	case "conflicts":
@@ -74,13 +83,6 @@ func RunGenerateCommand(args *GenerateArgs) {
 			Destination: generator.NewNetpolTarget("y", map[string]string{"pod": "c"}, nil)}
 	default:
 		panic(errors.Errorf("invalid test mode %s", args.Mode))
-	}
-
-	interpreter, err := connectivity.NewInterpreter(kubernetes, namespaces, pods, port, protocol, true, false, true)
-	utils.DoOrDie(err)
-	printer := &connectivity.Printer{
-		Noisy:          args.Noisy,
-		IgnoreLoopback: args.IgnoreLoopback,
 	}
 
 	testCases := testCaseGenerator.GenerateTestCases()

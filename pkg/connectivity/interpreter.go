@@ -19,14 +19,11 @@ type Interpreter struct {
 	syntheticResources           *synthetic.Resources
 	namespaces                   []string
 	perturbationWaitDuration     time.Duration
-	port                         int
-	protocol                     v1.Protocol
 	deletePoliciesBeforeTestCase bool
 	verifyStateBeforeTestCase    bool
-	performPreProbe              bool
 }
 
-func NewInterpreter(kubernetes *kube.Kubernetes, namespaces []string, pods []string, port int, protocol v1.Protocol, deletePoliciesBeforeTestCase bool, verifyStateBeforeTestCase bool, performPreProbe bool) (*Interpreter, error) {
+func NewInterpreter(kubernetes *kube.Kubernetes, namespaces []string, pods []string, port int, protocol v1.Protocol, deletePoliciesBeforeTestCase bool, verifyStateBeforeTestCase bool) (*Interpreter, error) {
 	kubeResources := connectivitykube.NewDefaultResources(namespaces, pods, port, protocol)
 	err := SetupCluster(kubernetes, kubeResources)
 	if err != nil {
@@ -43,17 +40,13 @@ func NewInterpreter(kubernetes *kube.Kubernetes, namespaces []string, pods []str
 		syntheticResources:           syntheticResources,
 		namespaces:                   namespaces,
 		perturbationWaitDuration:     5 * time.Second, // TODO parameterize
-		port:                         port,
-		protocol:                     protocol,
 		deletePoliciesBeforeTestCase: deletePoliciesBeforeTestCase,
 		verifyStateBeforeTestCase:    verifyStateBeforeTestCase,
-		performPreProbe:              performPreProbe,
 	}, nil
 }
 
 type Result struct {
 	TestCase *generator.TestCase
-	PreProbe *StepResult
 	Steps    []*StepResult
 	Err      error
 }
@@ -88,25 +81,6 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 	//   so that we can correctly simulate expected results
 	namespacesAndPods := t.syntheticResources
 	var kubePolicies []*networkingv1.NetworkPolicy
-
-	if t.performPreProbe {
-		// run a pre-probe to make sure everything is in order before performing any perturbations
-		result.PreProbe = &StepResult{
-			SyntheticResult: synthetic.RunSyntheticProbe(&synthetic.Request{
-				Protocol:  t.protocol,
-				Port:      t.port,
-				Policies:  matcher.BuildNetworkPolicies(kubePolicies),
-				Resources: namespacesAndPods,
-			}),
-			KubeResult: connectivitykube.RunKubeProbe(t.kubernetes, &connectivitykube.Request{
-				Resources:       t.kubeResources,
-				Port:            t.port,
-				Protocol:        t.protocol,
-				NumberOfWorkers: 5,
-			}),
-			Policy: matcher.BuildNetworkPolicies(kubePolicies),
-		}
-	}
 
 	// perform perturbations one at a time, and run a probe after each change
 	for _, step := range testCase.Steps {
@@ -151,19 +125,19 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 
 		parsedPolicy := matcher.BuildNetworkPolicies(kubePolicies)
 
-		logrus.Infof("running probe on port %d, protocol %s", t.port, t.protocol)
+		logrus.Infof("running probe on port %d, protocol %s", step.Port, step.Protocol)
 
 		stepResult := &StepResult{
 			SyntheticResult: synthetic.RunSyntheticProbe(&synthetic.Request{
-				Protocol:  t.protocol,
-				Port:      t.port,
+				Protocol:  step.Protocol,
+				Port:      step.Port,
 				Policies:  parsedPolicy,
 				Resources: namespacesAndPods,
 			}),
 			KubeResult: connectivitykube.RunKubeProbe(t.kubernetes, &connectivitykube.Request{
 				Resources:       t.kubeResources,
-				Port:            t.port,
-				Protocol:        t.protocol,
+				Port:            step.Port,
+				Protocol:        step.Protocol,
 				NumberOfWorkers: 5,
 			}),
 			Policy:       parsedPolicy,
