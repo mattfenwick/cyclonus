@@ -15,7 +15,7 @@ type UpstreamE2EGenerator struct{}
 
 func (u *UpstreamE2EGenerator) GenerateTestCases() []*TestCase {
 	return []*TestCase{
-		NewTestCase(80, v1.ProtocolTCP, []*Action{CreatePolicy(&NetworkPolicy{
+		NewTestCase("should support a 'default-deny-ingress' policy", 80, v1.ProtocolTCP, []*Action{CreatePolicy(&NetworkPolicy{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "deny-ingress",
 				Namespace: "x",
@@ -26,7 +26,7 @@ func (u *UpstreamE2EGenerator) GenerateTestCases() []*TestCase {
 				Ingress:     []NetworkPolicyIngressRule{},
 			},
 		})}),
-		NewTestCase(80, v1.ProtocolTCP, []*Action{CreatePolicy(&NetworkPolicy{
+		NewTestCase("should support a 'default-deny-all' policy", 80, v1.ProtocolTCP, []*Action{CreatePolicy(&NetworkPolicy{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "deny-all-tcp-allow-dns",
 				Namespace: "x",
@@ -38,7 +38,7 @@ func (u *UpstreamE2EGenerator) GenerateTestCases() []*TestCase {
 				Egress:      []NetworkPolicyEgressRule{AllowDNSRule.Egress()},
 			},
 		})}),
-		NewTestCase(80, v1.ProtocolTCP, []*Action{CreatePolicy(&NetworkPolicy{
+		NewTestCase("should enforce policy based on Multiple PodSelectors and NamespaceSelectors", 80, v1.ProtocolTCP, []*Action{CreatePolicy(&NetworkPolicy{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "allow-ns-y-z-pod-b-c",
 				Namespace: "x",

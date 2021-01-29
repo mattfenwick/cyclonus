@@ -82,12 +82,14 @@ type TestCase struct {
 	Steps       []*TestStep
 }
 
-func NewTestCase(port int, protocol v1.Protocol, actions []*Action) *TestCase {
-	return &TestCase{Steps: []*TestStep{
-		{
-			Port:     port,
-			Protocol: protocol,
-			Actions:  actions,
-		},
-	}}
+func NewTestCase(description string, port int, protocol v1.Protocol, actions []*Action) *TestCase {
+	return &TestCase{
+		Description: description,
+		Steps: []*TestStep{
+			{
+				Port:     port,
+				Protocol: protocol,
+				Actions:  actions,
+			},
+		}}
 }

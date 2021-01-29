@@ -6,6 +6,7 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
@@ -32,7 +33,7 @@ func (t *Printer) PrintTestCaseResult(result *Result) {
 	t.Results = append(t.Results, result)
 
 	if result.Err != nil {
-		fmt.Printf("test case failed for %+v: %+v", result.TestCase, result.Err)
+		fmt.Printf("test case failed to execute for %+v: %+v", result.TestCase, result.Err)
 		return
 	}
 
@@ -85,20 +86,10 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 		stepResult.SyntheticResult.Combined.Table().Render()
 
 		if len(stepResult.KubePolicies) > 0 {
-			// TODO is this a bad idea?
-			// nil these out so the output isn't full of junk
 			for _, p := range stepResult.KubePolicies {
-				p.ManagedFields = nil
-				p.UID = ""
-				p.SelfLink = ""
-				p.ResourceVersion = ""
-				p.CreationTimestamp = metav1.Time{}
-				p.Generation = 0
+				fmt.Printf("Network policy:\n\n%s\n", PrintNetworkPolicy(p))
 			}
 
-			policyBytes, err := yaml.Marshal(stepResult.KubePolicies)
-			utils.DoOrDie(err)
-			fmt.Printf("Network policy:\n\n%s\n", policyBytes)
 		} else {
 			fmt.Println("no network policies")
 		}
@@ -106,4 +97,19 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 		fmt.Printf("\nActual vs expected:\n")
 		comparison.Table().Render()
 	}
+}
+
+func PrintNetworkPolicy(p *networkingv1.NetworkPolicy) string {
+	// TODO is this a bad idea?
+	// nil these out so the output isn't full of junk
+	p.ManagedFields = nil
+	p.UID = ""
+	p.SelfLink = ""
+	p.ResourceVersion = ""
+	p.CreationTimestamp = metav1.Time{}
+	p.Generation = 0
+
+	policyBytes, err := yaml.Marshal(p)
+	utils.DoOrDie(err)
+	return string(policyBytes)
 }

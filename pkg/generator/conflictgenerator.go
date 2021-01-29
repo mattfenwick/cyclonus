@@ -277,7 +277,7 @@ func (c *ConflictGenerator) NetworkPolicies(source *NetpolTarget, dest *NetpolTa
 		if hasEgress && c.AllowDNS {
 			actions = append(actions, CreatePolicy(AllowDNSPolicy(source).NetworkPolicy()))
 		}
-		testCases = append(testCases, NewTestCase(80, v1.ProtocolTCP, actions))
+		testCases = append(testCases, NewTestCase("TODO", 80, v1.ProtocolTCP, actions))
 	}
 
 	return testCases

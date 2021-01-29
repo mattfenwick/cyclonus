@@ -80,7 +80,7 @@ func RunProbeCommand(args *ProbeArgs) {
 		actions = append(actions, generator.CreatePolicy(&kubePolicy))
 	}
 
-	result := interpreter.ExecuteTestCase(generator.NewTestCase(port, protocol, actions))
+	result := interpreter.ExecuteTestCase(generator.NewTestCase("one-off probe", port, protocol, actions))
 
 	printer := connectivity.Printer{
 		Noisy:          args.Noisy,
