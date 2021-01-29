@@ -89,6 +89,16 @@ func (k *Kubernetes) GetNamespace(namespace string) (*v1.Namespace, error) {
 	return ns, errors.Wrapf(err, "unable to get namespace %s", namespace)
 }
 
+func (k *Kubernetes) SetNamespaceLabels(namespace string, labels map[string]string) (*v1.Namespace, error) {
+	ns, err := k.GetNamespace(namespace)
+	if err != nil {
+		return nil, err
+	}
+	ns.Labels = labels
+	_, err = k.ClientSet.CoreV1().Namespaces().Update(context.TODO(), ns, metav1.UpdateOptions{})
+	return ns, errors.Wrapf(err, "unable to update namespace %s", namespace)
+}
+
 func (k *Kubernetes) CreateOrUpdateNamespace(ns *v1.Namespace) (*v1.Namespace, error) {
 	nsr, err := k.ClientSet.CoreV1().Namespaces().Create(context.TODO(), ns, metav1.CreateOptions{})
 	if err == nil {
@@ -112,9 +122,9 @@ func (k *Kubernetes) DeleteAllNetworkPoliciesInNamespace(ns string) error {
 	}
 	for _, np := range netpols.Items {
 		log.Debugf("deleting network policy %s/%s", ns, np.Name)
-		err = k.ClientSet.NetworkingV1().NetworkPolicies(np.Namespace).Delete(context.TODO(), np.Name, metav1.DeleteOptions{})
+		err = k.DeleteNetworkPolicy(np.Namespace, np.Name)
 		if err != nil {
-			return errors.Wrapf(err, "unable to delete netpol %s/%s", ns, np.Name)
+			return err
 		}
 	}
 	return nil
@@ -130,6 +140,11 @@ func (k *Kubernetes) DeleteAllNetworkPoliciesInNamespaces(nss []string) error {
 	return nil
 }
 
+func (k *Kubernetes) DeleteNetworkPolicy(ns string, name string) error {
+	err := k.ClientSet.NetworkingV1().NetworkPolicies(ns).Delete(context.TODO(), name, metav1.DeleteOptions{})
+	return errors.Wrapf(err, "unable to delete network policy %s/%s", ns, name)
+}
+
 func (k *Kubernetes) GetNetworkPoliciesInNamespaces(namespaces []string) ([]networkingv1.NetworkPolicy, error) {
 	var netpols []networkingv1.NetworkPolicy
 	for _, ns := range namespaces {
@@ -142,29 +157,34 @@ func (k *Kubernetes) GetNetworkPoliciesInNamespaces(namespaces []string) ([]netw
 	return netpols, nil
 }
 
-func (k *Kubernetes) CreateNetworkPolicy(netpol *networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error) {
-	ns := netpol.Namespace
-	log.Debugf("creating network policy %s in ns %s", netpol.Name, ns)
-
-	createdPolicy, err := k.ClientSet.NetworkingV1().NetworkPolicies(ns).Create(context.TODO(), netpol, metav1.CreateOptions{})
-	return createdPolicy, errors.Wrapf(err, "unable to create network policy %s/%s", netpol.Name, netpol.Namespace)
+func (k *Kubernetes) UpdateNetworkPolicy(policy *networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error) {
+	log.Debugf("updating network policy %s/%s", policy.Namespace, policy.Name)
+	np, err := k.ClientSet.NetworkingV1().NetworkPolicies(policy.Namespace).Update(context.TODO(), policy, metav1.UpdateOptions{})
+	return np, errors.Wrapf(err, "unable to update network policy %s/%s", policy.Namespace, policy.Name)
 }
 
-func (k *Kubernetes) CreateOrUpdateNetworkPolicy(ns string, netpol *networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error) {
-	log.Debugf("creating/updating network policy %s/%s", ns, netpol.Name)
-	netpol.ObjectMeta.Namespace = ns
-	np, err := k.ClientSet.NetworkingV1().NetworkPolicies(ns).Update(context.TODO(), netpol, metav1.UpdateOptions{})
-	if err == nil {
-		return np, err
-	}
+func (k *Kubernetes) CreateNetworkPolicy(policy *networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error) {
+	log.Debugf("creating network policy %s/%s", policy.Namespace, policy.Name)
 
-	log.Debugf("unable to update network policy %s/%s, let's try creating it instead (error: %s)", ns, netpol.Name, err)
-	np, err = k.ClientSet.NetworkingV1().NetworkPolicies(ns).Create(context.TODO(), netpol, metav1.CreateOptions{})
-	if err != nil {
-		log.Debugf("unable to create network policy %s/%s: %s", ns, netpol.Name, err)
-	}
-	return np, err
+	createdPolicy, err := k.ClientSet.NetworkingV1().NetworkPolicies(policy.Namespace).Create(context.TODO(), policy, metav1.CreateOptions{})
+	return createdPolicy, errors.Wrapf(err, "unable to create network policy %s/%s", policy.Namespace, policy.Name)
 }
+
+//func (k *Kubernetes) CreateOrUpdateNetworkPolicy(ns string, netpol *networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error) {
+//	log.Debugf("creating/updating network policy %s/%s", ns, netpol.Name)
+//	netpol.ObjectMeta.Namespace = ns
+//	np, err := k.ClientSet.NetworkingV1().NetworkPolicies(ns).Update(context.TODO(), netpol, metav1.UpdateOptions{})
+//	if err == nil {
+//		return np, err
+//	}
+//
+//	log.Debugf("unable to update network policy %s/%s, let's try creating it instead (error: %s)", ns, netpol.Name, err)
+//	np, err = k.ClientSet.NetworkingV1().NetworkPolicies(ns).Create(context.TODO(), netpol, metav1.CreateOptions{})
+//	if err != nil {
+//		log.Debugf("unable to create network policy %s/%s: %s", ns, netpol.Name, err)
+//	}
+//	return np, err
+//}
 
 func (k *Kubernetes) CreateDaemonSet(namespace string, ds *appsv1.DaemonSet) (*appsv1.DaemonSet, error) {
 	return k.ClientSet.AppsV1().DaemonSets(namespace).Create(context.TODO(), ds, metav1.CreateOptions{})
@@ -239,12 +259,12 @@ func (k *Kubernetes) GetPod(namespace string, podName string) (*v1.Pod, error) {
 	return pod, errors.Wrapf(err, "unable to get pod %s/%s", namespace, podName)
 }
 
-func (k *Kubernetes) UpdatePodLabel(namespace string, podName string, key string, value string) (*v1.Pod, error) {
+func (k *Kubernetes) SetPodLabels(namespace string, podName string, labels map[string]string) (*v1.Pod, error) {
 	pod, err := k.GetPod(namespace, podName)
 	if err != nil {
 		return nil, err
 	}
-	pod.Labels[key] = value
+	pod.Labels = labels
 	updatedPod, err := k.ClientSet.CoreV1().Pods(namespace).Update(context.TODO(), pod, metav1.UpdateOptions{})
 	return updatedPod, errors.Wrapf(err, "unable to update pod %s/%s", namespace, podName)
 }

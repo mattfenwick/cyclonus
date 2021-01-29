@@ -25,14 +25,30 @@ func NewResources(namespaces map[string]map[string]string, pods []*Pod) (*Resour
 	return model, nil
 }
 
+// UpdateNamespaceLabels returns a new object with an updated namespace.  It should not affect the original Resources object.
+func (r *Resources) UpdateNamespaceLabels(ns string, labels map[string]string) (*Resources, error) {
+	if _, ok := r.Namespaces[ns]; !ok {
+		return nil, errors.Errorf("no namespace %s", ns)
+	}
+	newNamespaces := map[string]map[string]string{}
+	for oldNs, oldLabels := range r.Namespaces {
+		newNamespaces[oldNs] = oldLabels
+	}
+	newNamespaces[ns] = labels
+	return &Resources{
+		Namespaces: newNamespaces,
+		Pods:       r.Pods,
+	}, nil
+}
+
 // UpdatePodLabel returns a new object with an updated pod.  It should not affect the original Resources object.
-func (r *Resources) UpdatePodLabel(ns string, podName string, key string, value string) (*Resources, error) {
+func (r *Resources) SetPodLabels(ns string, podName string, labels map[string]string) (*Resources, error) {
 	var pods []*Pod
 	found := false
 	for _, existingPod := range r.Pods {
 		if existingPod.Namespace == ns && existingPod.Name == podName {
 			found = true
-			pods = append(pods, existingPod.UpdateLabel(key, value))
+			pods = append(pods, existingPod.SetLabels(labels))
 		} else {
 			pods = append(pods, existingPod)
 		}
@@ -69,12 +85,7 @@ type Pod struct {
 	Containers []*Container
 }
 
-func (p *Pod) UpdateLabel(key string, value string) *Pod {
-	labels := map[string]string{}
-	for k, v := range p.Labels {
-		labels[k] = v
-	}
-	labels[key] = value
+func (p *Pod) SetLabels(labels map[string]string) *Pod {
 	return &Pod{
 		Namespace: p.Namespace,
 		Name:      p.Name,

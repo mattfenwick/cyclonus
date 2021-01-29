@@ -9,14 +9,34 @@ type CreatePolicyAction struct {
 	Policy *networkingv1.NetworkPolicy
 }
 
+func CreatePolicy(policy *networkingv1.NetworkPolicy) *Action {
+	return &Action{CreatePolicy: &CreatePolicyAction{Policy: policy}}
+}
+
 type DeletePolicyAction struct {
+	Namespace string
+	Name      string
+}
+
+func DeletePolicy(ns string, name string) *Action {
+	return &Action{DeletePolicy: &DeletePolicyAction{Namespace: ns, Name: name}}
+}
+
+type UpdatePolicyAction struct {
 	Policy *networkingv1.NetworkPolicy
 }
 
-type UpdateNamespaceLabelAction struct {
+func UpdatePolicy(policy *networkingv1.NetworkPolicy) *Action {
+	return &Action{UpdatePolicy: &UpdatePolicyAction{Policy: policy}}
+}
+
+type SetNamespaceLabelsAction struct {
 	Namespace string
-	Key       string
-	Value     string
+	Labels    map[string]string
+}
+
+func SetNamespaceLabels(ns string, labels map[string]string) *Action {
+	return &Action{SetNamespaceLabels: &SetNamespaceLabelsAction{Namespace: ns, Labels: labels}}
 }
 
 type RemoveNamespaceLabelAction struct {
@@ -24,11 +44,18 @@ type RemoveNamespaceLabelAction struct {
 	Key       string
 }
 
-type UpdatePodLabelAction struct {
+type SetPodLabelsAction struct {
 	Namespace string
 	Pod       string
-	Key       string
-	Value     string
+	Labels    map[string]string
+}
+
+func SetPodLabels(namespace string, pod string, labels map[string]string) *Action {
+	return &Action{SetPodLabels: &SetPodLabelsAction{
+		Namespace: namespace,
+		Pod:       pod,
+		Labels:    labels,
+	}}
 }
 
 type RemovePodLabelAction struct {
@@ -41,19 +68,6 @@ type ReadNetworkPoliciesAction struct {
 	Namespaces []string
 }
 
-func CreatePolicy(policy *networkingv1.NetworkPolicy) *Action {
-	return &Action{CreatePolicy: &CreatePolicyAction{Policy: policy}}
-}
-
-func UpdatePodLabel(namespace string, pod string, key string, value string) *Action {
-	return &Action{UpdatePodLabel: &UpdatePodLabelAction{
-		Namespace: namespace,
-		Pod:       pod,
-		Key:       key,
-		Value:     value,
-	}}
-}
-
 func ReadNetworkPolicies(namespaces []string) *Action {
 	return &Action{ReadNetworkPolicies: &ReadNetworkPoliciesAction{Namespaces: namespaces}}
 }
@@ -61,12 +75,13 @@ func ReadNetworkPolicies(namespaces []string) *Action {
 // Action: exactly one field must be non-null
 type Action struct {
 	CreatePolicy *CreatePolicyAction
+	UpdatePolicy *UpdatePolicyAction
 	// TODO uncomment these
-	//DeletePolicy *DeletePolicyAction
-	//UpdateNamespaceLabel *UpdateNamespaceLabelAction
+	DeletePolicy       *DeletePolicyAction
+	SetNamespaceLabels *SetNamespaceLabelsAction
 	//RemoveNamespaceLabel *RemoveNamespaceLabelAction
 	//RemovePodLabel *RemovePodLabelAction
-	UpdatePodLabel      *UpdatePodLabelAction
+	SetPodLabels        *SetPodLabelsAction
 	ReadNetworkPolicies *ReadNetworkPoliciesAction
 	// TODO create pod?  create namespace?
 }
@@ -77,19 +92,29 @@ type TestStep struct {
 	Actions  []*Action
 }
 
+func NewTestStep(port int, protocol v1.Protocol, actions ...*Action) *TestStep {
+	return &TestStep{
+		Port:     port,
+		Protocol: protocol,
+		Actions:  actions,
+	}
+}
+
 type TestCase struct {
 	Description string
 	Steps       []*TestStep
 }
 
-func NewTestCase(description string, port int, protocol v1.Protocol, actions []*Action) *TestCase {
+func NewSingleStepTestCase(description string, port int, protocol v1.Protocol, actions ...*Action) *TestCase {
 	return &TestCase{
 		Description: description,
-		Steps: []*TestStep{
-			{
-				Port:     port,
-				Protocol: protocol,
-				Actions:  actions,
-			},
-		}}
+		Steps:       []*TestStep{NewTestStep(port, protocol, actions...)},
+	}
+}
+
+func NewTestCase(description string, steps ...*TestStep) *TestCase {
+	return &TestCase{
+		Description: description,
+		Steps:       steps,
+	}
 }

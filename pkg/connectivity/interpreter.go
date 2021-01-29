@@ -94,22 +94,65 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 
 		for _, action := range step.Actions {
 			if action.CreatePolicy != nil {
-				// TODO blow up if it already exists?
-				kubePolicy := action.CreatePolicy.Policy
-				kubePolicies = append(kubePolicies, kubePolicy)
-				_, err = t.kubernetes.CreateNetworkPolicy(kubePolicy)
+				newPolicy := action.CreatePolicy.Policy
+				// do we already have this policy?
+				for _, kubePol := range kubePolicies {
+					if kubePol.Namespace == newPolicy.Namespace && kubePol.Name == newPolicy.Name {
+						result.Err = errors.Errorf("cannot create policy %s/%s: already exists", newPolicy.Namespace, newPolicy.Name)
+						return result
+					}
+				}
+
+				kubePolicies = append(kubePolicies, newPolicy)
+				_, err = t.kubernetes.CreateNetworkPolicy(newPolicy)
 				if err != nil {
 					result.Err = err
 					return result
 				}
-			} else if action.UpdatePodLabel != nil {
-				update := action.UpdatePodLabel
-				namespacesAndPods, err = namespacesAndPods.UpdatePodLabel(update.Namespace, update.Pod, update.Value, update.Key)
+			} else if action.UpdatePolicy != nil {
+				newPolicy := action.UpdatePolicy.Policy
+				// we already have this policy -- right?
+				index := -1
+				found := false
+				for i, kubePol := range kubePolicies {
+					if kubePol.Namespace == newPolicy.Namespace && kubePol.Name == newPolicy.Name {
+						index = i
+						found = true
+						break
+					}
+				}
+				if !found {
+					result.Err = errors.Errorf("cannot update policy %s/%s: not found", newPolicy.Namespace, newPolicy.Name)
+					return result
+				}
+
+				kubePolicies[index] = newPolicy
+				_, err = t.kubernetes.UpdateNetworkPolicy(newPolicy)
 				if err != nil {
 					result.Err = err
 					return result
 				}
-				_, err = t.kubernetes.UpdatePodLabel(update.Namespace, update.Pod, update.Key, update.Value)
+			} else if action.SetNamespaceLabels != nil {
+				newNs := action.SetNamespaceLabels.Namespace
+				newLabels := action.SetNamespaceLabels.Labels
+				namespacesAndPods, err = namespacesAndPods.UpdateNamespaceLabels(newNs, newLabels)
+				if err != nil {
+					result.Err = err
+					return result
+				}
+				_, err = t.kubernetes.SetNamespaceLabels(newNs, newLabels)
+				if err != nil {
+					result.Err = err
+					return result
+				}
+			} else if action.SetPodLabels != nil {
+				update := action.SetPodLabels
+				namespacesAndPods, err = namespacesAndPods.SetPodLabels(update.Namespace, update.Pod, update.Labels)
+				if err != nil {
+					result.Err = err
+					return result
+				}
+				_, err = t.kubernetes.SetPodLabels(update.Namespace, update.Pod, update.Labels)
 				if err != nil {
 					result.Err = err
 					return result
@@ -121,6 +164,35 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 					return result
 				}
 				kubePolicies = append(kubePolicies, getSliceOfPointers(policies)...)
+			} else if action.DeletePolicy != nil {
+				ns := action.DeletePolicy.Namespace
+				name := action.DeletePolicy.Name
+				// make sure this policy exists
+				index := -1
+				found := false
+				for i, kubePol := range kubePolicies {
+					if kubePol.Namespace == ns && kubePol.Name == name {
+						found = true
+						index = i
+					}
+				}
+				if !found {
+					result.Err = errors.Errorf("cannot delete policy %s/%s: not found", ns, name)
+					return result
+				}
+
+				var newPolicies []*networkingv1.NetworkPolicy
+				for i, kubePol := range kubePolicies {
+					if i != index {
+						newPolicies = append(newPolicies, kubePol)
+					}
+				}
+
+				err = t.kubernetes.DeleteNetworkPolicy(ns, name)
+				if err != nil {
+					result.Err = err
+					return result
+				}
 			} else {
 				panic(errors.Errorf("invalid Action"))
 			}
