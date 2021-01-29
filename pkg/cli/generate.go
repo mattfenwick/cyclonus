@@ -50,13 +50,13 @@ func RunGenerateCommand(args *GenerateArgs) {
 	namespaces := []string{"x", "y", "z"}
 	pods := []string{"a", "b", "c"}
 
-	protocol := v1.ProtocolTCP
-	port := 80
+	protocols := []v1.Protocol{v1.ProtocolTCP, v1.ProtocolUDP}
+	ports := []int{80, 81}
 
 	kubernetes, err := kube.NewKubernetes(args.Context)
 	utils.DoOrDie(err)
 
-	interpreter, err := connectivity.NewInterpreter(kubernetes, namespaces, pods, port, protocol, true, false)
+	interpreter, err := connectivity.NewInterpreter(kubernetes, namespaces, pods, ports, protocols, true, false)
 	utils.DoOrDie(err)
 	printer := &connectivity.Printer{
 		Noisy:          args.Noisy,

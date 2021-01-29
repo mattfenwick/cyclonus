@@ -23,8 +23,8 @@ type Interpreter struct {
 	verifyStateBeforeTestCase    bool
 }
 
-func NewInterpreter(kubernetes *kube.Kubernetes, namespaces []string, pods []string, port int, protocol v1.Protocol, deletePoliciesBeforeTestCase bool, verifyStateBeforeTestCase bool) (*Interpreter, error) {
-	kubeResources := connectivitykube.NewDefaultResources(namespaces, pods, port, protocol)
+func NewInterpreter(kubernetes *kube.Kubernetes, namespaces []string, pods []string, ports []int, protocols []v1.Protocol, deletePoliciesBeforeTestCase bool, verifyStateBeforeTestCase bool) (*Interpreter, error) {
+	kubeResources := connectivitykube.NewDefaultResources(namespaces, pods, ports, protocols)
 	err := SetupCluster(kubernetes, kubeResources)
 	if err != nil {
 		return nil, err

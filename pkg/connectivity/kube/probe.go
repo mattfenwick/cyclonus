@@ -15,7 +15,7 @@ func RunKubeProbe(k8s *kube.Kubernetes, request *Request) *Results {
 	for i := 0; i < request.NumberOfWorkers; i++ {
 		go probeWorker(k8s, jobs, results)
 	}
-	for _, job := range request.Resources.Jobs {
+	for _, job := range request.Resources.GetJobs(request.Port, request.Protocol) {
 		jobs <- job
 	}
 	close(jobs)
@@ -48,7 +48,7 @@ func probeWorker(k8s *kube.Kubernetes, jobs <-chan *Job, results chan<- *JobResu
 
 func probeConnectivity(k8s *kube.Kubernetes, job *Job) (bool, string, error) {
 	commandDebugString := strings.Join(job.KubeExecCommand(), " ")
-	stdout, stderr, commandErr, err := k8s.ExecuteRemoteCommand(job.FromPod.Namespace, job.FromPod.Name, job.FromPod.ContainerName, job.ClientCommand())
+	stdout, stderr, commandErr, err := k8s.ExecuteRemoteCommand(job.FromPod.Namespace, job.FromPod.Name, job.FromContainer(), job.ClientCommand())
 	log.Debugf("stdout, stderr from %s: \n%s\n%s", commandDebugString, stdout, stderr)
 	if err != nil {
 		log.Errorf("unable to set up command %s: %+v", commandDebugString, err)

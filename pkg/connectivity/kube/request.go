@@ -21,7 +21,7 @@ func (k *Results) TruthTable() *utils.TruthTable {
 	reachability := k.Request.Resources.NewTruthTable()
 	for _, result := range k.Results {
 		job := result.Job
-		reachability.Set(job.FromPod.PodString().String(), job.ToPod.PodString().String(), result.IsConnected)
+		reachability.Set(job.FromPod.PodString.String(), job.ToPod.PodString.String(), result.IsConnected)
 	}
 	return reachability
 }

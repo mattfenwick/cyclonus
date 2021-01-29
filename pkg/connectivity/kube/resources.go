@@ -1,49 +1,46 @@
 package kube
 
 import (
-	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sort"
-	"strings"
 )
 
 type Resources struct {
 	Namespaces map[string]map[string]string
 	Pods       []*Pod
-	Jobs       []*Job
 }
 
-func NewDefaultResources(namespaces []string, podNames []string, port int, protocol v1.Protocol) *Resources {
+func NewDefaultResources(namespaces []string, podNames []string, ports []int, protocols []v1.Protocol) *Resources {
 	r := &Resources{
 		Namespaces: map[string]map[string]string{},
 	}
 
 	for _, ns := range namespaces {
 		for _, podName := range podNames {
-			r.Pods = append(r.Pods, &Pod{
-				Namespace:     ns,
-				Name:          podName,
-				Labels:        map[string]string{"pod": podName},
-				ContainerName: fmt.Sprintf("cont-%d-%s", port, strings.ToLower(string(protocol))),
-				Port:          port,
-				Protocol:      protocol,
-			})
+			r.Pods = append(r.Pods, NewPod(ns, podName, map[string]string{"pod": podName}, ports, protocols))
 		}
 		r.Namespaces[ns] = map[string]string{"ns": ns}
 	}
 
+	return r
+}
+
+func (r *Resources) GetJobs(port int, protocol v1.Protocol) []*Job {
+	var jobs []*Job
 	for _, podFrom := range r.Pods {
 		for _, podTo := range r.Pods {
-			r.Jobs = append(r.Jobs, &Job{
-				FromPod: podFrom,
-				ToPod:   podTo,
+			jobs = append(jobs, &Job{
+				FromPod:  podFrom,
+				ToPod:    podTo,
+				Port:     port,
+				Protocol: protocol,
 			})
 		}
 	}
-	return r
+	return jobs
 }
 
 func (r *Resources) NamespacesSlice() []string {
@@ -57,7 +54,7 @@ func (r *Resources) NamespacesSlice() []string {
 func (r *Resources) NewTruthTable() *utils.TruthTable {
 	var podNames []string
 	for _, pod := range r.Pods {
-		podNames = append(podNames, pod.PodString().String())
+		podNames = append(podNames, pod.PodString.String())
 	}
 	sort.Slice(podNames, func(i, j int) bool {
 		return podNames[i] < podNames[j]
@@ -73,11 +70,11 @@ func (r *Resources) CreateResourcesInKube(kube *kube.Kubernetes) error {
 		}
 	}
 	for _, pod := range r.Pods {
-		_, err := kube.CreatePodIfNotExists(pod.KubePod())
+		_, err := kube.CreatePodIfNotExists(pod.KubePod)
 		if err != nil {
 			return err
 		}
-		_, err = kube.CreateServiceIfNotExists(pod.KubeService())
+		_, err = kube.CreateServiceIfNotExists(pod.KubeService)
 		if err != nil {
 			return err
 		}

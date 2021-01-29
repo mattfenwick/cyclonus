@@ -11,7 +11,7 @@ import (
 )
 
 func SetupClusterTODODelete(kubernetes *kube.Kubernetes, namespaces []string, pods []string, port int, protocol v1.Protocol) (*connectivitykube.Resources, *synthetic.Resources, error) {
-	kubeResources := connectivitykube.NewDefaultResources(namespaces, pods, port, protocol)
+	kubeResources := connectivitykube.NewDefaultResources(namespaces, pods, []int{port}, []v1.Protocol{protocol})
 
 	err := kubeResources.CreateResourcesInKube(kubernetes)
 	if err != nil {

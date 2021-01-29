@@ -15,24 +15,30 @@ type JobResults struct {
 }
 
 type Job struct {
-	FromPod *Pod
-	ToPod   *Pod
+	FromPod  *Pod
+	ToPod    *Pod
+	Port     int
+	Protocol v1.Protocol
+}
+
+func (j *Job) FromContainer() string {
+	return j.FromPod.KubePod.Spec.Containers[0].Name
 }
 
 func (j *Job) ToAddress() string {
-	return fmt.Sprintf("%s:%d", kube.QualifiedServiceAddress(j.ToPod.ServiceName(), j.ToPod.Namespace), j.ToPod.Port)
+	return fmt.Sprintf("%s:%d", kube.QualifiedServiceAddress(j.ToPod.ServiceName(), j.ToPod.Namespace), j.Port)
 }
 
 func (j *Job) ClientCommand() []string {
-	switch j.ToPod.Protocol {
+	switch j.Protocol {
 	case v1.ProtocolSCTP:
 		return []string{"/agnhost", "connect", j.ToAddress(), "--timeout=1s", "--protocol=sctp"}
 	case v1.ProtocolTCP:
 		return []string{"/agnhost", "connect", j.ToAddress(), "--timeout=1s", "--protocol=tcp"}
 	case v1.ProtocolUDP:
-		return []string{"nc", "-v", "-z", "-w", "1", "-u", kube.QualifiedServiceAddress(j.ToPod.ServiceName(), j.ToPod.Namespace), fmt.Sprintf("%d", j.ToPod.Port)}
+		return []string{"nc", "-v", "-z", "-w", "1", "-u", kube.QualifiedServiceAddress(j.ToPod.ServiceName(), j.ToPod.Namespace), fmt.Sprintf("%d", j.Port)}
 	default:
-		panic(errors.Errorf("protocol %s not supported", j.ToPod.Protocol))
+		panic(errors.Errorf("protocol %s not supported", j.Protocol))
 	}
 }
 
@@ -40,7 +46,7 @@ func (j *Job) KubeExecCommand() []string {
 	return append([]string{
 		"kubectl", "exec",
 		j.FromPod.Name,
-		"-c", j.FromPod.ContainerName,
+		"-c", j.FromContainer(),
 		"-n", j.FromPod.Namespace,
 		"--",
 	},
@@ -48,5 +54,5 @@ func (j *Job) KubeExecCommand() []string {
 }
 
 func (j *Job) ToURL() string {
-	return fmt.Sprintf("http://%s:%d", j.ToAddress(), j.ToPod.Port)
+	return fmt.Sprintf("http://%s:%d", j.ToAddress(), j.Port)
 }
