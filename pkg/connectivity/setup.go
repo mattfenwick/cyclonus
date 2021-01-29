@@ -98,11 +98,23 @@ func GetSyntheticResources(kubernetes *kube.Kubernetes, kubeResources *connectiv
 		if ip == "" {
 			return nil, errors.Errorf("no ip found for pod %s/%s", pod.Namespace, pod.Name)
 		}
+		var containers []*synthetic.Container
+		for _, kubeCont := range pod.Spec.Containers {
+			if len(kubeCont.Ports) != 1 {
+				return nil, errors.Errorf("expected 1 port on kube container, found %d", len(kubeCont.Ports))
+			}
+			kubePort := kubeCont.Ports[0]
+			containers = append(containers, &synthetic.Container{
+				Port:     int(kubePort.ContainerPort),
+				Protocol: kubePort.Protocol,
+			})
+		}
 		syntheticPods = append(syntheticPods, &synthetic.Pod{
-			Namespace: pod.Namespace,
-			Name:      pod.Name,
-			Labels:    pod.Labels,
-			IP:        ip,
+			Namespace:  pod.Namespace,
+			Name:       pod.Name,
+			Labels:     pod.Labels,
+			IP:         ip,
+			Containers: containers,
 		})
 		log.Infof("ip for pod %s/%s: %s", pod.Namespace, pod.Name, ip)
 	}

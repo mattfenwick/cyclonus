@@ -13,13 +13,24 @@ import (
 type Printer struct {
 	Noisy          bool
 	IgnoreLoopback bool
+	Results        []*Result
 }
 
 func (t *Printer) PrintSummary() {
-	fmt.Printf("TODO -- summary of number of passes, failures\n")
+	fmt.Println("Summary:")
+	for i, result := range t.Results {
+		fmt.Printf("  test %d: %s\n", i, result.TestCase.Description)
+		for _, step := range result.Steps {
+			comparison := step.SyntheticResult.Combined.Compare(step.KubeResult.TruthTable())
+			trues, falses, nv, checked := comparison.ValueCounts(t.IgnoreLoopback)
+			fmt.Printf("    %d\t%d\t%d\t%d\n", trues, falses, nv, checked)
+		}
+	}
 }
 
 func (t *Printer) PrintTestCaseResult(result *Result) {
+	t.Results = append(t.Results, result)
+
 	if result.Err != nil {
 		fmt.Printf("test case failed for %+v: %+v", result.TestCase, result.Err)
 		return

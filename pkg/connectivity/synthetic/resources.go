@@ -3,6 +3,7 @@ package synthetic
 import (
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
 	"sort"
 )
 
@@ -61,10 +62,11 @@ type Namespace struct {
 }
 
 type Pod struct {
-	Namespace string
-	Name      string
-	Labels    map[string]string
-	IP        string
+	Namespace  string
+	Name       string
+	Labels     map[string]string
+	IP         string
+	Containers []*Container
 }
 
 func (p *Pod) UpdateLabel(key string, value string) *Pod {
@@ -83,4 +85,9 @@ func (p *Pod) UpdateLabel(key string, value string) *Pod {
 
 func (p *Pod) PodString() utils.PodString {
 	return utils.NewPodString(p.Namespace, p.Name)
+}
+
+type Container struct {
+	Port     int
+	Protocol v1.Protocol
 }

@@ -66,26 +66,26 @@ func (tt *TruthTable) Set(from string, to string, value bool) {
 	dict[to] = value
 }
 
-// SetAllFrom sets all values where from = 'from'
-func (tt *TruthTable) SetAllFrom(from string, value bool) {
-	dict, ok := tt.Values[from]
-	if !ok {
-		panic(errors.Errorf("from-key %s not found", from))
-	}
-	for _, to := range tt.Tos {
-		dict[to] = value
-	}
-}
-
-// SetAllTo sets all values where to = 'to'
-func (tt *TruthTable) SetAllTo(to string, value bool) {
-	if _, ok := tt.toSet[to]; !ok {
-		panic(errors.Errorf("to-key %s not found", to))
-	}
-	for _, from := range tt.Froms {
-		tt.Values[from][to] = value
-	}
-}
+//// SetAllFrom sets all values where from = 'from'
+//func (tt *TruthTable) SetAllFrom(from string, value bool) {
+//	dict, ok := tt.Values[from]
+//	if !ok {
+//		panic(errors.Errorf("from-key %s not found", from))
+//	}
+//	for _, to := range tt.Tos {
+//		dict[to] = value
+//	}
+//}
+//
+//// SetAllTo sets all values where to = 'to'
+//func (tt *TruthTable) SetAllTo(to string, value bool) {
+//	if _, ok := tt.toSet[to]; !ok {
+//		panic(errors.Errorf("to-key %s not found", to))
+//	}
+//	for _, from := range tt.Froms {
+//		tt.Values[from][to] = value
+//	}
+//}
 
 // Get gets the specified value
 func (tt *TruthTable) Get(from string, to string) bool {

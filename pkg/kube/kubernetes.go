@@ -84,6 +84,11 @@ func NewKubernetesForDefaultContext() (*Kubernetes, error) {
 	}, nil
 }
 
+func (k *Kubernetes) GetNamespace(namespace string) (*v1.Namespace, error) {
+	ns, err := k.ClientSet.CoreV1().Namespaces().Get(context.TODO(), namespace, metav1.GetOptions{})
+	return ns, errors.Wrapf(err, "unable to get namespace %s", namespace)
+}
+
 func (k *Kubernetes) CreateOrUpdateNamespace(ns *v1.Namespace) (*v1.Namespace, error) {
 	nsr, err := k.ClientSet.CoreV1().Namespaces().Create(context.TODO(), ns, metav1.CreateOptions{})
 	if err == nil {
@@ -174,6 +179,11 @@ func (k *Kubernetes) CreateDaemonSetIfNotExists(namespace string, ds *appsv1.Dae
 		return nil, nil
 	}
 	return nil, err
+}
+
+func (k *Kubernetes) GetService(namespace string, name string) (*v1.Service, error) {
+	service, err := k.ClientSet.CoreV1().Services(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	return service, errors.Wrapf(err, "unable to get service %s/%s", namespace, name)
 }
 
 func (k *Kubernetes) CreateService(svc *v1.Service) (*v1.Service, error) {
