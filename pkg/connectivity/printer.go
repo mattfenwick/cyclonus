@@ -21,12 +21,17 @@ func (t *Printer) PrintSummary() {
 	fmt.Println("Summary:")
 	for i, result := range t.Results {
 		fmt.Printf("  test %d: %s\n", i, result.TestCase.Description)
-		for _, step := range result.Steps {
-			comparison := step.SyntheticResult.Combined.Compare(step.KubeResult.TruthTable())
-			trues, falses, nv, checked := comparison.ValueCounts(t.IgnoreLoopback)
-			fmt.Printf("    %d\t%d\t%d\t%d\n", trues, falses, nv, checked)
+		for j, step := range result.Steps {
+			fmt.Printf("    step %d\n", j)
+			for k, kubeResult := range step.KubeResults {
+				fmt.Printf("      try %d\n", k)
+				comparison := step.SyntheticResult.Combined.Compare(kubeResult.TruthTable())
+				trues, falses, nv, checked := comparison.ValueCounts(t.IgnoreLoopback)
+				fmt.Printf("        %d\t%d\t%d\t%d\n", trues, falses, nv, checked)
+			}
 		}
 	}
+	fmt.Println()
 }
 
 func (t *Printer) PrintTestCaseResult(result *Result) {
@@ -64,10 +69,14 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 		fmt.Printf("  policy %s/%s:\n", netpol.Namespace, netpol.Name)
 	}
 
-	kubeProbe := stepResult.KubeResult.TruthTable()
-	kubeProbe.Table().Render()
+	if len(stepResult.KubeResults) == 0 {
+		panic(errors.Errorf("found 0 KubeResults for step, expected 1 or more"))
+	}
 
-	comparison := stepResult.SyntheticResult.Combined.Compare(kubeProbe)
+	lastKubeProbe := stepResult.LastKubeResult().TruthTable()
+	lastKubeProbe.Table().Render()
+
+	comparison := stepResult.SyntheticResult.Combined.Compare(lastKubeProbe)
 	trues, falses, nv, checked := comparison.ValueCounts(t.IgnoreLoopback)
 	if falses > 0 {
 		fmt.Printf("Discrepancy found: %d wrong, %d no value, %d correct out of %d total\n", falses, trues, nv, checked)
@@ -85,16 +94,20 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 		fmt.Println("Expected:")
 		stepResult.SyntheticResult.Combined.Table().Render()
 
+		for i, kubeResult := range stepResult.KubeResults {
+			fmt.Printf("kube results, try %d:\n", i)
+			kubeResult.TruthTable().Table().Render()
+		}
+
 		if len(stepResult.KubePolicies) > 0 {
 			for _, p := range stepResult.KubePolicies {
 				fmt.Printf("Network policy:\n\n%s\n", PrintNetworkPolicy(p))
 			}
-
 		} else {
 			fmt.Println("no network policies")
 		}
 
-		fmt.Printf("\nActual vs expected:\n")
+		fmt.Printf("\nActual vs expected (last round):\n")
 		comparison.Table().Render()
 	}
 }

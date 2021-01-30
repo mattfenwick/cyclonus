@@ -56,7 +56,7 @@ func RunGenerateCommand(args *GenerateArgs) {
 	kubernetes, err := kube.NewKubernetes(args.Context)
 	utils.DoOrDie(err)
 
-	interpreter, err := connectivity.NewInterpreter(kubernetes, namespaces, pods, ports, protocols, true)
+	interpreter, err := connectivity.NewInterpreter(kubernetes, namespaces, pods, ports, protocols, true, 1)
 	utils.DoOrDie(err)
 	printer := &connectivity.Printer{
 		Noisy:          args.Noisy,

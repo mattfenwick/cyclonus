@@ -301,6 +301,7 @@ func (k *Kubernetes) ExecuteRemoteCommand(namespace string, pod string, containe
 		Name(pod).
 		SubResource("exec").
 		Param("container", container).
+		//Timeout(5*time.Second). // TODO this seems to not do anything ... why ?
 		VersionedParams(
 			&v1.PodExecOptions{
 				Container: container,

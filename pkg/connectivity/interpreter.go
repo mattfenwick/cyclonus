@@ -15,15 +15,16 @@ import (
 )
 
 type Interpreter struct {
-	kubernetes                *kube.Kubernetes
-	kubeResources             *connectivitykube.Resources
-	syntheticResources        *synthetic.Resources
-	namespaces                []string
-	perturbationWaitDuration  time.Duration
-	resetClusterAfterTestCase bool
+	kubernetes                 *kube.Kubernetes
+	kubeResources              *connectivitykube.Resources
+	syntheticResources         *synthetic.Resources
+	namespaces                 []string
+	kubeProbeRetries           int
+	perturbationWaitDuration   time.Duration
+	resetClusterBeforeTestCase bool
 }
 
-func NewInterpreter(kubernetes *kube.Kubernetes, namespaces []string, pods []string, ports []int, protocols []v1.Protocol, resetClusterAfterTestCase bool) (*Interpreter, error) {
+func NewInterpreter(kubernetes *kube.Kubernetes, namespaces []string, pods []string, ports []int, protocols []v1.Protocol, resetClusterBeforeTestCase bool, kubeProbeRetries int) (*Interpreter, error) {
 	kubeResources := connectivitykube.NewDefaultResources(namespaces, pods, ports, protocols)
 	err := SetupCluster(kubernetes, kubeResources)
 	if err != nil {
@@ -35,12 +36,13 @@ func NewInterpreter(kubernetes *kube.Kubernetes, namespaces []string, pods []str
 	}
 
 	return &Interpreter{
-		kubernetes:                kubernetes,
-		kubeResources:             kubeResources,
-		syntheticResources:        syntheticResources,
-		namespaces:                namespaces,
-		perturbationWaitDuration:  5 * time.Second, // TODO parameterize
-		resetClusterAfterTestCase: resetClusterAfterTestCase,
+		kubernetes:                 kubernetes,
+		kubeResources:              kubeResources,
+		syntheticResources:         syntheticResources,
+		namespaces:                 namespaces,
+		perturbationWaitDuration:   5 * time.Second, // TODO parameterize
+		resetClusterBeforeTestCase: resetClusterBeforeTestCase,
+		kubeProbeRetries:           kubeProbeRetries,
 	}, nil
 }
 
@@ -52,13 +54,25 @@ type Result struct {
 
 type StepResult struct {
 	SyntheticResult *synthetic.Result
-	KubeResult      *connectivitykube.Results
+	KubeResults     []*connectivitykube.Results
 	Policy          *matcher.Policy
 	KubePolicies    []*networkingv1.NetworkPolicy
 }
 
+func (s *StepResult) LastKubeResult() *connectivitykube.Results {
+	return s.KubeResults[len(s.KubeResults)-1]
+}
+
 func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 	result := &Result{TestCase: testCase}
+
+	if t.resetClusterBeforeTestCase {
+		err := t.resetClusterState()
+		if err != nil {
+			result.Err = err
+			return result
+		}
+	}
 
 	err := t.verifyClusterState()
 	if err != nil {
@@ -73,7 +87,7 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 	var kubePolicies []*networkingv1.NetworkPolicy
 
 	// perform perturbations one at a time, and run a probe after each change
-	for _, step := range testCase.Steps {
+	for stepIndex, step := range testCase.Steps {
 		// TODO grab actual netpols from kube and record in results, for extra debugging/sanity checks
 
 		for _, action := range step.Actions {
@@ -171,6 +185,7 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 						newPolicies = append(newPolicies, kubePol)
 					}
 				}
+				kubePolicies = newPolicies
 
 				err = t.kubernetes.DeleteNetworkPolicy(ns, name)
 				if err != nil {
@@ -196,24 +211,25 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 				Policies:  parsedPolicy,
 				Resources: namespacesAndPods,
 			}),
-			KubeResult: connectivitykube.RunKubeProbe(t.kubernetes, &connectivitykube.Request{
+			Policy:       parsedPolicy,
+			KubePolicies: append([]*networkingv1.NetworkPolicy{}, kubePolicies...), // this looks weird, but just making a new copy to avoid accidentally mutating it elsewhere
+		}
+
+		for i := 0; i <= t.kubeProbeRetries; i++ {
+			logrus.Infof("running kube probe on step %d, try %d", stepIndex, i)
+			kubeProbe := connectivitykube.RunKubeProbe(t.kubernetes, &connectivitykube.Request{
 				Resources:       t.kubeResources,
 				Port:            step.Port,
 				Protocol:        step.Protocol,
 				NumberOfWorkers: 5,
-			}),
-			Policy:       parsedPolicy,
-			KubePolicies: append([]*networkingv1.NetworkPolicy{}, kubePolicies...), // this looks weird, but just making a new copy to avoid accidentally mutating it elsewhere
+			})
+			stepResult.KubeResults = append(stepResult.KubeResults, kubeProbe)
+			if _, wrong, _, _ := kubeProbe.TruthTable().Compare(stepResult.SyntheticResult.Combined).ValueCounts(false); wrong == 0 {
+				break
+			}
 		}
-		result.Steps = append(result.Steps, stepResult)
-	}
 
-	if t.resetClusterAfterTestCase {
-		err = t.resetClusterState(testCase.Steps)
-		if err != nil {
-			result.Err = err
-			return result
-		}
+		result.Steps = append(result.Steps, stepResult)
 	}
 
 	return result
@@ -227,49 +243,63 @@ func getSliceOfPointers(netpols []networkingv1.NetworkPolicy) []*networkingv1.Ne
 	return netpolPointers
 }
 
-func (t *Interpreter) resetClusterState(steps []*generator.TestStep) error {
+func (t *Interpreter) resetClusterState() error {
 	err := t.kubernetes.DeleteAllNetworkPoliciesInNamespaces(t.namespaces)
 	if err != nil {
 		return err
 	}
 
-	for _, step := range steps {
-		for _, action := range step.Actions {
-			if action.CreatePolicy != nil {
-				// nothing to do
-			} else if action.UpdatePolicy != nil {
-				// nothing to do
-			} else if action.SetNamespaceLabels != nil {
-				newNs := action.SetNamespaceLabels.Namespace
-				expectedLabels := t.syntheticResources.Namespaces[newNs]
-				_, err := t.kubernetes.SetNamespaceLabels(newNs, expectedLabels)
-				if err != nil {
-					return err
-				}
-			} else if action.SetPodLabels != nil {
-				update := action.SetPodLabels
-				var pod *synthetic.Pod
-				for _, p := range t.syntheticResources.Pods {
-					if p.Namespace == update.Namespace && p.Name == update.Pod {
-						pod = p
-					}
-				}
-				if pod == nil {
-					return errors.Errorf("pod %s/%s not found", update.Namespace, update.Pod)
-				}
-				_, err := t.kubernetes.SetPodLabels(update.Namespace, update.Pod, pod.Labels)
-				if err != nil {
-					return err
-				}
-			} else if action.ReadNetworkPolicies != nil {
-				// nothing to do
-			} else if action.DeletePolicy != nil {
-				// nothing to do
-			} else {
-				panic(errors.Errorf("invalid Action"))
-			}
+	for ns, labels := range t.syntheticResources.Namespaces {
+		_, err = t.kubernetes.SetNamespaceLabels(ns, labels)
+		if err != nil {
+			return err
 		}
 	}
+
+	for _, pod := range t.syntheticResources.Pods {
+		_, err = t.kubernetes.SetPodLabels(pod.Namespace, pod.Name, pod.Labels)
+		if err != nil {
+			return err
+		}
+	}
+
+	//for _, step := range steps {
+	//	for _, action := range step.Actions {
+	//		if action.CreatePolicy != nil {
+	//			// nothing to do
+	//		} else if action.UpdatePolicy != nil {
+	//			// nothing to do
+	//		} else if action.SetNamespaceLabels != nil {
+	//			newNs := action.SetNamespaceLabels.Namespace
+	//			expectedLabels := t.syntheticResources.Namespaces[newNs]
+	//			_, err := t.kubernetes.SetNamespaceLabels(newNs, expectedLabels)
+	//			if err != nil {
+	//				return err
+	//			}
+	//		} else if action.SetPodLabels != nil {
+	//			update := action.SetPodLabels
+	//			var pod *synthetic.Pod
+	//			for _, p := range t.syntheticResources.Pods {
+	//				if p.Namespace == update.Namespace && p.Name == update.Pod {
+	//					pod = p
+	//				}
+	//			}
+	//			if pod == nil {
+	//				return errors.Errorf("pod %s/%s not found", update.Namespace, update.Pod)
+	//			}
+	//			_, err := t.kubernetes.SetPodLabels(update.Namespace, update.Pod, pod.Labels)
+	//			if err != nil {
+	//				return err
+	//			}
+	//		} else if action.ReadNetworkPolicies != nil {
+	//			// nothing to do
+	//		} else if action.DeletePolicy != nil {
+	//			// nothing to do
+	//		} else {
+	//			panic(errors.Errorf("invalid Action"))
+	//		}
+	//	}
+	//}
 	return nil
 }
 
@@ -331,6 +361,15 @@ func (t *Interpreter) verifyClusterState() error {
 		if !areLabelsEqual(namespace.Labels, labels) {
 			return errors.Errorf("for namespace %s, expected labels %+v (found %+v)", ns, labels, namespace.Labels)
 		}
+	}
+
+	// 4. network policies
+	policies, err := t.kubernetes.GetNetworkPoliciesInNamespaces(t.namespaces)
+	if err != nil {
+		return err
+	}
+	if len(policies) > 0 {
+		return errors.Errorf("expected 0 policies in namespaces %+v, found %d", t.namespaces, len(policies))
 	}
 
 	// nothing wrong: we're good to go
