@@ -21,8 +21,8 @@ type ProbeArgs struct {
 	KubeContext               string
 	NetpolCreationWaitSeconds int
 	PolicyPath                string
-	Port                      int
-	Protocol                  string
+	Ports                     []int
+	Protocols                 []string
 }
 
 func SetupProbeCommand() *cobra.Command {
@@ -40,8 +40,8 @@ func SetupProbeCommand() *cobra.Command {
 	command.Flags().StringSliceVar(&args.Namespaces, "namespaces", []string{"x", "y", "z"}, "namespaces to create/use pods in")
 	command.Flags().StringSliceVar(&args.Pods, "pods", []string{"a", "b", "c"}, "pods to create in namespaces")
 
-	command.Flags().IntVar(&args.Port, "port", 80, "port to run probes on")
-	command.Flags().StringVar(&args.Protocol, "protocol", string(v1.ProtocolTCP), "protocol to run probes on")
+	command.Flags().IntSliceVar(&args.Ports, "port", []int{80}, "port to run probes on")
+	command.Flags().StringSliceVar(&args.Protocols, "protocol", []string{string(v1.ProtocolTCP)}, "protocol to run probes on")
 
 	command.Flags().BoolVar(&args.Noisy, "noisy", false, "if true, print all results")
 	command.Flags().BoolVar(&args.IgnoreLoopback, "ignore-loopback", false, "if true, ignore loopback for truthtable correctness verification")
@@ -60,11 +60,14 @@ func RunProbeCommand(args *ProbeArgs) {
 	kubernetes, err := kube.NewKubernetes(args.KubeContext)
 	utils.DoOrDie(err)
 
-	port := args.Port
-	protocol, err := kube.ParseProtocol(args.Protocol)
-	utils.DoOrDie(err)
+	var protocols []v1.Protocol
+	for _, protocol := range args.Protocols {
+		parsedProtocol, err := kube.ParseProtocol(protocol)
+		utils.DoOrDie(err)
+		protocols = append(protocols, parsedProtocol)
+	}
 
-	interpreter, err := connectivity.NewInterpreter(kubernetes, args.Namespaces, args.Pods, []int{port}, []v1.Protocol{protocol}, false, true)
+	interpreter, err := connectivity.NewInterpreter(kubernetes, args.Namespaces, args.Pods, args.Ports, protocols, false)
 	utils.DoOrDie(err)
 
 	actions := []*generator.Action{generator.ReadNetworkPolicies(args.Namespaces)}
@@ -80,11 +83,16 @@ func RunProbeCommand(args *ProbeArgs) {
 		actions = append(actions, generator.CreatePolicy(&kubePolicy))
 	}
 
-	result := interpreter.ExecuteTestCase(generator.NewSingleStepTestCase("one-off probe", port, protocol, actions...))
-
 	printer := connectivity.Printer{
 		Noisy:          args.Noisy,
 		IgnoreLoopback: args.IgnoreLoopback,
 	}
-	printer.PrintTestCaseResult(result)
+
+	for _, port := range args.Ports {
+		for _, protocol := range protocols {
+			result := interpreter.ExecuteTestCase(generator.NewSingleStepTestCase("one-off probe", port, protocol, actions...))
+
+			printer.PrintTestCaseResult(result)
+		}
+	}
 }

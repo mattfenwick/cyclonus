@@ -15,16 +15,15 @@ import (
 )
 
 type Interpreter struct {
-	kubernetes                   *kube.Kubernetes
-	kubeResources                *connectivitykube.Resources
-	syntheticResources           *synthetic.Resources
-	namespaces                   []string
-	perturbationWaitDuration     time.Duration
-	deletePoliciesBeforeTestCase bool
-	verifyStateBeforeTestCase    bool
+	kubernetes                *kube.Kubernetes
+	kubeResources             *connectivitykube.Resources
+	syntheticResources        *synthetic.Resources
+	namespaces                []string
+	perturbationWaitDuration  time.Duration
+	resetClusterAfterTestCase bool
 }
 
-func NewInterpreter(kubernetes *kube.Kubernetes, namespaces []string, pods []string, ports []int, protocols []v1.Protocol, deletePoliciesBeforeTestCase bool, verifyStateBeforeTestCase bool) (*Interpreter, error) {
+func NewInterpreter(kubernetes *kube.Kubernetes, namespaces []string, pods []string, ports []int, protocols []v1.Protocol, resetClusterAfterTestCase bool) (*Interpreter, error) {
 	kubeResources := connectivitykube.NewDefaultResources(namespaces, pods, ports, protocols)
 	err := SetupCluster(kubernetes, kubeResources)
 	if err != nil {
@@ -36,13 +35,12 @@ func NewInterpreter(kubernetes *kube.Kubernetes, namespaces []string, pods []str
 	}
 
 	return &Interpreter{
-		kubernetes:                   kubernetes,
-		kubeResources:                kubeResources,
-		syntheticResources:           syntheticResources,
-		namespaces:                   namespaces,
-		perturbationWaitDuration:     5 * time.Second, // TODO parameterize
-		deletePoliciesBeforeTestCase: deletePoliciesBeforeTestCase,
-		verifyStateBeforeTestCase:    verifyStateBeforeTestCase,
+		kubernetes:                kubernetes,
+		kubeResources:             kubeResources,
+		syntheticResources:        syntheticResources,
+		namespaces:                namespaces,
+		perturbationWaitDuration:  5 * time.Second, // TODO parameterize
+		resetClusterAfterTestCase: resetClusterAfterTestCase,
 	}, nil
 }
 
@@ -61,27 +59,13 @@ type StepResult struct {
 
 func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 	result := &Result{TestCase: testCase}
-	var err error
 
-	if t.deletePoliciesBeforeTestCase {
-		// clean out all network policies
-		err = t.kubernetes.DeleteAllNetworkPoliciesInNamespaces(t.namespaces)
-		if err != nil {
-			result.Err = err
-			return result
-		}
+	err := t.verifyClusterState()
+	if err != nil {
+		result.Err = err
+		return result
 	}
-
-	if t.verifyStateBeforeTestCase {
-		err = t.verifyClusterState()
-		if err != nil {
-			result.Err = err
-			return result
-		}
-		logrus.Info("cluster state verified")
-	} else {
-		logrus.Warnf("cluster state not verified")
-	}
+	logrus.Info("cluster state verified")
 
 	// keep namespacesAndPods and kubePolicies in sync with what's in the cluster,
 	//   so that we can correctly simulate expected results
@@ -224,6 +208,14 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 		result.Steps = append(result.Steps, stepResult)
 	}
 
+	if t.resetClusterAfterTestCase {
+		err = t.resetClusterState(testCase.Steps)
+		if err != nil {
+			result.Err = err
+			return result
+		}
+	}
+
 	return result
 }
 
@@ -233,6 +225,52 @@ func getSliceOfPointers(netpols []networkingv1.NetworkPolicy) []*networkingv1.Ne
 		netpolPointers[i] = &netpols[i]
 	}
 	return netpolPointers
+}
+
+func (t *Interpreter) resetClusterState(steps []*generator.TestStep) error {
+	err := t.kubernetes.DeleteAllNetworkPoliciesInNamespaces(t.namespaces)
+	if err != nil {
+		return err
+	}
+
+	for _, step := range steps {
+		for _, action := range step.Actions {
+			if action.CreatePolicy != nil {
+				// nothing to do
+			} else if action.UpdatePolicy != nil {
+				// nothing to do
+			} else if action.SetNamespaceLabels != nil {
+				newNs := action.SetNamespaceLabels.Namespace
+				expectedLabels := t.syntheticResources.Namespaces[newNs]
+				_, err := t.kubernetes.SetNamespaceLabels(newNs, expectedLabels)
+				if err != nil {
+					return err
+				}
+			} else if action.SetPodLabels != nil {
+				update := action.SetPodLabels
+				var pod *synthetic.Pod
+				for _, p := range t.syntheticResources.Pods {
+					if p.Namespace == update.Namespace && p.Name == update.Pod {
+						pod = p
+					}
+				}
+				if pod == nil {
+					return errors.Errorf("pod %s/%s not found", update.Namespace, update.Pod)
+				}
+				_, err := t.kubernetes.SetPodLabels(update.Namespace, update.Pod, pod.Labels)
+				if err != nil {
+					return err
+				}
+			} else if action.ReadNetworkPolicies != nil {
+				// nothing to do
+			} else if action.DeletePolicy != nil {
+				// nothing to do
+			} else {
+				panic(errors.Errorf("invalid Action"))
+			}
+		}
+	}
+	return nil
 }
 
 func (t *Interpreter) verifyClusterState() error {
