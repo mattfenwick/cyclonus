@@ -46,23 +46,6 @@ func NewInterpreter(kubernetes *kube.Kubernetes, namespaces []string, pods []str
 	}, nil
 }
 
-type Result struct {
-	TestCase *generator.TestCase
-	Steps    []*StepResult
-	Err      error
-}
-
-type StepResult struct {
-	SyntheticResult *synthetic.Result
-	KubeResults     []*connectivitykube.Results
-	Policy          *matcher.Policy
-	KubePolicies    []*networkingv1.NetworkPolicy
-}
-
-func (s *StepResult) LastKubeResult() *connectivitykube.Results {
-	return s.KubeResults[len(s.KubeResults)-1]
-}
-
 func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 	result := &Result{TestCase: testCase}
 
@@ -83,6 +66,7 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 
 	// keep track of what's in the cluster, so that we can correctly simulate expected results
 	testCaseState := &TestCaseState{
+		Kubernetes: t.kubernetes,
 		Resources: t.syntheticResources,
 		Policies:  []*networkingv1.NetworkPolicy{},
 	}
@@ -117,39 +101,43 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 		logrus.Infof("waiting %f seconds for perturbation to take affect", t.perturbationWaitDuration.Seconds())
 		time.Sleep(t.perturbationWaitDuration)
 
-		parsedPolicy := matcher.BuildNetworkPolicies(testCaseState.Policies)
-
-		logrus.Infof("running probe on port %d, protocol %s", step.Port, step.Protocol)
-
-		stepResult := &StepResult{
-			SyntheticResult: synthetic.RunSyntheticProbe(&synthetic.Request{
-				Protocol:  step.Protocol,
-				Port:      step.Port,
-				Policies:  parsedPolicy,
-				Resources: testCaseState.Resources,
-			}),
-			Policy:       parsedPolicy,
-			KubePolicies: append([]*networkingv1.NetworkPolicy{}, testCaseState.Policies...), // this looks weird, but just making a new copy to avoid accidentally mutating it elsewhere
-		}
-
-		for i := 0; i <= t.kubeProbeRetries; i++ {
-			logrus.Infof("running kube probe on step %d, try %d", stepIndex, i)
-			kubeProbe := connectivitykube.RunKubeProbe(t.kubernetes, &connectivitykube.Request{
-				Resources:       t.kubeResources,
-				Port:            step.Port,
-				Protocol:        step.Protocol,
-				NumberOfWorkers: 5,
-			})
-			stepResult.KubeResults = append(stepResult.KubeResults, kubeProbe)
-			if counts := kubeProbe.TruthTable().Compare(stepResult.SyntheticResult.Combined).ValueCounts(false); counts.False == 0 {
-				break
-			}
-		}
-
-		result.Steps = append(result.Steps, stepResult)
+		result.Steps = append(result.Steps, t.runProbe(testCaseState, step.Port, step.Protocol))
 	}
 
 	return result
+}
+
+func (t *Interpreter) runProbe(testCaseState *TestCaseState, port int, protocol v1.Protocol) *StepResult {
+	parsedPolicy := matcher.BuildNetworkPolicies(testCaseState.Policies)
+
+	logrus.Infof("running probe on port %d, protocol %s", port, protocol)
+
+	stepResult := &StepResult{
+		SyntheticResult: synthetic.RunSyntheticProbe(&synthetic.Request{
+			Protocol:  protocol,
+			Port:      port,
+			Policies:  parsedPolicy,
+			Resources: testCaseState.Resources,
+		}),
+		Policy:       parsedPolicy,
+		KubePolicies: append([]*networkingv1.NetworkPolicy{}, testCaseState.Policies...), // this looks weird, but just making a new copy to avoid accidentally mutating it elsewhere
+	}
+
+	for i := 0; i <= t.kubeProbeRetries; i++ {
+		logrus.Infof("running kube probe on try %d", i)
+		kubeProbe := connectivitykube.RunKubeProbe(t.kubernetes, &connectivitykube.Request{
+			Resources:       t.kubeResources,
+			Port:            port,
+			Protocol:        protocol,
+			NumberOfWorkers: 5,
+		})
+		stepResult.KubeResults = append(stepResult.KubeResults, kubeProbe)
+		if counts := kubeProbe.TruthTable().Compare(stepResult.SyntheticResult.Combined).ValueCounts(false); counts.False == 0 {
+			break
+		}
+	}
+
+	return stepResult
 }
 
 func (t *Interpreter) resetClusterState() error {
