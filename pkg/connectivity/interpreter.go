@@ -81,126 +81,43 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 	}
 	logrus.Info("cluster state verified")
 
-	// keep namespacesAndPods and kubePolicies in sync with what's in the cluster,
-	//   so that we can correctly simulate expected results
-	namespacesAndPods := t.syntheticResources
-	var kubePolicies []*networkingv1.NetworkPolicy
+	// keep track of what's in the cluster, so that we can correctly simulate expected results
+	testCaseState := &TestCaseState{
+		Resources: t.syntheticResources,
+		Policies:  []*networkingv1.NetworkPolicy{},
+	}
 
 	// perform perturbations one at a time, and run a probe after each change
 	for stepIndex, step := range testCase.Steps {
 		// TODO grab actual netpols from kube and record in results, for extra debugging/sanity checks
 
-		for _, action := range step.Actions {
+		for actionIndex, action := range step.Actions {
 			if action.CreatePolicy != nil {
-				newPolicy := action.CreatePolicy.Policy
-				// do we already have this policy?
-				for _, kubePol := range kubePolicies {
-					if kubePol.Namespace == newPolicy.Namespace && kubePol.Name == newPolicy.Name {
-						result.Err = errors.Errorf("cannot create policy %s/%s: already exists", newPolicy.Namespace, newPolicy.Name)
-						return result
-					}
-				}
-
-				kubePolicies = append(kubePolicies, newPolicy)
-				_, err = t.kubernetes.CreateNetworkPolicy(newPolicy)
-				if err != nil {
-					result.Err = err
-					return result
-				}
+				err = testCaseState.CreatePolicy(action.CreatePolicy.Policy)
 			} else if action.UpdatePolicy != nil {
-				newPolicy := action.UpdatePolicy.Policy
-				// we already have this policy -- right?
-				index := -1
-				found := false
-				for i, kubePol := range kubePolicies {
-					if kubePol.Namespace == newPolicy.Namespace && kubePol.Name == newPolicy.Name {
-						index = i
-						found = true
-						break
-					}
-				}
-				if !found {
-					result.Err = errors.Errorf("cannot update policy %s/%s: not found", newPolicy.Namespace, newPolicy.Name)
-					return result
-				}
-
-				kubePolicies[index] = newPolicy
-				_, err = t.kubernetes.UpdateNetworkPolicy(newPolicy)
-				if err != nil {
-					result.Err = err
-					return result
-				}
+				err = testCaseState.UpdatePolicy(action.UpdatePolicy.Policy)
 			} else if action.SetNamespaceLabels != nil {
-				newNs := action.SetNamespaceLabels.Namespace
-				newLabels := action.SetNamespaceLabels.Labels
-				namespacesAndPods, err = namespacesAndPods.UpdateNamespaceLabels(newNs, newLabels)
-				if err != nil {
-					result.Err = err
-					return result
-				}
-				_, err = t.kubernetes.SetNamespaceLabels(newNs, newLabels)
-				if err != nil {
-					result.Err = err
-					return result
-				}
+				err = testCaseState.SetNamespaceLabels(action.SetNamespaceLabels.Namespace, action.SetNamespaceLabels.Labels)
 			} else if action.SetPodLabels != nil {
-				update := action.SetPodLabels
-				namespacesAndPods, err = namespacesAndPods.SetPodLabels(update.Namespace, update.Pod, update.Labels)
-				if err != nil {
-					result.Err = err
-					return result
-				}
-				_, err = t.kubernetes.SetPodLabels(update.Namespace, update.Pod, update.Labels)
-				if err != nil {
-					result.Err = err
-					return result
-				}
+				ns, pod, labels := action.SetPodLabels.Namespace, action.SetPodLabels.Pod, action.SetPodLabels.Labels
+				err = testCaseState.SetPodLabels(ns, pod, labels)
 			} else if action.ReadNetworkPolicies != nil {
-				policies, err := t.kubernetes.GetNetworkPoliciesInNamespaces(action.ReadNetworkPolicies.Namespaces)
-				if err != nil {
-					result.Err = err
-					return result
-				}
-				kubePolicies = append(kubePolicies, getSliceOfPointers(policies)...)
+				err = testCaseState.ReadPolicies(action.ReadNetworkPolicies.Namespaces)
 			} else if action.DeletePolicy != nil {
-				ns := action.DeletePolicy.Namespace
-				name := action.DeletePolicy.Name
-				// make sure this policy exists
-				index := -1
-				found := false
-				for i, kubePol := range kubePolicies {
-					if kubePol.Namespace == ns && kubePol.Name == name {
-						found = true
-						index = i
-					}
-				}
-				if !found {
-					result.Err = errors.Errorf("cannot delete policy %s/%s: not found", ns, name)
-					return result
-				}
-
-				var newPolicies []*networkingv1.NetworkPolicy
-				for i, kubePol := range kubePolicies {
-					if i != index {
-						newPolicies = append(newPolicies, kubePol)
-					}
-				}
-				kubePolicies = newPolicies
-
-				err = t.kubernetes.DeleteNetworkPolicy(ns, name)
-				if err != nil {
-					result.Err = err
-					return result
-				}
+				err = testCaseState.DeletePolicy(action.DeletePolicy.Namespace, action.DeletePolicy.Name)
 			} else {
-				panic(errors.Errorf("invalid Action"))
+				err = errors.Errorf("invalid Action at step %d, action %d", stepIndex, actionIndex)
+			}
+			if err != nil {
+				result.Err = err
+				return result
 			}
 		}
 
 		logrus.Infof("waiting %f seconds for perturbation to take affect", t.perturbationWaitDuration.Seconds())
 		time.Sleep(t.perturbationWaitDuration)
 
-		parsedPolicy := matcher.BuildNetworkPolicies(kubePolicies)
+		parsedPolicy := matcher.BuildNetworkPolicies(testCaseState.Policies)
 
 		logrus.Infof("running probe on port %d, protocol %s", step.Port, step.Protocol)
 
@@ -209,10 +126,10 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 				Protocol:  step.Protocol,
 				Port:      step.Port,
 				Policies:  parsedPolicy,
-				Resources: namespacesAndPods,
+				Resources: testCaseState.Resources,
 			}),
 			Policy:       parsedPolicy,
-			KubePolicies: append([]*networkingv1.NetworkPolicy{}, kubePolicies...), // this looks weird, but just making a new copy to avoid accidentally mutating it elsewhere
+			KubePolicies: append([]*networkingv1.NetworkPolicy{}, testCaseState.Policies...), // this looks weird, but just making a new copy to avoid accidentally mutating it elsewhere
 		}
 
 		for i := 0; i <= t.kubeProbeRetries; i++ {
@@ -233,14 +150,6 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 	}
 
 	return result
-}
-
-func getSliceOfPointers(netpols []networkingv1.NetworkPolicy) []*networkingv1.NetworkPolicy {
-	netpolPointers := make([]*networkingv1.NetworkPolicy, len(netpols))
-	for i := range netpols {
-		netpolPointers[i] = &netpols[i]
-	}
-	return netpolPointers
 }
 
 func (t *Interpreter) resetClusterState() error {
