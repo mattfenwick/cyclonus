@@ -224,7 +224,7 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 				NumberOfWorkers: 5,
 			})
 			stepResult.KubeResults = append(stepResult.KubeResults, kubeProbe)
-			if _, wrong, _, _ := kubeProbe.TruthTable().Compare(stepResult.SyntheticResult.Combined).ValueCounts(false); wrong == 0 {
+			if counts := kubeProbe.TruthTable().Compare(stepResult.SyntheticResult.Combined).ValueCounts(false); counts.False == 0 {
 				break
 			}
 		}

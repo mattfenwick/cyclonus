@@ -141,13 +141,13 @@ func (t *MultipleContextTestCasePrinter) PrintTestCaseResult(result *MultipleCon
 	for _, contextName := range t.Contexts {
 		kubeResults := result.KubeResults[contextName]
 		comparison := result.SyntheticResult.Combined.Compare(kubeResults.TruthTable())
-		trues, falses, nv, checked := comparison.ValueCounts(t.IgnoreLoopback)
-		if falses > 0 {
+		counts := comparison.ValueCounts(t.IgnoreLoopback)
+		if counts.False > 0 {
 			fmt.Printf("results for context %s:\n", contextName)
-			fmt.Printf("found %d true, %d false, %d no value from %d total\n", trues, falses, nv, checked)
+			fmt.Printf("found %d true, %d false, %d no value, %d ignored from %d total\n", counts.True, counts.False, counts.NoValue, counts.Ignored, counts.Total)
 			foundDiscrepancy = true
 		}
-		falseCounts = append(falseCounts, falses)
+		falseCounts = append(falseCounts, counts.False)
 	}
 	t.DifferenceCounts = append(t.DifferenceCounts, falseCounts)
 

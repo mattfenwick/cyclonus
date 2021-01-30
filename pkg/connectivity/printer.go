@@ -26,8 +26,8 @@ func (t *Printer) PrintSummary() {
 			for k, kubeResult := range step.KubeResults {
 				fmt.Printf("      try %d\n", k)
 				comparison := step.SyntheticResult.Combined.Compare(kubeResult.TruthTable())
-				trues, falses, nv, checked := comparison.ValueCounts(t.IgnoreLoopback)
-				fmt.Printf("        %d\t%d\t%d\t%d\n", trues, falses, nv, checked)
+				counts := comparison.ValueCounts(t.IgnoreLoopback)
+				fmt.Printf("        %d\t%d\t%d\t%d\t%d\n", counts.True, counts.False, counts.NoValue, counts.Ignored, counts.Total)
 			}
 		}
 	}
@@ -77,14 +77,13 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 	lastKubeProbe.Table().Render()
 
 	comparison := stepResult.SyntheticResult.Combined.Compare(lastKubeProbe)
-	trues, falses, nv, checked := comparison.ValueCounts(t.IgnoreLoopback)
-	if falses > 0 {
-		fmt.Printf("Discrepancy found: %d wrong, %d no value, %d correct out of %d total\n", falses, trues, nv, checked)
-	} else {
-		fmt.Printf("found %d true, %d false, %d no value from %d total\n", trues, falses, nv, checked)
+	counts := comparison.ValueCounts(t.IgnoreLoopback)
+	if counts.False > 0 {
+		fmt.Printf("Discrepancy found:")
 	}
+	fmt.Printf("%d wrong, %d no value, %d correct, %d ignored out of %d total\n", counts.False, counts.True, counts.NoValue, counts.Ignored, counts.Total)
 
-	if falses > 0 || t.Noisy {
+	if counts.False > 0 || t.Noisy {
 		//fmt.Println("Ingress:")
 		//step.SyntheticResult.Ingress.Table().Render()
 		//
