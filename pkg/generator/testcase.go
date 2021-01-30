@@ -39,11 +39,6 @@ func SetNamespaceLabels(ns string, labels map[string]string) *Action {
 	return &Action{SetNamespaceLabels: &SetNamespaceLabelsAction{Namespace: ns, Labels: labels}}
 }
 
-type RemoveNamespaceLabelAction struct {
-	Namespace string
-	Key       string
-}
-
 type SetPodLabelsAction struct {
 	Namespace string
 	Pod       string
@@ -58,12 +53,6 @@ func SetPodLabels(namespace string, pod string, labels map[string]string) *Actio
 	}}
 }
 
-type RemovePodLabelAction struct {
-	Namespace string
-	Pod       string
-	Key       string
-}
-
 type ReadNetworkPoliciesAction struct {
 	Namespaces []string
 }
@@ -72,15 +61,12 @@ func ReadNetworkPolicies(namespaces []string) *Action {
 	return &Action{ReadNetworkPolicies: &ReadNetworkPoliciesAction{Namespaces: namespaces}}
 }
 
-// Action: exactly one field must be non-null
+// Action: exactly one field must be non-null.  This models a discriminated union (sum type).
 type Action struct {
-	CreatePolicy *CreatePolicyAction
-	UpdatePolicy *UpdatePolicyAction
-	// TODO uncomment these
-	DeletePolicy       *DeletePolicyAction
-	SetNamespaceLabels *SetNamespaceLabelsAction
-	//RemoveNamespaceLabel *RemoveNamespaceLabelAction
-	//RemovePodLabel *RemovePodLabelAction
+	CreatePolicy        *CreatePolicyAction
+	UpdatePolicy        *UpdatePolicyAction
+	DeletePolicy        *DeletePolicyAction
+	SetNamespaceLabels  *SetNamespaceLabelsAction
 	SetPodLabels        *SetPodLabelsAction
 	ReadNetworkPolicies *ReadNetworkPoliciesAction
 	// TODO create pod?  create namespace?
