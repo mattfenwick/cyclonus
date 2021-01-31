@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -130,37 +129,6 @@ func (k *Kubernetes) CreateNetworkPolicy(policy *networkingv1.NetworkPolicy) (*n
 
 	createdPolicy, err := k.ClientSet.NetworkingV1().NetworkPolicies(policy.Namespace).Create(context.TODO(), policy, metav1.CreateOptions{})
 	return createdPolicy, errors.Wrapf(err, "unable to create network policy %s/%s", policy.Namespace, policy.Name)
-}
-
-//func (k *Kubernetes) CreateOrUpdateNetworkPolicy(ns string, netpol *networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error) {
-//	log.Debugf("creating/updating network policy %s/%s", ns, netpol.Name)
-//	netpol.ObjectMeta.Namespace = ns
-//	np, err := k.ClientSet.NetworkingV1().NetworkPolicies(ns).Update(context.TODO(), netpol, metav1.UpdateOptions{})
-//	if err == nil {
-//		return np, err
-//	}
-//
-//	log.Debugf("unable to update network policy %s/%s, let's try creating it instead (error: %s)", ns, netpol.Name, err)
-//	np, err = k.ClientSet.NetworkingV1().NetworkPolicies(ns).Create(context.TODO(), netpol, metav1.CreateOptions{})
-//	if err != nil {
-//		log.Debugf("unable to create network policy %s/%s: %s", ns, netpol.Name, err)
-//	}
-//	return np, err
-//}
-
-func (k *Kubernetes) CreateDaemonSet(namespace string, ds *appsv1.DaemonSet) (*appsv1.DaemonSet, error) {
-	return k.ClientSet.AppsV1().DaemonSets(namespace).Create(context.TODO(), ds, metav1.CreateOptions{})
-}
-
-func (k *Kubernetes) CreateDaemonSetIfNotExists(namespace string, ds *appsv1.DaemonSet) (*appsv1.DaemonSet, error) {
-	created, err := k.ClientSet.AppsV1().DaemonSets(namespace).Create(context.TODO(), ds, metav1.CreateOptions{})
-	if err == nil {
-		return created, nil
-	}
-	if err.Error() == fmt.Sprintf(`daemonsets.apps "%s" already exists`, ds.Name) {
-		return nil, nil
-	}
-	return nil, err
 }
 
 func (k *Kubernetes) GetService(namespace string, name string) (*v1.Service, error) {
