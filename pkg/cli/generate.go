@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity"
+	connectivitykube "github.com/mattfenwick/cyclonus/pkg/connectivity/kube"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
@@ -13,12 +14,12 @@ import (
 )
 
 type GenerateArgs struct {
-	Mode                      string
-	AllowDNS                  bool
-	Noisy                     bool
-	IgnoreLoopback            bool
-	NetpolCreationWaitSeconds int
-	Context                   string
+	Mode                    string
+	AllowDNS                bool
+	Noisy                   bool
+	IgnoreLoopback          bool
+	PerturbationWaitSeconds int
+	Context                 string
 }
 
 func SetupGenerateCommand() *cobra.Command {
@@ -40,7 +41,7 @@ func SetupGenerateCommand() *cobra.Command {
 	command.Flags().BoolVar(&args.AllowDNS, "allow-dns", true, "if using egress, allow udp over port 53 for DNS resolution")
 	command.Flags().BoolVar(&args.Noisy, "noisy", false, "if true, print all results")
 	command.Flags().BoolVar(&args.IgnoreLoopback, "ignore-loopback", false, "if true, ignore loopback for truthtable correctness verification")
-	command.Flags().IntVar(&args.NetpolCreationWaitSeconds, "netpol-creation-wait-seconds", 5, "number of seconds to wait after creating a network policy before running probes, to give the CNI time to update the cluster state")
+	command.Flags().IntVar(&args.PerturbationWaitSeconds, "perturbation-wait-seconds", 5, "number of seconds to wait after perturbing the cluster (i.e. create a network policy, modify a ns/pod label) before running probes, to give the CNI time to update the cluster state")
 	command.Flags().StringVar(&args.Context, "context", "", "kubernetes context to use; if empty, uses default context")
 
 	return command
@@ -56,7 +57,8 @@ func RunGenerateCommand(args *GenerateArgs) {
 	kubernetes, err := kube.NewKubernetesForContext(args.Context)
 	utils.DoOrDie(err)
 
-	interpreter, err := connectivity.NewInterpreter(kubernetes, namespaces, pods, ports, protocols, true, 1)
+	kubeResources := connectivitykube.NewDefaultResources(namespaces, pods, ports, protocols)
+	interpreter, err := connectivity.NewInterpreter(kubernetes, kubeResources, true, 1, args.PerturbationWaitSeconds)
 	utils.DoOrDie(err)
 	printer := &connectivity.Printer{
 		Noisy:          args.Noisy,

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"github.com/mattfenwick/cyclonus/pkg/connectivity"
+	connectivitykube "github.com/mattfenwick/cyclonus/pkg/connectivity/kube"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
@@ -14,15 +15,15 @@ import (
 )
 
 type ProbeArgs struct {
-	Namespaces                []string
-	Pods                      []string
-	Noisy                     bool
-	IgnoreLoopback            bool
-	KubeContext               string
-	NetpolCreationWaitSeconds int
-	PolicyPath                string
-	Ports                     []int
-	Protocols                 []string
+	Namespaces              []string
+	Pods                    []string
+	Noisy                   bool
+	IgnoreLoopback          bool
+	KubeContext             string
+	PerturbationWaitSeconds int
+	PolicyPath              string
+	Ports                   []int
+	Protocols               []string
 }
 
 func SetupProbeCommand() *cobra.Command {
@@ -46,7 +47,7 @@ func SetupProbeCommand() *cobra.Command {
 	command.Flags().BoolVar(&args.Noisy, "noisy", false, "if true, print all results")
 	command.Flags().BoolVar(&args.IgnoreLoopback, "ignore-loopback", false, "if true, ignore loopback for truthtable correctness verification")
 	command.Flags().StringVar(&args.KubeContext, "kube-context", "", "kubernetes context to use; if empty, uses default context")
-	command.Flags().IntVar(&args.NetpolCreationWaitSeconds, "netpol-creation-wait-seconds", 15, "number of seconds to wait after creating a network policy before running probes, to give the CNI time to update the cluster state")
+	command.Flags().IntVar(&args.PerturbationWaitSeconds, "perturbation-wait-seconds", 15, "number of seconds to wait after perturbing the cluster (i.e. create a network policy, modify a ns/pod label) before running probes, to give the CNI time to update the cluster state")
 	command.Flags().StringVar(&args.PolicyPath, "policy-path", "", "path to yaml network policy to create in kube; if empty, will not create any policies")
 
 	return command
@@ -67,7 +68,8 @@ func RunProbeCommand(args *ProbeArgs) {
 		protocols = append(protocols, parsedProtocol)
 	}
 
-	interpreter, err := connectivity.NewInterpreter(kubernetes, args.Namespaces, args.Pods, args.Ports, protocols, false, 0)
+	kubeResources := connectivitykube.NewDefaultResources(args.Namespaces, args.Pods, args.Ports, protocols)
+	interpreter, err := connectivity.NewInterpreter(kubernetes, kubeResources, false, 0, args.PerturbationWaitSeconds)
 	utils.DoOrDie(err)
 
 	actions := []*generator.Action{generator.ReadNetworkPolicies(args.Namespaces)}

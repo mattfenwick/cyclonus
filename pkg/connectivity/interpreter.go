@@ -24,8 +24,7 @@ type Interpreter struct {
 	resetClusterBeforeTestCase bool
 }
 
-func NewInterpreter(kubernetes *kube.Kubernetes, namespaces []string, pods []string, ports []int, protocols []v1.Protocol, resetClusterBeforeTestCase bool, kubeProbeRetries int) (*Interpreter, error) {
-	kubeResources := connectivitykube.NewDefaultResources(namespaces, pods, ports, protocols)
+func NewInterpreter(kubernetes *kube.Kubernetes, kubeResources *connectivitykube.Resources, resetClusterBeforeTestCase bool, kubeProbeRetries int, perturbationWaitSeconds int) (*Interpreter, error) {
 	err := SetupCluster(kubernetes, kubeResources)
 	if err != nil {
 		return nil, err
@@ -39,8 +38,8 @@ func NewInterpreter(kubernetes *kube.Kubernetes, namespaces []string, pods []str
 		kubernetes:                 kubernetes,
 		kubeResources:              kubeResources,
 		syntheticResources:         syntheticResources,
-		namespaces:                 namespaces,
-		perturbationWaitDuration:   5 * time.Second, // TODO parameterize
+		namespaces:                 kubeResources.NamespacesSlice(),
+		perturbationWaitDuration:   time.Duration(perturbationWaitSeconds) * time.Second,
 		resetClusterBeforeTestCase: resetClusterBeforeTestCase,
 		kubeProbeRetries:           kubeProbeRetries,
 	}, nil
