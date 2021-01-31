@@ -62,12 +62,7 @@ func RunQueryTargetsCommand(args *QueryTargetsArgs) {
 	var err error
 	switch args.PolicySource {
 	case "kube":
-		var kubeClient *kube.Kubernetes
-		if args.Context == "" {
-			kubeClient, err = kube.NewKubernetesForDefaultContext()
-		} else {
-			kubeClient, err = kube.NewKubernetesForContext(args.Context)
-		}
+		kubeClient, err := kube.NewKubernetesForContext(args.Context)
 		utils.DoOrDie(err)
 		kubePolicies, err = readPoliciesFromKube(kubeClient, args.Namespaces)
 	case "file":

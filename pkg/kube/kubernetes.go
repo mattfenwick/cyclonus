@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
@@ -17,8 +16,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/remotecommand"
-	"os"
-	"path"
 )
 
 type Kubernetes struct {
@@ -26,25 +23,10 @@ type Kubernetes struct {
 	RestConfig *rest.Config
 }
 
-func PathToKubeConfig() string {
-	home, err := os.UserHomeDir()
-	utils.DoOrDie(err)
-	return path.Join(home, ".kube", "config")
-}
-
-func NewKubernetes(maybeContext string) (*Kubernetes, error) {
-	if maybeContext == "" {
-		return NewKubernetesForDefaultContext()
-	} else {
-		return NewKubernetesForContext(maybeContext)
-	}
-}
-
 func NewKubernetesForContext(context string) (*Kubernetes, error) {
-	kubeConfigPath := PathToKubeConfig()
-	log.Debugf("instantiating k8s Clientset from config path '%s' for context %s", kubeConfigPath, context)
+	log.Debugf("instantiating k8s Clientset for context %s", context)
 	kubeConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeConfigPath},
+		clientcmd.NewDefaultClientConfigLoadingRules(),
 		&clientcmd.ConfigOverrides{CurrentContext: context}).ClientConfig()
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to build config")
@@ -56,31 +38,6 @@ func NewKubernetesForContext(context string) (*Kubernetes, error) {
 	return &Kubernetes{
 		ClientSet:  clientset,
 		RestConfig: kubeConfig,
-	}, nil
-}
-
-func NewKubernetesForDefaultContext() (*Kubernetes, error) {
-	//config, err := rest.InClusterConfig()
-	//if err != nil {
-	//	kubeconfig := PathToKubeConfig()
-	//	config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
-	//	if err != nil {
-	//		return nil, errors.Wrapf(err, "unable to build config from flags, check that your KUBECONFIG file is correct !")
-	//	}
-	//}
-	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		&clientcmd.ClientConfigLoadingRules{ExplicitPath: PathToKubeConfig()},
-		&clientcmd.ConfigOverrides{}).ClientConfig()
-	if err != nil {
-		return nil, errors.Wrapf(err, "unable to build config")
-	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, errors.Wrapf(err, "unable to instantiate clientset")
-	}
-	return &Kubernetes{
-		ClientSet:  clientset,
-		RestConfig: config,
 	}, nil
 }
 

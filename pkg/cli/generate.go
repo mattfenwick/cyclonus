@@ -53,7 +53,7 @@ func RunGenerateCommand(args *GenerateArgs) {
 	protocols := []v1.Protocol{v1.ProtocolTCP, v1.ProtocolUDP}
 	ports := []int{80, 81}
 
-	kubernetes, err := kube.NewKubernetes(args.Context)
+	kubernetes, err := kube.NewKubernetesForContext(args.Context)
 	utils.DoOrDie(err)
 
 	interpreter, err := connectivity.NewInterpreter(kubernetes, namespaces, pods, ports, protocols, true, 1)

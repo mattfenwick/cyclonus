@@ -52,7 +52,7 @@ func RunCompareCommand(args *CompareArgs) {
 
 	kubeClients := map[string]*kube.Kubernetes{}
 	if len(args.Contexts) == 0 {
-		kubernetes, err := kube.NewKubernetesForDefaultContext()
+		kubernetes, err := kube.NewKubernetesForContext("")
 		utils.DoOrDie(err)
 		kubeClients["default-context"] = kubernetes
 	} else {
