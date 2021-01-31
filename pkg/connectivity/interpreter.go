@@ -24,8 +24,8 @@ type Interpreter struct {
 	resetClusterBeforeTestCase bool
 }
 
-func NewInterpreter(kubernetes *kube.Kubernetes, kubeResources *connectivitykube.Resources, resetClusterBeforeTestCase bool, kubeProbeRetries int, perturbationWaitSeconds int) (*Interpreter, error) {
-	err := SetupCluster(kubernetes, kubeResources)
+func NewInterpreter(kubernetes *kube.Kubernetes, kubeResources *connectivitykube.Resources, resetClusterBeforeTestCase bool, kubeProbeRetries int, perturbationWaitSeconds int, podCreationTimeoutSeconds int) (*Interpreter, error) {
+	err := SetupCluster(kubernetes, kubeResources, podCreationTimeoutSeconds)
 	if err != nil {
 		return nil, err
 	}

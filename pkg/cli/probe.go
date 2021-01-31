@@ -15,15 +15,16 @@ import (
 )
 
 type ProbeArgs struct {
-	Namespaces              []string
-	Pods                    []string
-	Noisy                   bool
-	IgnoreLoopback          bool
-	KubeContext             string
-	PerturbationWaitSeconds int
-	PolicyPath              string
-	Ports                   []int
-	Protocols               []string
+	Namespaces                []string
+	Pods                      []string
+	Noisy                     bool
+	IgnoreLoopback            bool
+	KubeContext               string
+	PerturbationWaitSeconds   int
+	PodCreationTimeoutSeconds int
+	PolicyPath                string
+	Ports                     []int
+	Protocols                 []string
 }
 
 func SetupProbeCommand() *cobra.Command {
@@ -48,6 +49,7 @@ func SetupProbeCommand() *cobra.Command {
 	command.Flags().BoolVar(&args.IgnoreLoopback, "ignore-loopback", false, "if true, ignore loopback for truthtable correctness verification")
 	command.Flags().StringVar(&args.KubeContext, "kube-context", "", "kubernetes context to use; if empty, uses default context")
 	command.Flags().IntVar(&args.PerturbationWaitSeconds, "perturbation-wait-seconds", 15, "number of seconds to wait after perturbing the cluster (i.e. create a network policy, modify a ns/pod label) before running probes, to give the CNI time to update the cluster state")
+	command.Flags().IntVar(&args.PodCreationTimeoutSeconds, "pod-creation-timeout-seconds", 60, "number of seconds to wait for pods to create, be running and have IP addresses")
 	command.Flags().StringVar(&args.PolicyPath, "policy-path", "", "path to yaml network policy to create in kube; if empty, will not create any policies")
 
 	return command
@@ -69,7 +71,7 @@ func RunProbeCommand(args *ProbeArgs) {
 	}
 
 	kubeResources := connectivitykube.NewDefaultResources(args.Namespaces, args.Pods, args.Ports, protocols)
-	interpreter, err := connectivity.NewInterpreter(kubernetes, kubeResources, false, 0, args.PerturbationWaitSeconds)
+	interpreter, err := connectivity.NewInterpreter(kubernetes, kubeResources, false, 0, args.PerturbationWaitSeconds, args.PodCreationTimeoutSeconds)
 	utils.DoOrDie(err)
 
 	actions := []*generator.Action{generator.ReadNetworkPolicies(args.Namespaces)}

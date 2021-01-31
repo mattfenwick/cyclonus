@@ -56,6 +56,11 @@ func (k *Kubernetes) SetNamespaceLabels(namespace string, labels map[string]stri
 	return ns, errors.Wrapf(err, "unable to update namespace %s", namespace)
 }
 
+func (k *Kubernetes) DeleteNamespace(ns string) error {
+	err := k.ClientSet.CoreV1().Namespaces().Delete(context.TODO(), ns, metav1.DeleteOptions{})
+	return errors.Wrapf(err, "unable to delete namespace %s", ns)
+}
+
 func (k *Kubernetes) CreateOrUpdateNamespace(ns *v1.Namespace) (*v1.Namespace, error) {
 	nsr, err := k.ClientSet.CoreV1().Namespaces().Create(context.TODO(), ns, metav1.CreateOptions{})
 	if err == nil {
