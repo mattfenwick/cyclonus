@@ -67,8 +67,8 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 	// keep track of what's in the cluster, so that we can correctly simulate expected results
 	testCaseState := &TestCaseState{
 		Kubernetes: t.kubernetes,
-		Resources: t.syntheticResources,
-		Policies:  []*networkingv1.NetworkPolicy{},
+		Resources:  t.syntheticResources,
+		Policies:   []*networkingv1.NetworkPolicy{},
 	}
 
 	// perform perturbations one at a time, and run a probe after each change

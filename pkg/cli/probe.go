@@ -57,7 +57,7 @@ func RunProbeCommand(args *ProbeArgs) {
 		panic(errors.Errorf("found 0 namespaces or pods, must have at least 1 of each"))
 	}
 
-	kubernetes, err := kube.NewKubernetes(args.KubeContext)
+	kubernetes, err := kube.NewKubernetesForContext(args.KubeContext)
 	utils.DoOrDie(err)
 
 	var protocols []v1.Protocol
