@@ -74,13 +74,13 @@ func waitForPodsReadyTODODelete(kubernetes *kube.Kubernetes, namespaces []string
 	return errors.Errorf("pods not ready")
 }
 
-func SetupCluster(kubernetes *kube.Kubernetes, kubeResources *connectivitykube.Resources) error {
+func SetupCluster(kubernetes *kube.Kubernetes, kubeResources *connectivitykube.Resources, timeoutSeconds int) error {
 	err := kubeResources.CreateResourcesInKube(kubernetes)
 	if err != nil {
 		return err
 	}
 
-	err = waitForPodsReady(kubernetes, kubeResources, 60)
+	err = waitForPodsReady(kubernetes, kubeResources, timeoutSeconds)
 	if err != nil {
 		return err
 	}
