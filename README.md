@@ -314,3 +314,9 @@ Cut a release:
 ```bash
 goreleaser release --rm-dist
 ```
+
+Make a test release:
+
+```bash
+goreleaser release --snapshot --rm-dist
+```

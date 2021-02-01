@@ -38,6 +38,7 @@ func SetupRootCommand() *cobra.Command {
 	command.AddCommand(SetupQueryTargetsCommand())
 	command.AddCommand(SetupGenerateCommand())
 	command.AddCommand(SetupProbeCommand())
+	command.AddCommand(SetupVersionCommand())
 
 	// TODO
 	//command.AddCommand(setupQueryPeersCommand())

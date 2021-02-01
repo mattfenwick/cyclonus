@@ -1,3 +1,5 @@
-FROM centos:centos7
+FROM alpine:3.13
 
-COPY ./cyclonus ./cyclonus
+ENTRYPOINT ["/cyclonus"]
+
+COPY cyclonus /

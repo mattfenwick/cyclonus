@@ -15,13 +15,31 @@ builds:
       - CGO_ENABLED=0
     main: cmd/cyclonus/main.go
     ldflags: -s -w
-      -X github.com/mattfenwick/cyclonus/pkg/version.version={{.Version}}
-      -X github.com/mattfenwick/cyclonus/pkg/version.gitSHA={{.Commit}}
-      -X github.com/mattfenwick/cyclonus/pkg/version.buildTime={{.Date}}
+      -X github.com/mattfenwick/cyclonus/pkg/cli.version={{.Version}}
+      -X github.com/mattfenwick/cyclonus/pkg/cli.gitSHA={{.Commit}}
+      -X github.com/mattfenwick/cyclonus/pkg/cli.buildTime={{.Date}}
       -extldflags "-static"
     flags: -tags netgo -installsuffix netgo
-    binary: "cyclonus_{{ .RawVersion }}"
+    binary: "cyclonus"
     hooks: {}
+dockers:
+  -
+    goos: linux
+    goarch: amd64
+    goarm: ''
+    ids:
+      - cyclonus
+    image_templates:
+      - "mfenwick100/cyclonus:{{ .Tag }}"
+    skip_push: false
+    dockerfile: cmd/cyclonus/Dockerfile
+#    build_flag_templates:
+#      - "--label=org.opencontainers.image.created={{.Date}}"
+#      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+#      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+#      - "--label=org.opencontainers.image.version={{.Version}}"
+#      - "--pull"
+#      - "--platform=linux/arm64"
 archives:
   - id: cyclonus
     builds:
