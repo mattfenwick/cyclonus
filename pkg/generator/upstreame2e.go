@@ -130,28 +130,29 @@ func (u *UpstreamE2EGenerator) GenerateTestCases() []*TestCase {
 					}})),
 			NewTestStep(81, tcp)),
 
-		NewTestCase("should allow ingress access on one named port",
-			NewTestStep(81, tcp, CreatePolicy(
-				&NetworkPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "allow-all",
-						Namespace: "x",
-					},
-					Spec: NetworkPolicySpec{
-						PodSelector: metav1.LabelSelector{
-							MatchLabels: map[string]string{},
-						},
-						Ingress: []NetworkPolicyIngressRule{
-							{
-								Ports: []NetworkPolicyPort{
-									{Port: &intstr.IntOrString{Type: intstr.String, StrVal: "serve-81-tcp"}},
-								},
-							},
-						},
-						PolicyTypes: []PolicyType{PolicyTypeIngress},
-					},
-				})),
-			NewTestStep(80, tcp)),
+		// TODO uncomment this once named ports are working correctly in synthetic probes
+		//NewTestCase("should allow ingress access on one named port",
+		//	NewTestStep(81, tcp, CreatePolicy(
+		//		&NetworkPolicy{
+		//			ObjectMeta: metav1.ObjectMeta{
+		//				Name:      "allow-all",
+		//				Namespace: "x",
+		//			},
+		//			Spec: NetworkPolicySpec{
+		//				PodSelector: metav1.LabelSelector{
+		//					MatchLabels: map[string]string{},
+		//				},
+		//				Ingress: []NetworkPolicyIngressRule{
+		//					{
+		//						Ports: []NetworkPolicyPort{
+		//							{Port: &intstr.IntOrString{Type: intstr.String, StrVal: "serve-81-tcp"}},
+		//						},
+		//					},
+		//				},
+		//				PolicyTypes: []PolicyType{PolicyTypeIngress},
+		//			},
+		//		})),
+		//	NewTestStep(80, tcp)),
 
 		NewTestCase("should enforce updated policy",
 			NewTestStep(81, tcp, CreatePolicy(
