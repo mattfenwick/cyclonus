@@ -5,10 +5,12 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/explainer"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
+	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
+	"strings"
 )
 
 type Printer struct {
@@ -18,20 +20,47 @@ type Printer struct {
 }
 
 func (t *Printer) PrintSummary() {
-	fmt.Println("Summary:")
-	for i, result := range t.Results {
-		fmt.Printf("  test %d: %s\n", i, result.TestCase.Description)
-		for j, step := range result.Steps {
-			fmt.Printf("    step %d\n", j)
-			for k, kubeResult := range step.KubeResults {
-				fmt.Printf("      try %d\n", k)
+	tableString := &strings.Builder{}
+	tableString.WriteString("Summary:\n")
+	table := tablewriter.NewWriter(tableString)
+
+	table.SetHeader([]string{"Test", "Result", "Step", "Try", "Wrong", "Right"})
+
+	for testNumber, result := range t.Results {
+		// preprocess to figure out whether it passed or failed
+		passed := true
+		for _, step := range result.Steps {
+			lastKubeResult := step.LastKubeResult()
+			counts := step.SyntheticResult.Combined.Compare(lastKubeResult.TruthTable()).ValueCounts(t.IgnoreLoopback)
+			if counts.False > 0 {
+				passed = false
+			}
+		}
+
+		testResult := "success"
+		if !passed {
+			testResult = "failure"
+		}
+		table.Append([]string{
+			fmt.Sprintf("%d: %s", testNumber, result.TestCase.Description),
+			testResult, "", "", "", "",
+		})
+
+		for stepNumber, step := range result.Steps {
+			for tryNumber, kubeResult := range step.KubeResults {
 				comparison := step.SyntheticResult.Combined.Compare(kubeResult.TruthTable())
 				counts := comparison.ValueCounts(t.IgnoreLoopback)
-				fmt.Printf("        %d\t%d\t%d\t%d\t%d\n", counts.True, counts.False, counts.NoValue, counts.Ignored, counts.Total)
+				table.Append([]string{"", "", intToString(stepNumber), intToString(tryNumber), intToString(counts.False), intToString(counts.True)})
 			}
 		}
 	}
-	fmt.Println()
+
+	table.Render()
+	fmt.Println(tableString.String())
+}
+
+func intToString(i int) string {
+	return fmt.Sprintf("%d", i)
 }
 
 func (t *Printer) PrintTestCaseResult(result *Result) {

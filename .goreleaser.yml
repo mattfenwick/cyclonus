@@ -30,6 +30,7 @@ dockers:
     ids:
       - cyclonus
     image_templates:
+      - "mfenwick100/cyclonus:latest"
       - "mfenwick100/cyclonus:{{ .Tag }}"
     skip_push: false
     dockerfile: cmd/cyclonus/Dockerfile
