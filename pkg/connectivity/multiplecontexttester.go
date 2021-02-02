@@ -133,7 +133,7 @@ func (t *MultipleContextTestCasePrinter) PrintTestCaseResult(result *MultipleCon
 	//result.SyntheticResult.Egress.Table().Render()
 
 	fmt.Println("Expected connectivity:")
-	result.SyntheticResult.Combined.Table().Render()
+	fmt.Println(result.SyntheticResult.Combined.Table())
 
 	foundDiscrepancy := false
 
@@ -155,7 +155,7 @@ func (t *MultipleContextTestCasePrinter) PrintTestCaseResult(result *MultipleCon
 		for _, contextName := range t.Contexts {
 			fmt.Printf("results for context %s:\n", contextName)
 			kubeResults := result.KubeResults[contextName]
-			kubeResults.TruthTable().Table().Render()
+			fmt.Println(kubeResults.TruthTable().Table())
 		}
 	} else {
 		fmt.Println("no differences found for policy")

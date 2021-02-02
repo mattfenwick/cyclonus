@@ -23,6 +23,7 @@ func (t *Printer) PrintSummary() {
 	tableString := &strings.Builder{}
 	tableString.WriteString("Summary:\n")
 	table := tablewriter.NewWriter(tableString)
+	table.SetRowLine(true)
 
 	table.SetHeader([]string{"Test", "Result", "Step", "Try", "Wrong", "Right"})
 
@@ -42,7 +43,7 @@ func (t *Printer) PrintSummary() {
 			testResult = "failure"
 		}
 		table.Append([]string{
-			fmt.Sprintf("%d: %s", testNumber, result.TestCase.Description),
+			fmt.Sprintf("%d: %s", testNumber+1, result.TestCase.Description),
 			testResult, "", "", "", "",
 		})
 
@@ -50,7 +51,7 @@ func (t *Printer) PrintSummary() {
 			for tryNumber, kubeResult := range step.KubeResults {
 				comparison := step.SyntheticResult.Combined.Compare(kubeResult.TruthTable())
 				counts := comparison.ValueCounts(t.IgnoreLoopback)
-				table.Append([]string{"", "", intToString(stepNumber), intToString(tryNumber), intToString(counts.False), intToString(counts.True)})
+				table.Append([]string{"", "", intToString(stepNumber + 1), intToString(tryNumber + 1), intToString(counts.False), intToString(counts.True)})
 			}
 		}
 	}
@@ -103,7 +104,7 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 	}
 
 	lastKubeProbe := stepResult.LastKubeResult().TruthTable()
-	lastKubeProbe.Table().Render()
+	fmt.Println(lastKubeProbe.Table())
 
 	comparison := stepResult.SyntheticResult.Combined.Compare(lastKubeProbe)
 	counts := comparison.ValueCounts(t.IgnoreLoopback)
@@ -120,11 +121,11 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 		//step.SyntheticResult.Egress.Table().Render()
 
 		fmt.Println("Expected:")
-		stepResult.SyntheticResult.Combined.Table().Render()
+		fmt.Println(stepResult.SyntheticResult.Combined.Table())
 
 		for i, kubeResult := range stepResult.KubeResults {
 			fmt.Printf("kube results, try %d:\n", i)
-			kubeResult.TruthTable().Table().Render()
+			fmt.Println(kubeResult.TruthTable().Table())
 		}
 
 		if len(stepResult.KubePolicies) > 0 {
@@ -136,7 +137,7 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 		}
 
 		fmt.Printf("\nActual vs expected (last round):\n")
-		comparison.Table().Render()
+		fmt.Println(comparison.Table())
 	}
 }
 

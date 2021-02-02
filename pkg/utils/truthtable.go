@@ -3,7 +3,7 @@ package utils
 import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
-	"os"
+	"strings"
 )
 
 // TruthTable takes in n items and maintains an n x n table of booleans for each ordered pair
@@ -187,8 +187,9 @@ func (tt *TruthTable) Compare(other *TruthTable) *TruthTable {
 //	return strings.Join(lines, "\n")
 //}
 
-func (tt *TruthTable) Table() *tablewriter.Table {
-	table := tablewriter.NewWriter(os.Stdout)
+func (tt *TruthTable) Table() string {
+	tableString := &strings.Builder{}
+	table := tablewriter.NewWriter(tableString)
 	table.SetHeader(append([]string{"-"}, tt.Tos...))
 
 	for _, from := range tt.Froms {
@@ -206,5 +207,6 @@ func (tt *TruthTable) Table() *tablewriter.Table {
 		table.Append(line)
 	}
 
-	return table
+	table.Render()
+	return tableString.String()
 }

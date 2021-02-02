@@ -100,12 +100,12 @@ func RunProbeSyntheticConnectivityCommand(args *SyntheticProbeConnectivityArgs) 
 
 		// 5. print out a result matrix
 		fmt.Println("Ingress:")
-		result.Ingress.Table().Render()
+		fmt.Println(result.Ingress.Table())
 
 		fmt.Println("Egress:")
-		result.Egress.Table().Render()
+		fmt.Println(result.Egress.Table())
 
 		fmt.Println("Combined:")
-		result.Combined.Table().Render()
+		fmt.Println(result.Combined.Table())
 	}
 }
