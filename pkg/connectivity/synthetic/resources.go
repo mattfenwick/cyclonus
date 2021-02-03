@@ -77,6 +77,16 @@ type Namespace struct {
 	Labels map[string]string
 }
 
+func NewPod(ns string, name string, labels map[string]string, ip string, containers []*Container) *Pod {
+	return &Pod{
+		Namespace:  ns,
+		Name:       name,
+		Labels:     labels,
+		IP:         ip,
+		Containers: containers,
+	}
+}
+
 type Pod struct {
 	Namespace  string
 	Name       string
