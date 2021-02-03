@@ -107,6 +107,7 @@ func GetSyntheticResources(kubernetes *kube.Kubernetes, kubeResources *connectiv
 			containers = append(containers, &synthetic.Container{
 				Port:     int(kubePort.ContainerPort),
 				Protocol: kubePort.Protocol,
+				Name:     kubePort.Name,
 			})
 		}
 		syntheticPods = append(syntheticPods, &synthetic.Pod{

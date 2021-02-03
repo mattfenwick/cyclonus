@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 type SyntheticProbeConnectivityArgs struct {
@@ -28,7 +29,7 @@ type SyntheticProbeConnectivityConfig struct {
 	Pods   *synthetic.Resources
 	Probes []*struct {
 		Protocol v1.Protocol
-		Port     int
+		Port     intstr.IntOrString
 	}
 }
 
@@ -96,7 +97,7 @@ func RunProbeSyntheticConnectivityCommand(args *SyntheticProbeConnectivityArgs) 
 			Resources: config.Pods,
 		})
 
-		log.Infof("probe on port %d, protocol %s", result.Request.Port, result.Request.Protocol)
+		log.Infof("probe on port %s, protocol %s", result.Request.Port.String(), result.Request.Protocol)
 
 		// 5. print out a result matrix
 		fmt.Println("Ingress:")

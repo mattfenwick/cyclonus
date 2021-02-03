@@ -86,7 +86,7 @@ func (t *Printer) PrintTestCaseResult(result *Result) {
 }
 
 func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepResult) {
-	fmt.Printf("step %d on port %d, protocol %s:\n", i, step.Port, step.Protocol)
+	fmt.Printf("step %d on port %s, protocol %s:\n", i, step.Port.String(), step.Protocol)
 	policy := stepResult.Policy
 
 	if t.Noisy {

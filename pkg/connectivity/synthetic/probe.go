@@ -3,7 +3,6 @@ package synthetic
 import (
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	log "github.com/sirupsen/logrus"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func RunSyntheticProbe(request *Request) *Result {
@@ -12,7 +11,7 @@ func RunSyntheticProbe(request *Request) *Result {
 	egressTable := resources.NewTruthTable()
 	combined := resources.NewTruthTable()
 
-	log.Infof("running synthetic probe on port %d, protocol %s", request.Port, request.Protocol)
+	log.Infof("running synthetic probe on port %s, protocol %s", request.Port.String(), request.Protocol)
 
 	for _, podFrom := range resources.Pods {
 		for _, podTo := range resources.Pods {
@@ -35,7 +34,7 @@ func RunSyntheticProbe(request *Request) *Result {
 				},
 				PortProtocol: &matcher.PortProtocol{
 					Protocol: request.Protocol,
-					Port:     intstr.FromInt(request.Port),
+					Port:     request.Port,
 				},
 			}
 

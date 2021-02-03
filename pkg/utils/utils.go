@@ -12,8 +12,12 @@ func DoOrDie(err error) {
 	}
 }
 
-func PrintJson(obj interface{}) {
+func JsonString(obj interface{}) string {
 	bytes, err := json.MarshalIndent(obj, "", "  ")
 	DoOrDie(err)
-	fmt.Printf("%s\n", bytes)
+	return string(bytes)
+}
+
+func PrintJson(obj interface{}) {
+	fmt.Printf("%s\n", JsonString(obj))
 }

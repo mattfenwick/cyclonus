@@ -173,7 +173,7 @@ func (g *FragmentGenerator) FragmentPolicies() []*NetworkPolicy {
 func (g *FragmentGenerator) GenerateTestCases() []*TestCase {
 	var testCases []*TestCase
 	for _, netpol := range g.FragmentPolicies() {
-		testCases = append(testCases, NewSingleStepTestCase("TODO", 80, v1.ProtocolTCP, CreatePolicy(netpol)))
+		testCases = append(testCases, NewSingleStepTestCase("TODO", port80, v1.ProtocolTCP, CreatePolicy(netpol)))
 	}
 	return testCases
 }

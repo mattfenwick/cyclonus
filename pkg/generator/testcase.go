@@ -3,6 +3,7 @@ package generator
 import (
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 type CreatePolicyAction struct {
@@ -73,12 +74,12 @@ type Action struct {
 }
 
 type TestStep struct {
-	Port     int
+	Port     intstr.IntOrString
 	Protocol v1.Protocol
 	Actions  []*Action
 }
 
-func NewTestStep(port int, protocol v1.Protocol, actions ...*Action) *TestStep {
+func NewTestStep(port intstr.IntOrString, protocol v1.Protocol, actions ...*Action) *TestStep {
 	return &TestStep{
 		Port:     port,
 		Protocol: protocol,
@@ -91,7 +92,7 @@ type TestCase struct {
 	Steps       []*TestStep
 }
 
-func NewSingleStepTestCase(description string, port int, protocol v1.Protocol, actions ...*Action) *TestCase {
+func NewSingleStepTestCase(description string, port intstr.IntOrString, protocol v1.Protocol, actions ...*Action) *TestCase {
 	return &TestCase{
 		Description: description,
 		Steps:       []*TestStep{NewTestStep(port, protocol, actions...)},

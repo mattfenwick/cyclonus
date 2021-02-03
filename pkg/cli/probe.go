@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/yaml"
 )
 
@@ -23,7 +24,8 @@ type ProbeArgs struct {
 	PerturbationWaitSeconds   int
 	PodCreationTimeoutSeconds int
 	PolicyPath                string
-	Ports                     []int
+	Ports                     []string
+	ServerPorts               []int
 	Protocols                 []string
 }
 
@@ -42,7 +44,8 @@ func SetupProbeCommand() *cobra.Command {
 	command.Flags().StringSliceVar(&args.Namespaces, "namespaces", []string{"x", "y", "z"}, "namespaces to create/use pods in")
 	command.Flags().StringSliceVar(&args.Pods, "pods", []string{"a", "b", "c"}, "pods to create in namespaces")
 
-	command.Flags().IntSliceVar(&args.Ports, "port", []int{80}, "port to run probes on")
+	command.Flags().StringSliceVar(&args.Ports, "port", []string{"80"}, "port to run probes on; may be named port or numbered port")
+	command.Flags().IntSliceVar(&args.ServerPorts, "server-port", []int{80}, "ports to run server on")
 	command.Flags().StringSliceVar(&args.Protocols, "protocol", []string{string(v1.ProtocolTCP)}, "protocol to run probes on")
 
 	command.Flags().BoolVar(&args.Noisy, "noisy", false, "if true, print all results")
@@ -70,7 +73,7 @@ func RunProbeCommand(args *ProbeArgs) {
 		protocols = append(protocols, parsedProtocol)
 	}
 
-	kubeResources := connectivitykube.NewDefaultResources(args.Namespaces, args.Pods, args.Ports, protocols)
+	kubeResources := connectivitykube.NewDefaultResources(args.Namespaces, args.Pods, args.ServerPorts, protocols)
 	interpreter, err := connectivity.NewInterpreter(kubernetes, kubeResources, false, 0, args.PerturbationWaitSeconds, args.PodCreationTimeoutSeconds)
 	utils.DoOrDie(err)
 
@@ -94,7 +97,8 @@ func RunProbeCommand(args *ProbeArgs) {
 
 	for _, port := range args.Ports {
 		for _, protocol := range protocols {
-			result := interpreter.ExecuteTestCase(generator.NewSingleStepTestCase("one-off probe", port, protocol, actions...))
+			parsedPort := intstr.Parse(port)
+			result := interpreter.ExecuteTestCase(generator.NewSingleStepTestCase("one-off probe", parsedPort, protocol, actions...))
 
 			printer.PrintTestCaseResult(result)
 		}

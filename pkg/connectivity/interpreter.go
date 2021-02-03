@@ -11,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"time"
 )
 
@@ -106,10 +107,10 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 	return result
 }
 
-func (t *Interpreter) runProbe(testCaseState *TestCaseState, port int, protocol v1.Protocol) *StepResult {
+func (t *Interpreter) runProbe(testCaseState *TestCaseState, port intstr.IntOrString, protocol v1.Protocol) *StepResult {
 	parsedPolicy := matcher.BuildNetworkPolicies(testCaseState.Policies)
 
-	logrus.Infof("running probe on port %d, protocol %s", port, protocol)
+	logrus.Infof("running probe on port %s, protocol %s", port.String(), protocol)
 
 	stepResult := &StepResult{
 		SyntheticResult: synthetic.RunSyntheticProbe(&synthetic.Request{
