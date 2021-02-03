@@ -25,27 +25,35 @@ func BuildNetworkPolicies(netpols []*networkingv1.NetworkPolicy) *Policy {
 	return np
 }
 
+func getPolicyNamespace(policy *networkingv1.NetworkPolicy) string {
+	if policy.Namespace == "" {
+		return v1.NamespaceDefault
+	}
+	return policy.Namespace
+}
+
 func BuildTarget(netpol *networkingv1.NetworkPolicy) (*Target, *Target) {
 	var ingress *Target
 	var egress *Target
 	if len(netpol.Spec.PolicyTypes) == 0 {
 		panic(errors.Errorf("invalid network policy: need at least 1 type"))
 	}
+	policyNamespace := getPolicyNamespace(netpol)
 	for _, pType := range netpol.Spec.PolicyTypes {
 		switch pType {
 		case networkingv1.PolicyTypeIngress:
 			ingress = &Target{
-				Namespace:   netpol.Namespace,
+				Namespace:   policyNamespace,
 				PodSelector: netpol.Spec.PodSelector,
 				SourceRules: []*networkingv1.NetworkPolicy{netpol},
-				Peer:        BuildIngressMatcher(netpol.Namespace, netpol.Spec.Ingress),
+				Peer:        BuildIngressMatcher(policyNamespace, netpol.Spec.Ingress),
 			}
 		case networkingv1.PolicyTypeEgress:
 			egress = &Target{
-				Namespace:   netpol.Namespace,
+				Namespace:   policyNamespace,
 				PodSelector: netpol.Spec.PodSelector,
 				SourceRules: []*networkingv1.NetworkPolicy{netpol},
-				Peer:        BuildEgressMatcher(netpol.Namespace, netpol.Spec.Egress),
+				Peer:        BuildEgressMatcher(policyNamespace, netpol.Spec.Egress),
 			}
 		}
 	}
