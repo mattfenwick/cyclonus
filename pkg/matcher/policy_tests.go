@@ -172,4 +172,47 @@ spec:
 			}).IsAllowed()).To(BeTrue())
 		})
 	})
+
+	Describe("Policy allowing ingress to named port", func() {
+		policyYaml := `
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: abc
+  namespace: x
+spec:
+  ingress:
+  - ports:
+    - port: port-hello
+      protocol: TCP
+  podSelector:
+    matchLabels:
+      pod: a
+  policyTypes:
+  - Ingress`
+		var kubePolicy *networkingv1.NetworkPolicy
+		err := yaml.Unmarshal([]byte(policyYaml), &kubePolicy)
+		utils.DoOrDie(err)
+		policy := BuildNetworkPolicy(kubePolicy)
+
+		It("Should allow access to named port", func() {
+			Expect(policy.IsTrafficAllowed(&Traffic{
+				Source: &TrafficPeer{
+					IP: "1.2.3.4",
+				},
+				Destination: &TrafficPeer{
+					Internal: &InternalPeer{
+						PodLabels:       map[string]string{"pod": "a"},
+						NamespaceLabels: map[string]string{"ns": "x"},
+						Namespace:       "x",
+					},
+					IP: "192.168.242.249",
+				},
+				PortProtocol: &PortProtocol{
+					Port:     intstr.FromString("port-hello"),
+					Protocol: v1.ProtocolTCP,
+				},
+			}).IsAllowed()).To(BeTrue())
+		})
+	})
 }

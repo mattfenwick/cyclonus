@@ -12,6 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"os"
 	"sigs.k8s.io/yaml"
 	"strings"
@@ -21,7 +22,7 @@ import (
 type MultipleContextTestCase struct {
 	KubePolicies              []*networkingv1.NetworkPolicy
 	NetpolCreationWaitSeconds int
-	Port                      int
+	Port                      intstr.IntOrString
 	Protocol                  v1.Protocol
 	KubeClients               map[string]*kube.Kubernetes
 	KubeResources             map[string]*connectivitykube.Resources

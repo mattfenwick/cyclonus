@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sort"
 )
 
@@ -48,7 +49,9 @@ func RunCompareCommand(args *CompareArgs) {
 	pods := []string{"a", "b", "c"}
 
 	protocol := v1.ProtocolTCP
-	port := 80
+	probePort := intstr.FromInt(80)
+
+	serverPort := 80
 
 	kubeClients := map[string]*kube.Kubernetes{}
 	if len(args.Contexts) == 0 {
@@ -67,7 +70,7 @@ func RunCompareCommand(args *CompareArgs) {
 	var syntheticResources *synthetic.Resources
 	var zcIP string
 	for context, kubeClient := range kubeClients {
-		kubernetesResources, synth, err := connectivity.SetupClusterTODODelete(kubeClient, namespaces, pods, port, protocol)
+		kubernetesResources, synth, err := connectivity.SetupClusterTODODelete(kubeClient, namespaces, pods, serverPort, protocol)
 		utils.DoOrDie(err)
 		// TODO this is a huge hack -- ips are going to be different from cluster to cluster, which means
 		//   that policies involving ips need to be different from cluster to cluster.  But here we're just
@@ -106,7 +109,7 @@ func RunCompareCommand(args *CompareArgs) {
 		testCase := &connectivity.MultipleContextTestCase{
 			KubePolicies:              kubePolicy,
 			NetpolCreationWaitSeconds: args.NetpolCreationWaitSeconds,
-			Port:                      port,
+			Port:                      probePort,
 			Protocol:                  protocol,
 			KubeClients:               kubeClients,
 			KubeResources:             kubeResources,

@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"strings"
 )
 
@@ -121,4 +122,23 @@ func (p *Pod) KubeContainers() []v1.Container {
 		}
 	}
 	return containers
+}
+
+func (p *Pod) ResolvePort(port intstr.IntOrString) (int, error) {
+	switch port.Type {
+	case intstr.Int:
+		return int(port.IntVal), nil
+	case intstr.String:
+		for _, c := range p.KubePod.Spec.Containers {
+			if len(c.Ports) != 1 {
+				return 0, errors.Errorf("expected container %s/%s/%s to have 1 port, found %d", p.Namespace, p.Name, c.Name, len(c.Ports))
+			}
+			if c.Ports[0].Name == port.StrVal {
+				return int(c.Ports[0].ContainerPort), nil
+			}
+		}
+		return 0, errors.Errorf("unable to resolve named port %s on pod %s/%s", port.StrVal, p.Namespace, p.Name)
+	default:
+		return 0, errors.Errorf("invalid intstr.IntOrString value %+v", port)
+	}
 }

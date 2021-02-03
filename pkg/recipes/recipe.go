@@ -8,6 +8,7 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/yaml"
 )
 
@@ -32,7 +33,7 @@ func (r *Recipe) Policies() []*networkingv1.NetworkPolicy {
 func (r *Recipe) RunProbe() *synthetic.Result {
 	return synthetic.RunSyntheticProbe(&synthetic.Request{
 		Protocol:  r.Protocol,
-		Port:      r.Port,
+		Port:      intstr.FromInt(r.Port),
 		Policies:  matcher.BuildNetworkPolicies(r.Policies()),
 		Resources: r.Resources,
 	})

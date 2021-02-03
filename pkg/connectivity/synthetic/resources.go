@@ -111,4 +111,5 @@ func (p *Pod) PodString() utils.PodString {
 type Container struct {
 	Port     int
 	Protocol v1.Protocol
+	Name     string
 }

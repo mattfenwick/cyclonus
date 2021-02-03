@@ -3,8 +3,10 @@ package kube
 import (
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
+	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sort"
 )
 
@@ -28,14 +30,21 @@ func NewDefaultResources(namespaces []string, podNames []string, ports []int, pr
 	return r
 }
 
-func (r *Resources) GetJobs(port int, protocol v1.Protocol) []*Job {
+func (r *Resources) GetJobs(port intstr.IntOrString, protocol v1.Protocol) []*Job {
 	var jobs []*Job
 	for _, podFrom := range r.Pods {
 		for _, podTo := range r.Pods {
+			portInt, err := podTo.ResolvePort(port)
+
+			// TODO define the expected behavior:
+			//  - is it okay to probe on a named port that isn't available?
+			//  - is it okay to probe on a *numbered* port that isn't available?
+			utils.DoOrDie(errors.Wrapf(err, "TODO: undefined behavior"))
+
 			jobs = append(jobs, &Job{
 				FromPod:  podFrom,
 				ToPod:    podTo,
-				Port:     port,
+				Port:     portInt,
 				Protocol: protocol,
 			})
 		}

@@ -57,13 +57,13 @@ func SetupGenerateCommand() *cobra.Command {
 }
 
 func RunGenerateCommand(args *GenerateArgs) {
-	protocols := []v1.Protocol{v1.ProtocolTCP, v1.ProtocolUDP}
-	ports := []int{80, 81}
+	serverProtocols := []v1.Protocol{v1.ProtocolTCP, v1.ProtocolUDP}
+	serverPorts := []int{80, 81}
 
 	kubernetes, err := kube.NewKubernetesForContext(args.Context)
 	utils.DoOrDie(err)
 
-	kubeResources := connectivitykube.NewDefaultResources(args.Namespaces, args.Pods, ports, protocols)
+	kubeResources := connectivitykube.NewDefaultResources(args.Namespaces, args.Pods, serverPorts, serverProtocols)
 	interpreter, err := connectivity.NewInterpreter(kubernetes, kubeResources, true, 1, args.PerturbationWaitSeconds, args.PodCreationTimeoutSeconds)
 	utils.DoOrDie(err)
 	printer := &connectivity.Printer{
