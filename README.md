@@ -1,6 +1,6 @@
 # Cyclonus
 
-## network policy explainer, prober, and network policy generator!
+## network policy explainer, prober, and test case generator!
 
 Parse, explain, and probe network policies to understand their implications and help design
 policies that suit your needs!
@@ -73,8 +73,8 @@ Using hypothetical "traffic", generate a table of presumed connectivity by evalu
 policies.  Note: this does not use a kubernetes cluster.
 
 ```
-$ go run cmd/cyclonus/main.go synthetic-probe \
-  --model-path cmd/cyclonus/synthetic-probe-example.json \
+$ go run cmd/cyclonus/main.go analyze \
+  --probe-path examples/synthetic-probe-example.json \
   --policy-source examples
   
 Combined:
@@ -93,14 +93,13 @@ Combined:
 +-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
 ```
 
-## Analyze
+## Explain
 
 Groups policies by target, divides rules into egress and ingress, and gives a basic explanation of the combined
 policies.  This clarifies the interactions between "denies" and "allows" from multiple policies.
 
 ```
 $ go run cmd/cyclonus/main.go analyze \
-  --policy-source file \
   --policy-path ./networkpolicies/simple-example/
 
 +---------+---------------+------------------------+---------------------+--------------------------+
@@ -141,9 +140,9 @@ Given arbitrary traffic examples (from a source to a destination, including labe
 this command parses network policies and determines if the traffic is allowed or not.
 
 ```
-$ go run cmd/cyclonus/main.go traffic \
+$ go run cmd/cyclonus/main.go analyze \
   --policy-source examples \
-  --traffic-path cmd/cyclonus/traffic-example.json 
+  --traffic-path ./examples/traffic-example.json
 
 Traffic:
 {
@@ -184,7 +183,41 @@ Is allowed: true
 
 Given a set of pods, this command determines which network policies affect those pods.
 
-TODO in progress
+```
+➜  cyclonus git:(master) ✗ go run ./cmd/cyclonus/main.go analyze \
+  --explain=false \
+  --policy-path ./networkpolicies/simple-example \
+  --target-pod-path ./examples/targets-example.json
+
+Combined:
++---------+---------------+-----------------------+-------------------+-------------------------+
+|  TYPE   |    TARGET     |     SOURCE RULES      |       PEER        |      PORT/PROTOCOL      |
++---------+---------------+-----------------------+-------------------+-------------------------+
+| Ingress | namespace: y  | y/allow-all-for-label | ports for all IPs | port 53 on protocol TCP |
+|         | Match labels: | y/deny-all            |                   |                         |
+|         |   pod: b      |                       |                   |                         |
++         +               +                       +-------------------+                         +
+|         |               |                       | namespace: all    |                         |
+|         |               |                       | pods: all         |                         |
+|         |               |                       |                   |                         |
++---------+---------------+-----------------------+-------------------+-------------------------+
+
+Matching targets:
++---------+---------------+-----------------------+-------------------+-------------------------+
+|  TYPE   |    TARGET     |     SOURCE RULES      |       PEER        |      PORT/PROTOCOL      |
++---------+---------------+-----------------------+-------------------+-------------------------+
+| Ingress | namespace: y  | y/allow-all-for-label | ports for all IPs | port 53 on protocol TCP |
+|         | Match labels: |                       |                   |                         |
+|         |   pod: b      |                       |                   |                         |
++         +               +                       +-------------------+                         +
+|         |               |                       | namespace: all    |                         |
+|         |               |                       | pods: all         |                         |
+|         |               |                       |                   |                         |
++         +---------------+-----------------------+-------------------+-------------------------+
+|         | namespace: y  | y/deny-all            | no pods, no ips   | no ports, no protocols  |
+|         | all pods      |                       |                   |                         |
++---------+---------------+-----------------------+-------------------+-------------------------+
+```
 
 
 ## How to Release Binaries

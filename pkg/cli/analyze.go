@@ -3,6 +3,8 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/synthetic"
 	"github.com/mattfenwick/cyclonus/pkg/explainer"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
@@ -12,12 +14,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"io/ioutil"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"strings"
 )
 
 type AnalyzeArgs struct {
@@ -27,8 +27,8 @@ type AnalyzeArgs struct {
 	PolicyPath         string
 	Context            string
 
-	// analyze
-	Analyze bool
+	// explain
+	Explain bool
 
 	// traffic
 	TrafficPath string
@@ -58,7 +58,7 @@ func SetupAnalyzeCommand() *cobra.Command {
 	command.Flags().StringVar(&args.PolicyPath, "policy-path", "", "may be a file or a directory; if set, will attempt to read policies from the path")
 	command.Flags().StringVar(&args.Context, "context", "", "only set if policy-source = kube; selects kube context to read policies from")
 
-	command.Flags().BoolVar(&args.Analyze, "analyze", true, "if true, print analysis of network policies")
+	command.Flags().BoolVar(&args.Explain, "explain", true, "if true, print explanation of network policies")
 	command.Flags().StringVar(&args.TargetPodPath, "target-pod-path", "", "path to json target pod file -- json array of dicts; if empty, this step will be skipped")
 	command.Flags().StringVar(&args.TrafficPath, "traffic-path", "", "path to json traffic file, containing of a list of traffic objects; if empty, this step will be skipped")
 	command.Flags().StringVar(&args.ProbePath, "probe-path", "", "path to json model file for synthetic probe; if empty, this step will be skipped")
@@ -92,8 +92,8 @@ func RunAnalyzeCommand(args *AnalyzeArgs) {
 	// 4. consume policies
 	explainedPolicies := matcher.BuildNetworkPolicies(kubePolicies)
 
-	if args.Analyze {
-		AnalyzePolicies(explainedPolicies)
+	if args.Explain {
+		ExplainPolicies(explainedPolicies)
 	}
 
 	if args.TargetPodPath != "" {
@@ -109,7 +109,7 @@ func RunAnalyzeCommand(args *AnalyzeArgs) {
 	}
 }
 
-func AnalyzePolicies(explainedPolicies *matcher.Policy) {
+func ExplainPolicies(explainedPolicies *matcher.Policy) {
 	fmt.Printf("%s\n", explainer.TableExplainer(explainedPolicies))
 }
 
@@ -125,41 +125,26 @@ func QueryTargets(explainedPolicies *matcher.Policy, podPath string) {
 	err = json.Unmarshal(bs, &pods)
 	utils.DoOrDie(err)
 
-	// TODO use tables for output
 	for _, pod := range pods {
-		fmt.Printf("pod %+v:\n\n", pod)
+		logrus.Debugf("pod %+v:\n\n", pod)
 
-		// ingress
-		fmt.Println("  ingress")
-		ingressValue := true
-		ingressTargets := explainedPolicies.TargetsApplyingToPod(ingressValue, pod.Namespace, pod.Labels)
-		for _, t := range ingressTargets {
-			fmt.Printf("    %s\n", strings.Join(explainer.ExplainTarget(t, ingressValue), "\n"))
-		}
-		// combine all the ingress targets for combined connectivity
+		ingressTargets := explainedPolicies.TargetsApplyingToPod(true, pod.Namespace, pod.Labels)
 		combinedIngressTarget := matcher.CombineTargetsIgnoringPrimaryKey(pod.Namespace, metav1.LabelSelector{MatchLabels: pod.Labels}, ingressTargets)
-		if combinedIngressTarget != nil {
-			fmt.Printf("    combined ingress:\n%s\n\n", strings.Join(explainer.ExplainTarget(combinedIngressTarget, ingressValue), "\n"))
-		} else {
-			fmt.Println("    combined ingress: none")
-		}
 
-		// egress
-		fmt.Printf("\n  egress\n")
-		egressValue := false
-		egressTargets := explainedPolicies.TargetsApplyingToPod(egressValue, pod.Namespace, pod.Labels)
-		for _, t := range egressTargets {
-			fmt.Printf("    %s\n", strings.Join(explainer.ExplainTarget(t, egressValue), "\n"))
-		}
-		// combine all the egress targets for combined connectivity
+		egressTargets := explainedPolicies.TargetsApplyingToPod(false, pod.Namespace, pod.Labels)
 		combinedEgressTarget := matcher.CombineTargetsIgnoringPrimaryKey(pod.Namespace, metav1.LabelSelector{MatchLabels: pod.Labels}, egressTargets)
+
+		var combinedIngresses []*matcher.Target
+		if combinedIngressTarget != nil {
+			combinedIngresses = []*matcher.Target{combinedIngressTarget}
+		}
+		var combinedEgresses []*matcher.Target
 		if combinedEgressTarget != nil {
-			fmt.Printf("    combined egress:\n%s\n\n", strings.Join(explainer.ExplainTarget(combinedEgressTarget, egressValue), "\n"))
-		} else {
-			fmt.Println("    combined egress: none")
+			combinedEgresses = []*matcher.Target{combinedEgressTarget}
 		}
 
-		fmt.Printf("\n\n")
+		fmt.Printf("Combined:\n%s\n", explainer.TableExplainer(matcher.NewPolicyWithTargets(combinedIngresses, combinedEgresses)))
+		fmt.Printf("Matching targets:\n%s\n", explainer.TableExplainer(matcher.NewPolicyWithTargets(ingressTargets, egressTargets)))
 	}
 }
 

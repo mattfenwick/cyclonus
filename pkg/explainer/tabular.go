@@ -10,6 +10,15 @@ import (
 	"strings"
 )
 
+type SliceBuilder struct {
+	Prefix   []string
+	Elements [][]string
+}
+
+func (s *SliceBuilder) Append(items ...string) {
+	s.Elements = append(s.Elements, append(s.Prefix, items...))
+}
+
 func TableExplainer(policies *matcher.Policy) string {
 	tableString := &strings.Builder{}
 	table := tablewriter.NewWriter(tableString)
@@ -18,19 +27,18 @@ func TableExplainer(policies *matcher.Policy) string {
 	table.SetAutoMergeCells(true)
 	table.SetHeader([]string{"Type", "Target", "Source rules", "Peer", "Port/Protocol"})
 
+	builder := &SliceBuilder{}
 	ingresses, egresses := policies.SortedTargets()
-	TargetsTableLines(table, ingresses, true)
-	TargetsTableLines(table, egresses, false)
+	TargetsTableLines(builder, ingresses, true)
+	TargetsTableLines(builder, egresses, false)
+
+	table.AppendBulk(builder.Elements)
 
 	table.Render()
 	return tableString.String()
 }
 
-func row(policyType, target, sourceRules, peer, portProtocol string) []string {
-	return []string{policyType, target, sourceRules, peer, portProtocol}
-}
-
-func TargetsTableLines(table *tablewriter.Table, targets []*matcher.Target, isIngress bool) {
+func TargetsTableLines(builder *SliceBuilder, targets []*matcher.Target, isIngress bool) {
 	var ruleType string
 	if isIngress {
 		ruleType = "Ingress"
@@ -44,71 +52,72 @@ func TargetsTableLines(table *tablewriter.Table, targets []*matcher.Target, isIn
 		}
 		target := fmt.Sprintf("namespace: %s\n%s", ingress.Namespace, LabelSelectorTableLines(ingress.PodSelector))
 		rules := strings.Join(sourceRules, "\n")
+		builder.Prefix = []string{ruleType, target, rules}
 
 		switch a := ingress.Peer.(type) {
 		case *matcher.AllPeerMatcher:
-			table.Append(row(ruleType, target, rules, "all pods, all ips", "all ports, all protocols"))
+			builder.Append("all pods, all ips", "all ports, all protocols")
 		case *matcher.NonePeerMatcher:
-			table.Append(row(ruleType, target, rules, "no pods, no ips", "no ports, no protocols"))
+			builder.Append("no pods, no ips", "no ports, no protocols")
 		case *matcher.SpecificPeerMatcher:
 			switch ip := a.IP.(type) {
 			case *matcher.AllIPMatcher:
-				table.Append(row(ruleType, target, rules, "all ips", "all ports, all protocols"))
+				builder.Append("all ips", "all ports, all protocols")
 			case *matcher.NoneIPMatcher:
-				table.Append(row(ruleType, target, rules, "no ips", "no ports, no protocols"))
+				builder.Append("no ips", "no ports, no protocols")
 			case *matcher.SpecificIPMatcher:
-				table.Append(row(ruleType, target, rules, "ports for all IPs", strings.Join(PortMatcherTableLines(ip.PortsForAllIPs), "\n")))
-				for _, block := range ip.SortedIPBlocks() {
-					pps := PortMatcherTableLines(block.Port)
-					table.Append(row(
-						ruleType,
-						target,
-						rules,
-						strings.Join(append([]string{block.IPBlock.CIDR}, fmt.Sprintf("except %+v", block.IPBlock.Except)), "\n"),
-						strings.Join(pps, "\n")))
-				}
+				SpecificIPMatcherTableLines(builder, ip)
 			default:
 				panic(errors.Errorf("invalid IPMatcher type %T", ip))
 			}
 			switch internal := a.Internal.(type) {
 			case *matcher.AllInternalMatcher:
-				table.Append(row(ruleType, target, rules, "all pods", "all ports, all protocols"))
+				builder.Append("all pods", "all ports, all protocols")
 			case *matcher.NoneInternalMatcher:
-				table.Append(row(ruleType, target, rules, "no pods", "no ports, no protocols"))
+				builder.Append("no pods", "no ports, no protocols")
 			case *matcher.SpecificInternalMatcher:
-				for _, nsPodMatcher := range internal.NamespacePods {
-					var namespaces string
-					switch ns := nsPodMatcher.Namespace.(type) {
-					case *matcher.AllNamespaceMatcher:
-						namespaces = "all"
-					case *matcher.LabelSelectorNamespaceMatcher:
-						namespaces = LabelSelectorTableLines(ns.Selector)
-					case *matcher.ExactNamespaceMatcher:
-						namespaces = ns.Namespace
-					default:
-						panic(errors.Errorf("invalid NamespaceMatcher type %T", ns))
-					}
-					var pods string
-					switch p := nsPodMatcher.Pod.(type) {
-					case *matcher.AllPodMatcher:
-						pods = "all"
-					case *matcher.LabelSelectorPodMatcher:
-						pods = LabelSelectorTableLines(p.Selector)
-					default:
-						panic(errors.Errorf("invalid PodMatcher type %T", p))
-					}
-					table.Append(row(ruleType,
-						target,
-						rules,
-						"namespace: "+namespaces+"\n"+"pods: "+pods,
-						strings.Join(PortMatcherTableLines(nsPodMatcher.Port), "\n")))
-				}
+				SpecificInternalMatcherTableLines(builder, internal)
 			default:
 				panic(errors.Errorf("invalid InternalMatcher type %T", internal))
 			}
 		default:
 			panic(errors.Errorf("invalid PeerMatcher type %T", a))
 		}
+	}
+}
+
+func SpecificIPMatcherTableLines(builder *SliceBuilder, ip *matcher.SpecificIPMatcher) {
+	builder.Append("ports for all IPs", strings.Join(PortMatcherTableLines(ip.PortsForAllIPs), "\n"))
+	for _, block := range ip.SortedIPBlocks() {
+		peer := block.IPBlock.CIDR + "\n" + fmt.Sprintf("except %+v", block.IPBlock.Except)
+		pps := PortMatcherTableLines(block.Port)
+		builder.Append(peer, strings.Join(pps, "\n"))
+	}
+}
+
+func SpecificInternalMatcherTableLines(builder *SliceBuilder, internal *matcher.SpecificInternalMatcher) {
+	for _, nsPodMatcher := range internal.NamespacePods {
+		var namespaces string
+		switch ns := nsPodMatcher.Namespace.(type) {
+		case *matcher.AllNamespaceMatcher:
+			namespaces = "all"
+		case *matcher.LabelSelectorNamespaceMatcher:
+			namespaces = LabelSelectorTableLines(ns.Selector)
+		case *matcher.ExactNamespaceMatcher:
+			namespaces = ns.Namespace
+		default:
+			panic(errors.Errorf("invalid NamespaceMatcher type %T", ns))
+		}
+		var pods string
+		switch p := nsPodMatcher.Pod.(type) {
+		case *matcher.AllPodMatcher:
+			pods = "all"
+		case *matcher.LabelSelectorPodMatcher:
+			pods = LabelSelectorTableLines(p.Selector)
+		default:
+			panic(errors.Errorf("invalid PodMatcher type %T", p))
+		}
+		builder.Append("namespace: "+namespaces+"\n"+"pods: "+pods, strings.Join(PortMatcherTableLines(nsPodMatcher.Port), "\n"))
 	}
 }
 

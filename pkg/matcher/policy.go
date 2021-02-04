@@ -12,6 +12,13 @@ func NewPolicy() *Policy {
 	return &Policy{Ingress: map[string]*Target{}, Egress: map[string]*Target{}}
 }
 
+func NewPolicyWithTargets(ingress []*Target, egress []*Target) *Policy {
+	np := NewPolicy()
+	np.AddTargets(true, ingress)
+	np.AddTargets(false, egress)
+	return np
+}
+
 func (np *Policy) SortedTargets() ([]*Target, []*Target) {
 	var ingress, egress []*Target
 	for _, rule := range np.Ingress {
@@ -27,6 +34,12 @@ func (np *Policy) SortedTargets() ([]*Target, []*Target) {
 		return egress[i].GetPrimaryKey() < egress[j].GetPrimaryKey()
 	})
 	return ingress, egress
+}
+
+func (np *Policy) AddTargets(isIngress bool, targets []*Target) {
+	for _, target := range targets {
+		np.AddTarget(isIngress, target)
+	}
 }
 
 func (np *Policy) AddTarget(isIngress bool, target *Target) *Target {
