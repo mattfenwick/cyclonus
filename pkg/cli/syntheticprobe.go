@@ -26,8 +26,8 @@ type SyntheticProbeConnectivityArgs struct {
 }
 
 type SyntheticProbeConnectivityConfig struct {
-	Pods   *synthetic.Resources
-	Probes []*struct {
+	Resources *synthetic.Resources
+	Probes    []*struct {
 		Protocol v1.Protocol
 		Port     intstr.IntOrString
 	}
@@ -94,7 +94,7 @@ func RunProbeSyntheticConnectivityCommand(args *SyntheticProbeConnectivityArgs) 
 			Protocol:  probe.Protocol,
 			Port:      probe.Port,
 			Policies:  explainedPolicies,
-			Resources: config.Pods,
+			Resources: config.Resources,
 		})
 
 		log.Infof("probe on port %s, protocol %s", result.Request.Port.String(), result.Request.Protocol)
