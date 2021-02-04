@@ -15,12 +15,12 @@ func RunRootCommand() {
 	}
 }
 
-type Flags struct {
+type RootFlags struct {
 	Verbosity string
 }
 
 func SetupRootCommand() *cobra.Command {
-	flags := &Flags{}
+	flags := &RootFlags{}
 	command := &cobra.Command{
 		Use:   "cyclonus",
 		Short: "explain, probe, and query network policies",
@@ -31,11 +31,8 @@ func SetupRootCommand() *cobra.Command {
 
 	command.PersistentFlags().StringVarP(&flags.Verbosity, "verbosity", "v", "info", "log level; one of [info, debug, trace, warn, error, fatal, panic]")
 
-	command.AddCommand(SetupAnalyzePoliciesCommand())
+	command.AddCommand(SetupAnalyzeCommand())
 	command.AddCommand(SetupCompareCommand())
-	command.AddCommand(SetupQueryTrafficCommand())
-	command.AddCommand(SetupSyntheticProbeConnectivityCommand())
-	command.AddCommand(SetupQueryTargetsCommand())
 	command.AddCommand(SetupGenerateCommand())
 	command.AddCommand(SetupProbeCommand())
 	command.AddCommand(SetupVersionCommand())

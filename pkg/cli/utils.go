@@ -6,7 +6,6 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
-	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
@@ -63,23 +62,15 @@ func readPoliciesFromPath(policyPath string) ([]*networkingv1.NetworkPolicy, err
 }
 
 func readPoliciesFromKube(kubeClient *kube.Kubernetes, namespaces []string) ([]*networkingv1.NetworkPolicy, error) {
-	if len(namespaces) == 0 {
-		list, err := kubeClient.ClientSet.NetworkingV1().NetworkPolicies(v1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
+	var list []*networkingv1.NetworkPolicy
+	for _, ns := range namespaces {
+		nsList, err := kubeClient.ClientSet.NetworkingV1().NetworkPolicies(ns).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
-			return nil, errors.Wrapf(err, "unable to list netpols in all namespaces")
+			return nil, errors.Wrapf(err, "unable to list netpols in namespace %s", ns)
 		}
-		return refNetpolList(list.Items), nil
-	} else {
-		var list []*networkingv1.NetworkPolicy
-		for _, ns := range namespaces {
-			nsList, err := kubeClient.ClientSet.NetworkingV1().NetworkPolicies(ns).List(context.TODO(), metav1.ListOptions{})
-			if err != nil {
-				return nil, errors.Wrapf(err, "unable to list netpols in namespace %s", ns)
-			}
-			list = append(list, refNetpolList(nsList.Items)...)
-		}
-		return list, nil
+		list = append(list, refNetpolList(nsList.Items)...)
 	}
+	return list, nil
 }
 
 func refNetpolList(refs []networkingv1.NetworkPolicy) []*networkingv1.NetworkPolicy {
