@@ -1,25 +1,14 @@
+#!/usr/bin/env bash
+
 set -o errexit -o nounset -o pipefail
 set -xv
 
 CLUSTER_NAME=${CLUSTER_NAME:-netpol-calico}
 
-cat << EOF > calico-conf.yaml
 
-kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
-networking:
-  disableDefaultCNI: true # disable kindnet
-  podSubnet: 192.168.0.0/16 # set to Calico's default subnet
-nodes:
-- role: control-plane
-- role: worker
-- role: worker
-EOF
-
-
-kind create cluster --name $CLUSTER_NAME --config calico-conf.yaml
+kind create cluster --name "$CLUSTER_NAME" --config conf.yaml
 until kubectl cluster-info;  do
-    echo "`date`waiting for cluster..."
+    echo "$(date)waiting for cluster..."
     sleep 2
 done
 
