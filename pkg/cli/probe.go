@@ -41,8 +41,8 @@ func SetupProbeCommand() *cobra.Command {
 		},
 	}
 
-	command.Flags().StringSliceVar(&args.Namespaces, "namespaces", []string{"x", "y", "z"}, "namespaces to create/use pods in")
-	command.Flags().StringSliceVar(&args.Pods, "pods", []string{"a", "b", "c"}, "pods to create in namespaces")
+	command.Flags().StringSliceVarP(&args.Namespaces, "namespace", "n", []string{"x", "y", "z"}, "namespaces to create/use pods in")
+	command.Flags().StringSliceVar(&args.Pods, "pod", []string{"a", "b", "c"}, "pods to create in namespaces")
 
 	command.Flags().StringSliceVar(&args.Ports, "port", []string{"80"}, "port to run probes on; may be named port or numbered port")
 	command.Flags().IntSliceVar(&args.ServerPorts, "server-port", []int{80}, "ports to run server on")
@@ -74,7 +74,7 @@ func RunProbeCommand(args *ProbeArgs) {
 	}
 
 	kubeResources := connectivitykube.NewDefaultResources(args.Namespaces, args.Pods, args.ServerPorts, protocols)
-	interpreter, err := connectivity.NewInterpreter(kubernetes, kubeResources, false, 0, args.PerturbationWaitSeconds, args.PodCreationTimeoutSeconds)
+	interpreter, err := connectivity.NewInterpreter(kubernetes, kubeResources, false, 0, args.PerturbationWaitSeconds, args.PodCreationTimeoutSeconds, false)
 	utils.DoOrDie(err)
 
 	actions := []*generator.Action{generator.ReadNetworkPolicies(args.Namespaces)}

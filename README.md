@@ -13,23 +13,27 @@ Grab the [latest release](https://github.com/mattfenwick/cyclonus/releases) to g
 
 Run a connectivity probe against a Kubernetes cluster.
 
-
 ```
 $ go run cmd/cyclonus/main.go probe
 
 Kube results for:
+  policy y/allow-all-for-label:
+  policy y/allow-by-ip:
+  policy y/allow-label-to-label:
+  policy y/deny-all:
+  policy y/deny-all-for-label:
 +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
 |  -  | X/A | X/B | X/C | Y/A | Y/B | Y/C | Z/A | Z/B | Z/C |
 +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
-| x/a | .   | .   | .   | .   | .   | .   | .   | .   | .   |
-| x/b | .   | .   | .   | .   | .   | .   | .   | .   | .   |
-| x/c | .   | .   | .   | .   | .   | .   | .   | .   | .   |
-| y/a | .   | .   | .   | .   | .   | .   | .   | .   | .   |
-| y/b | .   | .   | .   | .   | .   | .   | .   | .   | .   |
-| y/c | .   | .   | .   | .   | .   | .   | .   | .   | .   |
-| z/a | .   | .   | .   | .   | .   | .   | .   | .   | .   |
-| z/b | .   | .   | .   | .   | .   | .   | .   | .   | .   |
-| z/c | .   | .   | .   | .   | .   | .   | .   | .   | .   |
+| x/a | .   | .   | .   | X   | .   | X   | .   | .   | .   |
+| x/b | .   | .   | .   | X   | .   | X   | .   | .   | .   |
+| x/c | .   | .   | .   | X   | .   | X   | .   | .   | .   |
+| y/a | .   | .   | .   | X   | .   | X   | .   | .   | .   |
+| y/b | .   | .   | .   | X   | .   | X   | .   | .   | .   |
+| y/c | .   | .   | .   | .   | .   | X   | .   | .   | .   |
+| z/a | .   | .   | .   | X   | .   | X   | .   | .   | .   |
+| z/b | .   | .   | .   | X   | .   | X   | .   | .   | .   |
+| z/c | .   | .   | .   | X   | .   | X   | .   | .   | .   |
 +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
 
 0 wrong, 81 no value, 0 correct, 0 ignored out of 81 total

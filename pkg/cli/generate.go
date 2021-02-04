@@ -64,7 +64,7 @@ func RunGenerateCommand(args *GenerateArgs) {
 	utils.DoOrDie(err)
 
 	kubeResources := connectivitykube.NewDefaultResources(args.Namespaces, args.Pods, serverPorts, serverProtocols)
-	interpreter, err := connectivity.NewInterpreter(kubernetes, kubeResources, true, 1, args.PerturbationWaitSeconds, args.PodCreationTimeoutSeconds)
+	interpreter, err := connectivity.NewInterpreter(kubernetes, kubeResources, true, 1, args.PerturbationWaitSeconds, args.PodCreationTimeoutSeconds, true)
 	utils.DoOrDie(err)
 	printer := &connectivity.Printer{
 		Noisy:          args.Noisy,

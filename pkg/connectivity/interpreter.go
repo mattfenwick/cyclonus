@@ -17,16 +17,16 @@ import (
 )
 
 type Interpreter struct {
-	kubernetes                 *kube.Kubernetes
-	kubeResources              *connectivitykube.Resources
-	syntheticResources         *synthetic.Resources
-	namespaces                 []string
-	kubeProbeRetries           int
-	perturbationWaitDuration   time.Duration
-	resetClusterBeforeTestCase bool
+	kubernetes                       *kube.Kubernetes
+	kubeResources                    *connectivitykube.Resources
+	syntheticResources               *synthetic.Resources
+	kubeProbeRetries                 int
+	perturbationWaitDuration         time.Duration
+	resetClusterBeforeTestCase       bool
+	verifyClusterStateBeforeTestCase bool
 }
 
-func NewInterpreter(kubernetes *kube.Kubernetes, kubeResources *connectivitykube.Resources, resetClusterBeforeTestCase bool, kubeProbeRetries int, perturbationWaitSeconds int, podCreationTimeoutSeconds int) (*Interpreter, error) {
+func NewInterpreter(kubernetes *kube.Kubernetes, kubeResources *connectivitykube.Resources, resetClusterBeforeTestCase bool, kubeProbeRetries int, perturbationWaitSeconds int, podCreationTimeoutSeconds int, verifyClusterStateBeforeTestCase bool) (*Interpreter, error) {
 	fmt.Printf("kube resources:\n%s\n", kubeResources.Table())
 	err := SetupCluster(kubernetes, kubeResources, podCreationTimeoutSeconds)
 	if err != nil {
@@ -39,33 +39,36 @@ func NewInterpreter(kubernetes *kube.Kubernetes, kubeResources *connectivitykube
 	fmt.Printf("synthetic resources:\n%s\n", syntheticResources.Table())
 
 	return &Interpreter{
-		kubernetes:                 kubernetes,
-		kubeResources:              kubeResources,
-		syntheticResources:         syntheticResources,
-		namespaces:                 kubeResources.NamespacesSlice(),
-		perturbationWaitDuration:   time.Duration(perturbationWaitSeconds) * time.Second,
-		resetClusterBeforeTestCase: resetClusterBeforeTestCase,
-		kubeProbeRetries:           kubeProbeRetries,
+		kubernetes:                       kubernetes,
+		kubeResources:                    kubeResources,
+		syntheticResources:               syntheticResources,
+		kubeProbeRetries:                 kubeProbeRetries,
+		perturbationWaitDuration:         time.Duration(perturbationWaitSeconds) * time.Second,
+		resetClusterBeforeTestCase:       resetClusterBeforeTestCase,
+		verifyClusterStateBeforeTestCase: verifyClusterStateBeforeTestCase,
 	}, nil
 }
 
 func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 	result := &Result{TestCase: testCase}
+	var err error
 
 	if t.resetClusterBeforeTestCase {
-		err := t.resetClusterState()
+		err = t.resetClusterState()
 		if err != nil {
 			result.Err = err
 			return result
 		}
 	}
 
-	err := t.verifyClusterState()
-	if err != nil {
-		result.Err = err
-		return result
+	if t.verifyClusterStateBeforeTestCase {
+		err = t.verifyClusterState()
+		if err != nil {
+			result.Err = err
+			return result
+		}
+		logrus.Info("cluster state verified")
 	}
-	logrus.Info("cluster state verified")
 
 	// keep track of what's in the cluster, so that we can correctly simulate expected results
 	testCaseState := &TestCaseState{
@@ -144,7 +147,7 @@ func (t *Interpreter) runProbe(testCaseState *TestCaseState, port intstr.IntOrSt
 }
 
 func (t *Interpreter) resetClusterState() error {
-	err := t.kubernetes.DeleteAllNetworkPoliciesInNamespaces(t.namespaces)
+	err := t.kubernetes.DeleteAllNetworkPoliciesInNamespaces(t.kubeResources.NamespacesSlice())
 	if err != nil {
 		return err
 	}
@@ -264,12 +267,12 @@ func (t *Interpreter) verifyClusterState() error {
 	}
 
 	// 4. network policies
-	policies, err := t.kubernetes.GetNetworkPoliciesInNamespaces(t.namespaces)
+	policies, err := t.kubernetes.GetNetworkPoliciesInNamespaces(t.kubeResources.NamespacesSlice())
 	if err != nil {
 		return err
 	}
 	if len(policies) > 0 {
-		return errors.Errorf("expected 0 policies in namespaces %+v, found %d", t.namespaces, len(policies))
+		return errors.Errorf("expected 0 policies in namespaces %+v, found %d", t.kubeResources.NamespacesSlice(), len(policies))
 	}
 
 	// nothing wrong: we're good to go
