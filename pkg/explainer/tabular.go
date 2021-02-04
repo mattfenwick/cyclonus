@@ -7,20 +7,27 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"os"
 	"strings"
 )
 
-func TableExplainer(policies *matcher.Policy) *tablewriter.Table {
-	table := tablewriter.NewWriter(os.Stdout)
+func TableExplainer(policies *matcher.Policy) string {
+	tableString := &strings.Builder{}
+	table := tablewriter.NewWriter(tableString)
 	table.SetAutoWrapText(false)
 	table.SetRowLine(true)
-	table.SetHeader([]string{"Type", "Target namespace", "Target pod selector", "Peer", "Port/Protocol", "Source rules"})
+	table.SetAutoMergeCells(true)
+	table.SetHeader([]string{"Type", "Target", "Source rules", "Peer", "Port/Protocol"})
 
 	ingresses, egresses := policies.SortedTargets()
 	TargetsTableLines(table, ingresses, true)
 	TargetsTableLines(table, egresses, false)
-	return table
+
+	table.Render()
+	return tableString.String()
+}
+
+func row(policyType, target, sourceRules, peer, portProtocol string) []string {
+	return []string{policyType, target, sourceRules, peer, portProtocol}
 }
 
 func TargetsTableLines(table *tablewriter.Table, targets []*matcher.Target, isIngress bool) {
@@ -35,46 +42,39 @@ func TargetsTableLines(table *tablewriter.Table, targets []*matcher.Target, isIn
 		for _, sr := range ingress.SourceRules {
 			sourceRules = append(sourceRules, fmt.Sprintf("%s/%s", sr.Namespace, sr.Name))
 		}
-		table.Append([]string{
-			ruleType,
-			ingress.Namespace,
-			LabelSelectorTableLines(ingress.PodSelector),
-			"", // peer,
-			"", // port/protocol,
-			strings.Join(sourceRules, "\n"),
-		})
+		target := fmt.Sprintf("namespace: %s\n%s", ingress.Namespace, LabelSelectorTableLines(ingress.PodSelector))
+		rules := strings.Join(sourceRules, "\n")
+
 		switch a := ingress.Peer.(type) {
 		case *matcher.AllPeerMatcher:
-			table.Append([]string{"", "", "", "all pods, all ips", "all ports, all protocols", ""})
+			table.Append(row(ruleType, target, rules, "all pods, all ips", "all ports, all protocols"))
 		case *matcher.NonePeerMatcher:
-			table.Append([]string{"", "", "", "no pods, no ips", "no ports, no protocols", ""})
+			table.Append(row(ruleType, target, rules, "no pods, no ips", "no ports, no protocols"))
 		case *matcher.SpecificPeerMatcher:
 			switch ip := a.IP.(type) {
 			case *matcher.AllIPMatcher:
-				table.Append([]string{"", "", "", "all ips", "all ports, all protocols", ""})
+				table.Append(row(ruleType, target, rules, "all ips", "all ports, all protocols"))
 			case *matcher.NoneIPMatcher:
-				table.Append([]string{"", "", "", "no ips", "no ports, no protocols", ""})
+				table.Append(row(ruleType, target, rules, "no ips", "no ports, no protocols"))
 			case *matcher.SpecificIPMatcher:
-				table.Append([]string{"", "", "", "ports for all IPs", strings.Join(PortMatcherTableLines(ip.PortsForAllIPs), "\n"), ""})
+				table.Append(row(ruleType, target, rules, "ports for all IPs", strings.Join(PortMatcherTableLines(ip.PortsForAllIPs), "\n")))
 				for _, block := range ip.SortedIPBlocks() {
 					pps := PortMatcherTableLines(block.Port)
-					table.Append([]string{
-						"",
-						"",
-						"",
+					table.Append(row(
+						ruleType,
+						target,
+						rules,
 						strings.Join(append([]string{block.IPBlock.CIDR}, fmt.Sprintf("except %+v", block.IPBlock.Except)), "\n"),
-						strings.Join(pps, "\n"),
-						"",
-					})
+						strings.Join(pps, "\n")))
 				}
 			default:
 				panic(errors.Errorf("invalid IPMatcher type %T", ip))
 			}
 			switch internal := a.Internal.(type) {
 			case *matcher.AllInternalMatcher:
-				table.Append([]string{"", "", "", "all pods", "all ports, all protocols", ""})
+				table.Append(row(ruleType, target, rules, "all pods", "all ports, all protocols"))
 			case *matcher.NoneInternalMatcher:
-				table.Append([]string{"", "", "", "no pods", "no ports, no protocols", ""})
+				table.Append(row(ruleType, target, rules, "no pods", "no ports, no protocols"))
 			case *matcher.SpecificInternalMatcher:
 				for _, nsPodMatcher := range internal.NamespacePods {
 					var namespaces string
@@ -97,14 +97,11 @@ func TargetsTableLines(table *tablewriter.Table, targets []*matcher.Target, isIn
 					default:
 						panic(errors.Errorf("invalid PodMatcher type %T", p))
 					}
-					table.Append([]string{
-						"",
-						"",
-						"",
-						"namespace: " + namespaces + "\n" + "pods: " + pods,
-						strings.Join(PortMatcherTableLines(nsPodMatcher.Port), "\n"),
-						"",
-					})
+					table.Append(row(ruleType,
+						target,
+						rules,
+						"namespace: "+namespaces+"\n"+"pods: "+pods,
+						strings.Join(PortMatcherTableLines(nsPodMatcher.Port), "\n")))
 				}
 			default:
 				panic(errors.Errorf("invalid InternalMatcher type %T", internal))
@@ -138,7 +135,7 @@ func PortMatcherTableLines(pm matcher.PortMatcher) []string {
 
 func LabelSelectorTableLines(selector metav1.LabelSelector) string {
 	if kube.IsLabelSelectorEmpty(selector) {
-		return "all"
+		return "all pods"
 	}
 	var lines []string
 	if len(selector.MatchLabels) > 0 {

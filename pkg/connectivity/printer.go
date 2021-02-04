@@ -91,8 +91,7 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 	policy := stepResult.Policy
 
 	if t.Noisy {
-		//fmt.Printf("%s\n\n", explainer.Explain(policy))
-		explainer.TableExplainer(policy).Render()
+		fmt.Printf("Policy explained:\n%s\n", explainer.TableExplainer(policy))
 	}
 
 	fmt.Printf("\n\nKube results for:\n")

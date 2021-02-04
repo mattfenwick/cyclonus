@@ -61,7 +61,7 @@ func Run() {
 	for _, recipe := range AllRecipes {
 		result := recipe.RunProbe()
 
-		explainer.TableExplainer(matcher.BuildNetworkPolicies(recipe.Policies())).Render()
+		fmt.Printf("Policies:\n%s\n", explainer.TableExplainer(matcher.BuildNetworkPolicies(recipe.Policies())))
 
 		fmt.Printf("resources:\n%s\n", recipe.Resources.Table())
 

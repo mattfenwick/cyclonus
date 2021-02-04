@@ -124,7 +124,7 @@ func (t *MultipleContextTestCasePrinter) PrintTestCaseResult(result *MultipleCon
 	utils.DoOrDie(err)
 	fmt.Printf("Network policy:\n\n%s\n", policyBytes)
 
-	explainer.TableExplainer(policy).Render()
+	fmt.Printf("Policy explained:\n%s\n", explainer.TableExplainer(policy))
 
 	//fmt.Println("expected results:")
 	//fmt.Println("Expected ingress:")

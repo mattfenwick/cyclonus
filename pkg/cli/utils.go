@@ -2,10 +2,7 @@ package cli
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
-	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
@@ -91,12 +88,6 @@ func refNetpolList(refs []networkingv1.NetworkPolicy) []*networkingv1.NetworkPol
 		policies[i] = &refs[i]
 	}
 	return policies
-}
-
-func printJSON(obj interface{}) {
-	bytes, err := json.MarshalIndent(obj, "", "  ")
-	utils.DoOrDie(err)
-	fmt.Printf("%s\n", string(bytes))
 }
 
 func SetUpLogger(logLevelStr string) error {

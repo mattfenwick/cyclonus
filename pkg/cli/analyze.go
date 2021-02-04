@@ -67,9 +67,9 @@ func RunAnalyzePoliciesCommand(args *AnalyzePoliciesArgs) {
 	explainedPolicies := matcher.BuildNetworkPolicies(kubePolicies)
 	switch args.Format {
 	case "json":
-		printJSON(explainedPolicies)
+		utils.PrintJson(explainedPolicies)
 	case "table":
-		explainer.TableExplainer(explainedPolicies).Render()
+		fmt.Printf("%s\n", explainer.TableExplainer(explainedPolicies))
 	default:
 		fmt.Printf("%s\n\n", explainer.Explain(explainedPolicies))
 	}
