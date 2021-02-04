@@ -68,10 +68,11 @@ func (t *Printer) PrintTestCaseResult(result *Result) {
 	t.Results = append(t.Results, result)
 
 	if result.Err != nil {
-		fmt.Printf("test case failed to execute for %+v: %+v", result.TestCase, result.Err)
+		fmt.Printf("test case failed to execute for %s %+v: %+v", result.TestCase.Description, result.TestCase, result.Err)
 		return
 	}
 
+	fmt.Printf("evaluating test case: %s\n", result.TestCase.Description)
 	stepCount := len(result.TestCase.Steps)
 	resultCount := len(result.Steps)
 	if stepCount != resultCount {

@@ -1,6 +1,7 @@
 package connectivity
 
 import (
+	"fmt"
 	connectivitykube "github.com/mattfenwick/cyclonus/pkg/connectivity/kube"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/synthetic"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
@@ -26,6 +27,7 @@ type Interpreter struct {
 }
 
 func NewInterpreter(kubernetes *kube.Kubernetes, kubeResources *connectivitykube.Resources, resetClusterBeforeTestCase bool, kubeProbeRetries int, perturbationWaitSeconds int, podCreationTimeoutSeconds int) (*Interpreter, error) {
+	fmt.Printf("kube resources:\n%s\n", kubeResources.Table())
 	err := SetupCluster(kubernetes, kubeResources, podCreationTimeoutSeconds)
 	if err != nil {
 		return nil, err
@@ -34,6 +36,7 @@ func NewInterpreter(kubernetes *kube.Kubernetes, kubeResources *connectivitykube
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("synthetic resources:\n%s\n", syntheticResources.Table())
 
 	return &Interpreter{
 		kubernetes:                 kubernetes,

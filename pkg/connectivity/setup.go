@@ -105,9 +105,10 @@ func GetSyntheticResources(kubernetes *kube.Kubernetes, kubeResources *connectiv
 			}
 			kubePort := kubeCont.Ports[0]
 			containers = append(containers, &synthetic.Container{
+				Name:     kubeCont.Name,
 				Port:     int(kubePort.ContainerPort),
 				Protocol: kubePort.Protocol,
-				Name:     kubePort.Name,
+				PortName: kubePort.Name,
 			})
 		}
 		syntheticPods = append(syntheticPods, &synthetic.Pod{
@@ -117,7 +118,7 @@ func GetSyntheticResources(kubernetes *kube.Kubernetes, kubeResources *connectiv
 			IP:         ip,
 			Containers: containers,
 		})
-		log.Infof("ip for pod %s/%s: %s", pod.Namespace, pod.Name, ip)
+		log.Debugf("ip for pod %s/%s: %s", pod.Namespace, pod.Name, ip)
 	}
 
 	syntheticResources, err := synthetic.NewResources(kubeResources.Namespaces, syntheticPods)
