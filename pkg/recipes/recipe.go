@@ -65,11 +65,7 @@ func Run() {
 
 		fmt.Printf("resources:\n%s\n", recipe.Resources.Table())
 
-		fmt.Printf("ingress:\n%s\n", result.Ingress.Table())
-
-		fmt.Printf("egress:\n%s\n", result.Egress.Table())
-
-		fmt.Printf("combined:\n%s\n", result.Combined.Table())
+		fmt.Printf("Results:\n%s\n", result.Table.Table())
 
 		fmt.Printf("\n\n\n")
 	}

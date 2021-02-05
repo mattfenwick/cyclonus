@@ -8,12 +8,14 @@ import (
 )
 
 type Resources struct {
-	Namespaces map[string]map[string]string
-	Pods       []*Pod
+	Namespaces  map[string]map[string]string
+	Pods        []*Pod
+	ExternalIPs []string
 }
 
-func NewResources(namespaces map[string]map[string]string, pods []*Pod) (*Resources, error) {
-	model := &Resources{Namespaces: namespaces}
+func NewResources(namespaces map[string]map[string]string, pods []*Pod, externalIPs []string) (*Resources, error) {
+	sort.Strings(externalIPs)
+	model := &Resources{Namespaces: namespaces, ExternalIPs: externalIPs}
 
 	for _, pod := range pods {
 		if _, ok := namespaces[pod.Namespace]; !ok {
@@ -62,15 +64,13 @@ func (r *Resources) SetPodLabels(ns string, podName string, labels map[string]st
 	}, nil
 }
 
-func (r *Resources) NewTruthTable() *utils.TruthTable {
+func (r *Resources) NewResultTable() *ResultTable {
 	var podNames []string
 	for _, pod := range r.Pods {
 		podNames = append(podNames, pod.PodString().String())
 	}
-	sort.Slice(podNames, func(i, j int) bool {
-		return podNames[i] < podNames[j]
-	})
-	return utils.NewTruthTableFromItems(podNames, nil)
+	sort.Strings(podNames)
+	return NewResultTable(append(podNames, r.ExternalIPs...))
 }
 
 type Namespace struct {

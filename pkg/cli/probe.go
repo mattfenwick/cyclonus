@@ -59,6 +59,7 @@ func SetupProbeCommand() *cobra.Command {
 }
 
 func RunProbeCommand(args *ProbeArgs) {
+	externalIPs := []string{"http://www.google.com"} // TODO make these be IPs?  or not?
 	if len(args.Namespaces) == 0 || len(args.Pods) == 0 {
 		panic(errors.Errorf("found 0 namespaces or pods, must have at least 1 of each"))
 	}
@@ -73,7 +74,7 @@ func RunProbeCommand(args *ProbeArgs) {
 		protocols = append(protocols, parsedProtocol)
 	}
 
-	kubeResources := connectivitykube.NewDefaultResources(args.Namespaces, args.Pods, args.ServerPorts, protocols)
+	kubeResources := connectivitykube.NewDefaultResources(args.Namespaces, args.Pods, args.ServerPorts, protocols, externalIPs)
 	interpreter, err := connectivity.NewInterpreter(kubernetes, kubeResources, false, 0, args.PerturbationWaitSeconds, args.PodCreationTimeoutSeconds, false)
 	utils.DoOrDie(err)
 

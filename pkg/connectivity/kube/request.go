@@ -1,7 +1,6 @@
 package kube
 
 import (
-	"github.com/mattfenwick/cyclonus/pkg/utils"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -15,14 +14,14 @@ type Request struct {
 
 type Results struct {
 	Request *Request
-	Results []*JobResults
+	Results []*JobResult
 }
 
-func (k *Results) TruthTable() *utils.TruthTable {
-	reachability := k.Request.Resources.NewTruthTable()
+func (k *Results) TruthTable() *ResultTable {
+	reachability := k.Request.Resources.NewResultTable()
 	for _, result := range k.Results {
 		job := result.Job
-		reachability.Set(job.FromPod.PodString.String(), job.ToPod.PodString.String(), result.IsConnected)
+		reachability.Set(job.FromPod.PodString.String(), job.ToPod.PodString.String(), result.Connectivity)
 	}
 	return reachability
 }

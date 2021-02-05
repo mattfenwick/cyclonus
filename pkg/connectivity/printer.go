@@ -32,8 +32,8 @@ func (t *Printer) PrintSummary() {
 		passed := true
 		for _, step := range result.Steps {
 			lastKubeResult := step.LastKubeResult()
-			counts := step.SyntheticResult.Combined.Compare(lastKubeResult.TruthTable()).ValueCounts(t.IgnoreLoopback)
-			if counts.False > 0 {
+			comparison := NewResultTableFrom(lastKubeResult.TruthTable(), step.SyntheticResult.Table)
+			if comparison.ValueCounts(t.IgnoreLoopback).Counts[DifferentComparison] > 0 {
 				passed = false
 			}
 		}
@@ -49,9 +49,9 @@ func (t *Printer) PrintSummary() {
 
 		for stepNumber, step := range result.Steps {
 			for tryNumber, kubeResult := range step.KubeResults {
-				comparison := step.SyntheticResult.Combined.Compare(kubeResult.TruthTable())
+				comparison := NewResultTableFrom(kubeResult.TruthTable(), step.SyntheticResult.Table)
 				counts := comparison.ValueCounts(t.IgnoreLoopback)
-				table.Append([]string{"", "", intToString(stepNumber + 1), intToString(tryNumber + 1), intToString(counts.False), intToString(counts.True)})
+				table.Append([]string{"", "", intToString(stepNumber + 1), intToString(tryNumber + 1), intToString(counts.Counts[DifferentComparison]), intToString(counts.Counts[SameComparison])})
 			}
 		}
 	}
@@ -106,14 +106,14 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 	lastKubeProbe := stepResult.LastKubeResult().TruthTable()
 	fmt.Println(lastKubeProbe.Table())
 
-	comparison := stepResult.SyntheticResult.Combined.Compare(lastKubeProbe)
+	comparison := NewResultTableFrom(lastKubeProbe, stepResult.SyntheticResult.Table)
 	counts := comparison.ValueCounts(t.IgnoreLoopback)
-	if counts.False > 0 {
+	if counts.Counts[DifferentComparison] > 0 {
 		fmt.Printf("Discrepancy found:")
 	}
-	fmt.Printf("%d wrong, %d no value, %d correct, %d ignored out of %d total\n", counts.False, counts.True, counts.NoValue, counts.Ignored, counts.Total)
+	fmt.Printf("%d wrong, %d ignore, %d correct\n", counts.Counts[DifferentComparison], counts.Counts[IgnoredComparison], counts.Counts[SameComparison])
 
-	if counts.False > 0 || t.Noisy {
+	if counts.Counts[DifferentComparison] > 0 || t.Noisy {
 		//fmt.Println("Ingress:")
 		//step.SyntheticResult.Ingress.Table().Render()
 		//
@@ -121,7 +121,7 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 		//step.SyntheticResult.Egress.Table().Render()
 
 		fmt.Println("Expected:")
-		fmt.Println(stepResult.SyntheticResult.Combined.Table())
+		fmt.Println(stepResult.SyntheticResult.Table.Table())
 
 		for i, kubeResult := range stepResult.KubeResults {
 			fmt.Printf("kube results, try %d:\n", i)
@@ -137,7 +137,13 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 		}
 
 		fmt.Printf("\nActual vs expected (last round):\n")
-		fmt.Println(comparison.Table())
+		fmt.Println(comparison.Wrapped.Table(func(i interface{}) string {
+			v := i.(*Combined)
+			if v.Synthetic.Combined() == v.Kube {
+				return "."
+			}
+			return "X"
+		}))
 	}
 }
 

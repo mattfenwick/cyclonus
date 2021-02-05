@@ -2,23 +2,26 @@ package kube
 
 import (
 	"fmt"
+	"github.com/mattfenwick/cyclonus/pkg/connectivity/types"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 )
 
-type JobResults struct {
-	Job         *Job
-	IsConnected bool
-	Err         error
-	Command     string
+type JobResult struct {
+	Job          *Job
+	Connectivity types.Connectivity
+	Err          error
+	Command      string
 }
 
 type Job struct {
-	FromPod  *Pod
-	ToPod    *Pod
-	Port     int
-	Protocol v1.Protocol
+	FromPod             *Pod
+	ToPod               *Pod
+	Port                int
+	Protocol            v1.Protocol
+	InvalidNamedPort    bool
+	InvalidPortProtocol bool
 }
 
 func (j *Job) FromContainer() string {

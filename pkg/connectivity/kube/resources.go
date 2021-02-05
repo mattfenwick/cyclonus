@@ -2,8 +2,6 @@ package kube
 
 import (
 	"github.com/mattfenwick/cyclonus/pkg/kube"
-	"github.com/mattfenwick/cyclonus/pkg/utils"
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -11,13 +9,16 @@ import (
 )
 
 type Resources struct {
-	Namespaces map[string]map[string]string
-	Pods       []*Pod
+	Namespaces  map[string]map[string]string
+	Pods        []*Pod
+	ExternalIPs []string
 }
 
-func NewDefaultResources(namespaces []string, podNames []string, ports []int, protocols []v1.Protocol) *Resources {
+func NewDefaultResources(namespaces []string, podNames []string, ports []int, protocols []v1.Protocol, externalIPs []string) *Resources {
+	sort.Strings(externalIPs)
 	r := &Resources{
-		Namespaces: map[string]map[string]string{},
+		Namespaces:  map[string]map[string]string{},
+		ExternalIPs: externalIPs,
 	}
 
 	for _, ns := range namespaces {
@@ -30,24 +31,50 @@ func NewDefaultResources(namespaces []string, podNames []string, ports []int, pr
 	return r
 }
 
-func (r *Resources) GetJobs(port intstr.IntOrString, protocol v1.Protocol) []*Job {
-	var jobs []*Job
+type Jobs struct {
+	Valid           []*Job
+	BadNamedPort    []*Job
+	BadPortProtocol []*Job
+}
+
+func (r *Resources) GetJobsForSpecificPortProtocol(port intstr.IntOrString, protocol v1.Protocol) *Jobs {
+	jobs := &Jobs{}
 	for _, podFrom := range r.Pods {
 		for _, podTo := range r.Pods {
-			portInt, err := podTo.ResolvePort(port)
-
-			// TODO define the expected behavior:
-			//  - is it okay to probe on a named port that isn't available?
-			//  - is it okay to probe on a *numbered* port that isn't available?
-			utils.DoOrDie(errors.Wrapf(err, "TODO: undefined behavior"))
-
-			jobs = append(jobs, &Job{
+			var portInt int
+			var err error
+			switch port.Type {
+			case intstr.Int:
+				portInt = int(port.IntVal)
+			case intstr.String:
+				portInt, err = podTo.ResolveNamedPort(port.StrVal)
+			}
+			if err != nil {
+				jobs.BadNamedPort = append(jobs.BadNamedPort, &Job{
+					FromPod:  podFrom,
+					ToPod:    podTo,
+					Port:     -1,
+					Protocol: protocol,
+				})
+				continue
+			}
+			job := &Job{
 				FromPod:  podFrom,
 				ToPod:    podTo,
 				Port:     portInt,
 				Protocol: protocol,
-			})
+			}
+			if !podTo.IsServingPortProtocol(portInt, protocol) {
+				jobs.BadPortProtocol = append(jobs.BadPortProtocol, job)
+			} else {
+				jobs.Valid = append(jobs.Valid, job)
+			}
 		}
+		// TODO from pod to external ip
+		//for _, ip := range r.ExternalIPs {
+		//
+		//}
+		// TODO no way to do from external ip to pod?
 	}
 	return jobs
 }
@@ -60,15 +87,13 @@ func (r *Resources) NamespacesSlice() []string {
 	return nss
 }
 
-func (r *Resources) NewTruthTable() *utils.TruthTable {
+func (r *Resources) NewResultTable() *ResultTable {
 	var podNames []string
 	for _, pod := range r.Pods {
 		podNames = append(podNames, pod.PodString.String())
 	}
-	sort.Slice(podNames, func(i, j int) bool {
-		return podNames[i] < podNames[j]
-	})
-	return utils.NewTruthTableFromItems(podNames, nil)
+	sort.Strings(podNames)
+	return NewResultTable(append(podNames, r.ExternalIPs...))
 }
 
 func (r *Resources) CreateResourcesInKube(kube *kube.Kubernetes) error {

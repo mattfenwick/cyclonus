@@ -59,11 +59,12 @@ func SetupGenerateCommand() *cobra.Command {
 func RunGenerateCommand(args *GenerateArgs) {
 	serverProtocols := []v1.Protocol{v1.ProtocolTCP, v1.ProtocolUDP}
 	serverPorts := []int{80, 81}
+	externalIPs := []string{} // "http://www.google.com"} // TODO make these be IPs?  or not?
 
 	kubernetes, err := kube.NewKubernetesForContext(args.Context)
 	utils.DoOrDie(err)
 
-	kubeResources := connectivitykube.NewDefaultResources(args.Namespaces, args.Pods, serverPorts, serverProtocols)
+	kubeResources := connectivitykube.NewDefaultResources(args.Namespaces, args.Pods, serverPorts, serverProtocols, externalIPs)
 	interpreter, err := connectivity.NewInterpreter(kubernetes, kubeResources, true, 1, args.PerturbationWaitSeconds, args.PodCreationTimeoutSeconds, true)
 	utils.DoOrDie(err)
 	printer := &connectivity.Printer{

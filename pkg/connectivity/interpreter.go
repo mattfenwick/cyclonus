@@ -137,8 +137,10 @@ func (t *Interpreter) runProbe(testCaseState *TestCaseState, port intstr.IntOrSt
 			Protocol:        protocol,
 			NumberOfWorkers: 5,
 		})
+		resultTable := NewResultTableFrom(kubeProbe.TruthTable(), stepResult.SyntheticResult.Table)
 		stepResult.KubeResults = append(stepResult.KubeResults, kubeProbe)
-		if counts := kubeProbe.TruthTable().Compare(stepResult.SyntheticResult.Combined).ValueCounts(false); counts.False == 0 {
+		// no differences between synthetic and kube probes?  then we can stop
+		if resultTable.ValueCounts(false).Counts[DifferentComparison] == 0 {
 			break
 		}
 	}

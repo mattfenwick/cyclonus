@@ -6,7 +6,6 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"strings"
 )
 
@@ -15,11 +14,10 @@ const (
 )
 
 type Pod struct {
-	Namespace string
-	Name      string
-	Labels    map[string]string
-	Ports     []int
-	Protocols []v1.Protocol
+	Namespace  string
+	Name       string
+	Labels     map[string]string
+	Containers []*Container
 	// derived
 	KubeService *v1.Service
 	PodString   utils.PodString
@@ -31,8 +29,11 @@ func NewPod(ns string, name string, labels map[string]string, ports []int, proto
 		Namespace: ns,
 		Name:      name,
 		Labels:    labels,
-		Ports:     ports,
-		Protocols: protocols,
+	}
+	for _, port := range ports {
+		for _, protocol := range protocols {
+			p.Containers = append(p.Containers, &Container{Port: port, Protocol: protocol})
+		}
 	}
 	p.KubeService = p.kubeService()
 	p.PodString = p.podString()
@@ -76,14 +77,8 @@ func (p *Pod) kubeService() *v1.Service {
 		},
 	}
 
-	for _, port := range p.Ports {
-		for _, protocol := range p.Protocols {
-			service.Spec.Ports = append(service.Spec.Ports, v1.ServicePort{
-				Name:     fmt.Sprintf("service-port-%s-%d", strings.ToLower(string(protocol)), port),
-				Protocol: protocol,
-				Port:     int32(port),
-			})
-		}
+	for _, cont := range p.Containers {
+		service.Spec.Ports = append(service.Spec.Ports, cont.KubeServicePort())
 	}
 
 	return service
@@ -91,54 +86,76 @@ func (p *Pod) kubeService() *v1.Service {
 
 func (p *Pod) KubeContainers() []v1.Container {
 	var containers []v1.Container
-	for _, port := range p.Ports {
-		for _, protocol := range p.Protocols {
-			var cmd []string
-
-			switch protocol {
-			case v1.ProtocolTCP:
-				cmd = []string{"/agnhost", "serve-hostname", "--tcp", "--http=false", "--port", fmt.Sprintf("%d", port)}
-			case v1.ProtocolUDP:
-				cmd = []string{"/agnhost", "serve-hostname", "--udp", "--http=false", "--port", fmt.Sprintf("%d", port)}
-			case v1.ProtocolSCTP:
-				cmd = []string{"/agnhost", "netexec", "--sctp-port", fmt.Sprintf("%d", port)}
-			default:
-				panic(errors.Errorf("invalid protocol %s", protocol))
-			}
-			containers = append(containers, v1.Container{
-				Name:            fmt.Sprintf("cont-%d-%s", port, strings.ToLower(string(protocol))),
-				ImagePullPolicy: v1.PullIfNotPresent,
-				Image:           agnhostImage,
-				Command:         cmd,
-				SecurityContext: &v1.SecurityContext{},
-				Ports: []v1.ContainerPort{
-					{
-						ContainerPort: int32(port),
-						Name:          fmt.Sprintf("serve-%d-%s", port, strings.ToLower(string(protocol))),
-						Protocol:      protocol,
-					},
-				},
-			})
-		}
+	for _, cont := range p.Containers {
+		containers = append(containers, cont.KubeContainer())
 	}
 	return containers
 }
 
-func (p *Pod) ResolvePort(port intstr.IntOrString) (int, error) {
-	switch port.Type {
-	case intstr.Int:
-		return int(port.IntVal), nil
-	case intstr.String:
-		for _, c := range p.KubePod.Spec.Containers {
-			if len(c.Ports) != 1 {
-				return 0, errors.Errorf("expected container %s/%s/%s to have 1 port, found %d", p.Namespace, p.Name, c.Name, len(c.Ports))
-			}
-			if c.Ports[0].Name == port.StrVal {
-				return int(c.Ports[0].ContainerPort), nil
-			}
+func (p *Pod) ResolveNamedPort(port string) (int, error) {
+	for _, c := range p.Containers {
+		if c.ContainerPortName() == port {
+			return c.Port, nil
 		}
-		return 0, errors.Errorf("unable to resolve named port %s on pod %s/%s", port.StrVal, p.Namespace, p.Name)
+	}
+	return 0, errors.Errorf("unable to resolve named port %s on pod %s/%s", port, p.Namespace, p.Name)
+}
+
+func (p *Pod) IsServingPortProtocol(port int, protocol v1.Protocol) bool {
+	for _, cont := range p.Containers {
+		if cont.Port == port && cont.Protocol == protocol {
+			return true
+		}
+	}
+	return false
+}
+
+type Container struct {
+	Port     int
+	Protocol v1.Protocol
+}
+
+func (c *Container) Name() string {
+	return fmt.Sprintf("cont-%d-%s", c.Port, strings.ToLower(string(c.Protocol)))
+}
+
+func (c *Container) ContainerPortName() string {
+	return fmt.Sprintf("serve-%d-%s", c.Port, strings.ToLower(string(c.Protocol)))
+}
+
+func (c *Container) KubeServicePort() v1.ServicePort {
+	return v1.ServicePort{
+		Name:     fmt.Sprintf("service-port-%s-%d", strings.ToLower(string(c.Protocol)), c.Port),
+		Protocol: c.Protocol,
+		Port:     int32(c.Port),
+	}
+}
+
+func (c *Container) KubeContainer() v1.Container {
+	var cmd []string
+
+	switch c.Protocol {
+	case v1.ProtocolTCP:
+		cmd = []string{"/agnhost", "serve-hostname", "--tcp", "--http=false", "--port", fmt.Sprintf("%d", c.Port)}
+	case v1.ProtocolUDP:
+		cmd = []string{"/agnhost", "serve-hostname", "--udp", "--http=false", "--port", fmt.Sprintf("%d", c.Port)}
+	case v1.ProtocolSCTP:
+		cmd = []string{"/agnhost", "netexec", "--sctp-port", fmt.Sprintf("%d", c.Port)}
 	default:
-		return 0, errors.Errorf("invalid intstr.IntOrString value %+v", port)
+		panic(errors.Errorf("invalid protocol %s", c.Protocol))
+	}
+	return v1.Container{
+		Name:            c.Name(),
+		ImagePullPolicy: v1.PullIfNotPresent,
+		Image:           agnhostImage,
+		Command:         cmd,
+		SecurityContext: &v1.SecurityContext{},
+		Ports: []v1.ContainerPort{
+			{
+				ContainerPort: int32(c.Port),
+				Name:          c.ContainerPortName(),
+				Protocol:      c.Protocol,
+			},
+		},
 	}
 }

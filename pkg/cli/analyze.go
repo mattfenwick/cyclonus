@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/mattfenwick/cyclonus/pkg/connectivity/types"
 	"io/ioutil"
 
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/synthetic"
@@ -188,14 +189,14 @@ func ProbeSyntheticConnectivity(explainedPolicies *matcher.Policy, modelPath str
 
 		logrus.Infof("probe on port %s, protocol %s", result.Request.Port.String(), result.Request.Protocol)
 
-		// 5. print out a result matrix
-		fmt.Println("Ingress:")
-		fmt.Println(result.Ingress.Table())
+		fmt.Printf("Ingress:\n%s\n", result.Table.Wrapped.Table(func(i interface{}) string {
+			return i.(*types.Answer).Ingress.ShortString()
+		}))
 
-		fmt.Println("Egress:")
-		fmt.Println(result.Egress.Table())
+		fmt.Printf("Egress:\n%s\n", result.Table.Wrapped.Table(func(i interface{}) string {
+			return i.(*types.Answer).Egress.ShortString()
+		}))
 
-		fmt.Println("Combined:")
-		fmt.Println(result.Combined.Table())
+		fmt.Printf("Combined:\n%s\n", result.Table.Table())
 	}
 }
