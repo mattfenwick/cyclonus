@@ -42,5 +42,27 @@
       "Protocol": "TCP",
       "Port": 80
     }
+  },
+  {
+    "Source": {
+      "Internal": {
+        "PodLabels": {"app": "foo"},
+        "NamespaceLabels": {"ns": "default"},
+        "Namespace": "default"
+      },
+      "IP": "192.168.1.99"
+    },
+    "Destination": {
+      "Internal": {
+        "PodLabels": {"app": "web"},
+        "NamespaceLabels": {"ns": "default"},
+        "Namespace": "default"
+      },
+      "IP": "192.168.1.100"
+    },
+    "PortProtocol": {
+      "Protocol": "TCP",
+      "Port": 80
+    }
   }
 ]

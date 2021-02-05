@@ -6,7 +6,6 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strings"
 )
 
@@ -50,7 +49,7 @@ func TargetsTableLines(builder *SliceBuilder, targets []*matcher.Target, isIngre
 		for _, sr := range ingress.SourceRules {
 			sourceRules = append(sourceRules, fmt.Sprintf("%s/%s", sr.Namespace, sr.Name))
 		}
-		target := fmt.Sprintf("namespace: %s\n%s", ingress.Namespace, LabelSelectorTableLines(ingress.PodSelector))
+		target := fmt.Sprintf("namespace: %s\n%s", ingress.Namespace, kube.LabelSelectorTableLines(ingress.PodSelector))
 		rules := strings.Join(sourceRules, "\n")
 		builder.Prefix = []string{ruleType, target, rules}
 
@@ -102,7 +101,7 @@ func SpecificInternalMatcherTableLines(builder *SliceBuilder, internal *matcher.
 		case *matcher.AllNamespaceMatcher:
 			namespaces = "all"
 		case *matcher.LabelSelectorNamespaceMatcher:
-			namespaces = LabelSelectorTableLines(ns.Selector)
+			namespaces = kube.LabelSelectorTableLines(ns.Selector)
 		case *matcher.ExactNamespaceMatcher:
 			namespaces = ns.Namespace
 		default:
@@ -113,7 +112,7 @@ func SpecificInternalMatcherTableLines(builder *SliceBuilder, internal *matcher.
 		case *matcher.AllPodMatcher:
 			pods = "all"
 		case *matcher.LabelSelectorPodMatcher:
-			pods = LabelSelectorTableLines(p.Selector)
+			pods = kube.LabelSelectorTableLines(p.Selector)
 		default:
 			panic(errors.Errorf("invalid PodMatcher type %T", p))
 		}
@@ -140,24 +139,4 @@ func PortMatcherTableLines(pm matcher.PortMatcher) []string {
 	default:
 		panic(errors.Errorf("invalid PortMatcher type %T", port))
 	}
-}
-
-func LabelSelectorTableLines(selector metav1.LabelSelector) string {
-	if kube.IsLabelSelectorEmpty(selector) {
-		return "all pods"
-	}
-	var lines []string
-	if len(selector.MatchLabels) > 0 {
-		lines = append(lines, "Match labels:")
-		for key, val := range selector.MatchLabels {
-			lines = append(lines, fmt.Sprintf("  %s: %s", key, val))
-		}
-	}
-	if len(selector.MatchExpressions) > 0 {
-		lines = append(lines, "Match expressions:")
-		for _, exp := range selector.MatchExpressions {
-			lines = append(lines, fmt.Sprintf("  %s %s %+v", exp.Key, exp.Operator, exp.Values))
-		}
-	}
-	return strings.Join(lines, "\n")
 }

@@ -155,10 +155,10 @@ func QueryTraffic(explainedPolicies *matcher.Policy, trafficPath string) {
 	err = json.Unmarshal(allTrafficBytes, &allTraffics)
 	utils.DoOrDie(err)
 	for _, traffic := range allTraffics {
-		trafficBytes, err := json.MarshalIndent(traffic, "", "  ")
-		utils.DoOrDie(err)
+		fmt.Printf("Traffic:\n%s\n", traffic.Table())
+
 		result := explainedPolicies.IsTrafficAllowed(traffic)
-		fmt.Printf("Traffic:\n%s\n\nIs allowed: %t\n\n", string(trafficBytes), result.IsAllowed())
+		fmt.Printf("Traffic is allowed:\n%s\n", result.Table())
 	}
 }
 

@@ -1,6 +1,12 @@
 package matcher
 
-import "sort"
+import (
+	"fmt"
+	"github.com/mattfenwick/cyclonus/pkg/kube"
+	"github.com/olekukonko/tablewriter"
+	"sort"
+	"strings"
+)
 
 // This is the root type
 type Policy struct {
@@ -76,9 +82,12 @@ func (np *Policy) TargetsApplyingToPod(isIngress bool, namespace string, podLabe
 }
 
 type DirectionResult struct {
-	IsAllowed       bool
 	AllowingTargets []*Target
-	MatchingTargets []*Target
+	DenyingTargets  []*Target
+}
+
+func (d *DirectionResult) IsAllowed() bool {
+	return len(d.AllowingTargets) > 0 || len(d.DenyingTargets) == 0
 }
 
 type AllowedResult struct {
@@ -86,8 +95,32 @@ type AllowedResult struct {
 	Egress  *DirectionResult
 }
 
+func (ar *AllowedResult) Table() string {
+	tableString := &strings.Builder{}
+	table := tablewriter.NewWriter(tableString)
+	table.SetRowLine(true)
+	table.SetAutoMergeCells(true)
+	table.SetHeader([]string{"Type", "Action", "Target"})
+
+	addTargetsToTable(table, "Ingress", "Allow", ar.Ingress.AllowingTargets)
+	addTargetsToTable(table, "Ingress", "Deny", ar.Ingress.DenyingTargets)
+	addTargetsToTable(table, "Egress", "Allow", ar.Egress.AllowingTargets)
+	addTargetsToTable(table, "Egress", "Deny", ar.Egress.DenyingTargets)
+	table.SetFooter([]string{"Is allowed?", fmt.Sprintf("%t", ar.IsAllowed()), ""})
+
+	table.Render()
+	return tableString.String()
+}
+
+func addTargetsToTable(table *tablewriter.Table, ruleType string, action string, targets []*Target) {
+	for _, t := range targets {
+		targetString := fmt.Sprintf("namespace: %s\n%s", t.Namespace, kube.LabelSelectorTableLines(t.PodSelector))
+		table.Append([]string{ruleType, action, targetString})
+	}
+}
+
 func (ar *AllowedResult) IsAllowed() bool {
-	return ar.Ingress.IsAllowed && ar.Egress.IsAllowed
+	return ar.Ingress.IsAllowed() && ar.Egress.IsAllowed()
 }
 
 // IsTrafficAllowed returns:
@@ -115,27 +148,26 @@ func (np *Policy) IsIngressOrEgressAllowed(traffic *Traffic, isIngress bool) *Di
 	// 1. if target is external to cluster -> allow
 	//   this is because we can't stop external hosts from sending or receiving traffic
 	if target.Internal == nil {
-		return &DirectionResult{IsAllowed: true, AllowingTargets: nil, MatchingTargets: nil}
+		return &DirectionResult{AllowingTargets: nil, DenyingTargets: nil}
 	}
 
 	matchingTargets := np.TargetsApplyingToPod(isIngress, target.Internal.Namespace, target.Internal.PodLabels)
 
 	// 2. No targets match => automatic allow
 	if len(matchingTargets) == 0 {
-		return &DirectionResult{IsAllowed: true, AllowingTargets: nil, MatchingTargets: nil}
+		return &DirectionResult{AllowingTargets: nil, DenyingTargets: nil}
 	}
 
 	// 3. Check if any matching targets allow this traffic
 	var allowers []*Target
+	var deniers []*Target
 	for _, target := range matchingTargets {
 		if target.Peer.Allows(peer, traffic.PortProtocol) {
 			allowers = append(allowers, target)
+		} else {
+			deniers = append(deniers, target)
 		}
 	}
-	if len(allowers) > 0 {
-		return &DirectionResult{IsAllowed: true, AllowingTargets: allowers, MatchingTargets: matchingTargets}
-	}
 
-	// 4. Otherwise, deny
-	return &DirectionResult{IsAllowed: false, AllowingTargets: nil, MatchingTargets: matchingTargets}
+	return &DirectionResult{AllowingTargets: allowers, DenyingTargets: deniers}
 }

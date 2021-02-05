@@ -43,8 +43,8 @@ func RunSyntheticProbe(request *Request) *Result {
 			allowed := request.Policies.IsTrafficAllowed(traffic)
 			// TODO could also keep the whole `allowed` struct somewhere
 			combined.Set(fr, to, allowed.IsAllowed())
-			ingressTable.Set(fr, to, allowed.Ingress.IsAllowed)
-			egressTable.Set(fr, to, allowed.Egress.IsAllowed)
+			ingressTable.Set(fr, to, allowed.Ingress.IsAllowed())
+			egressTable.Set(fr, to, allowed.Egress.IsAllowed())
 		}
 	}
 

@@ -1,8 +1,11 @@
 package matcher
 
 import (
+	"fmt"
+	"github.com/olekukonko/tablewriter"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"strings"
 )
 
 type Traffic struct {
@@ -10,6 +13,45 @@ type Traffic struct {
 	Destination *TrafficPeer
 
 	PortProtocol *PortProtocol
+}
+
+func (t *Traffic) Table() string {
+	tableString := &strings.Builder{}
+	table := tablewriter.NewWriter(tableString)
+	table.SetRowLine(true)
+	table.SetAutoMergeCells(true)
+
+	pp := fmt.Sprintf("%s on %s", t.PortProtocol.Port.String(), t.PortProtocol.Protocol)
+	table.SetHeader([]string{"Port/Protocol", "Source/Dest", "Pod IP", "Namespace", "NS Labels", "Pod Labels"})
+
+	source := []string{pp, "source", t.Source.IP}
+	if t.Source.Internal != nil {
+		i := t.Source.Internal
+		source = append(source, i.Namespace, labelsToString(i.NamespaceLabels), labelsToString(i.PodLabels))
+	} else {
+		source = append(source, "", "", "")
+	}
+	table.Append(source)
+
+	dest := []string{pp, "destination", t.Destination.IP}
+	if t.Destination.Internal != nil {
+		i := t.Destination.Internal
+		dest = append(dest, i.Namespace, labelsToString(i.NamespaceLabels), labelsToString(i.PodLabels))
+	} else {
+		dest = append(dest, "", "", "")
+	}
+	table.Append(dest)
+
+	table.Render()
+	return tableString.String()
+}
+
+func labelsToString(labels map[string]string) string {
+	var kvs []string
+	for k, v := range labels {
+		kvs = append(kvs, fmt.Sprintf("%s: %s", k, v))
+	}
+	return strings.Join(kvs, "\n")
 }
 
 type PortProtocol struct {

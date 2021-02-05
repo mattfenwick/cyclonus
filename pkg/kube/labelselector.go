@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sort"
+	"strings"
 )
 
 // IsNameMatch follows the kube pattern of "empty string means matches All"
@@ -108,4 +109,24 @@ func SerializeLabelSelector(ls metav1.LabelSelector) string {
 		panic(errors.Wrapf(err, "unable to marshal json"))
 	}
 	return string(bytes)
+}
+
+func LabelSelectorTableLines(selector metav1.LabelSelector) string {
+	if IsLabelSelectorEmpty(selector) {
+		return "all pods"
+	}
+	var lines []string
+	if len(selector.MatchLabels) > 0 {
+		lines = append(lines, "Match labels:")
+		for key, val := range selector.MatchLabels {
+			lines = append(lines, fmt.Sprintf("  %s: %s", key, val))
+		}
+	}
+	if len(selector.MatchExpressions) > 0 {
+		lines = append(lines, "Match expressions:")
+		for _, exp := range selector.MatchExpressions {
+			lines = append(lines, fmt.Sprintf("  %s %s %+v", exp.Key, exp.Operator, exp.Values))
+		}
+	}
+	return strings.Join(lines, "\n")
 }
