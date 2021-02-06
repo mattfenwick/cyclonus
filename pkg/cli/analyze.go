@@ -6,7 +6,6 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/types"
 	"io/ioutil"
 
-	"github.com/mattfenwick/cyclonus/pkg/connectivity/synthetic"
 	"github.com/mattfenwick/cyclonus/pkg/explainer"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/kube/netpol"
@@ -164,7 +163,7 @@ func QueryTraffic(explainedPolicies *matcher.Policy, trafficPath string) {
 }
 
 type SyntheticProbeConnectivityConfig struct {
-	Resources *synthetic.Resources
+	Resources *types.Resources
 	Probes    []*struct {
 		Protocol v1.Protocol
 		Port     intstr.IntOrString
@@ -180,23 +179,19 @@ func ProbeSyntheticConnectivity(explainedPolicies *matcher.Policy, modelPath str
 
 	// run probes
 	for _, probe := range config.Probes {
-		result := synthetic.RunSyntheticProbe(&synthetic.Request{
+		request := &types.Request{
 			Protocol:  probe.Protocol,
 			Port:      probe.Port,
-			Policies:  explainedPolicies,
 			Resources: config.Resources,
-		})
+		}
+		probe := (&types.SimulatedCollector{Policies: explainedPolicies}).RunProbe(request)
 
-		logrus.Infof("probe on port %s, protocol %s", result.Request.Port.String(), result.Request.Protocol)
+		logrus.Infof("probe on port %s, protocol %s", request.Port.String(), request.Protocol)
 
-		fmt.Printf("Ingress:\n%s\n", result.Table.Wrapped.Table(func(i interface{}) string {
-			return i.(*types.Answer).Ingress.ShortString()
-		}))
+		fmt.Printf("Ingress:\n%s\n", probe.Ingress.RenderTable())
 
-		fmt.Printf("Egress:\n%s\n", result.Table.Wrapped.Table(func(i interface{}) string {
-			return i.(*types.Answer).Egress.ShortString()
-		}))
+		fmt.Printf("Egress:\n%s\n", probe.Egress.RenderTable())
 
-		fmt.Printf("Combined:\n%s\n", result.Table.Table())
+		fmt.Printf("Combined:\n%s\n", probe.Combined.RenderTable())
 	}
 }

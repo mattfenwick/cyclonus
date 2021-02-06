@@ -1,8 +1,7 @@
 package connectivity
 
 import (
-	connectivitykube "github.com/mattfenwick/cyclonus/pkg/connectivity/kube"
-	"github.com/mattfenwick/cyclonus/pkg/connectivity/synthetic"
+	"github.com/mattfenwick/cyclonus/pkg/connectivity/types"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -41,12 +40,12 @@ import (
 //		log.Infof("ip for pod %s/%s: %s", pod.Namespace, pod.Name, ip)
 //	}
 //
-//	syntheticResources, err := synthetic.NewResources(kubeResources.Namespaces, syntheticPods)
+//	resources, err := synthetic.NewResources(kubeResources.Namespaces, syntheticPods)
 //	if err != nil {
 //		return nil, nil, err
 //	}
 //
-//	return kubeResources, syntheticResources, nil
+//	return kubeResources, resources, nil
 //}
 
 //func waitForPodsReadyTODODelete(kubernetes *kube.Kubernetes, namespaces []string, pods []string, timeoutSeconds int) error {
@@ -73,7 +72,7 @@ import (
 //	return errors.Errorf("pods not ready")
 //}
 
-func SetupCluster(kubernetes *kube.Kubernetes, kubeResources *connectivitykube.Resources, timeoutSeconds int) error {
+func SetupCluster(kubernetes *kube.Kubernetes, kubeResources *types.Resources, timeoutSeconds int) error {
 	err := kubeResources.CreateResourcesInKube(kubernetes)
 	if err != nil {
 		return err
@@ -86,49 +85,7 @@ func SetupCluster(kubernetes *kube.Kubernetes, kubeResources *connectivitykube.R
 	return nil
 }
 
-func GetSyntheticResources(kubernetes *kube.Kubernetes, kubeResources *connectivitykube.Resources) (*synthetic.Resources, error) {
-	podList, err := kubernetes.GetPodsInNamespaces(kubeResources.NamespacesSlice())
-	if err != nil {
-		return nil, err
-	}
-	var syntheticPods []*synthetic.Pod
-	for _, pod := range podList {
-		ip := pod.Status.PodIP
-		if ip == "" {
-			return nil, errors.Errorf("no ip found for pod %s/%s", pod.Namespace, pod.Name)
-		}
-		var containers []*synthetic.Container
-		for _, kubeCont := range pod.Spec.Containers {
-			if len(kubeCont.Ports) != 1 {
-				return nil, errors.Errorf("expected 1 port on kube container, found %d", len(kubeCont.Ports))
-			}
-			kubePort := kubeCont.Ports[0]
-			containers = append(containers, &synthetic.Container{
-				Name:     kubeCont.Name,
-				Port:     int(kubePort.ContainerPort),
-				Protocol: kubePort.Protocol,
-				PortName: kubePort.Name,
-			})
-		}
-		syntheticPods = append(syntheticPods, &synthetic.Pod{
-			Namespace:  pod.Namespace,
-			Name:       pod.Name,
-			Labels:     pod.Labels,
-			IP:         ip,
-			Containers: containers,
-		})
-		log.Debugf("ip for pod %s/%s: %s", pod.Namespace, pod.Name, ip)
-	}
-
-	syntheticResources, err := synthetic.NewResources(kubeResources.Namespaces, syntheticPods, kubeResources.ExternalIPs)
-	if err != nil {
-		return nil, err
-	}
-
-	return syntheticResources, nil
-}
-
-func waitForPodsReady(kubernetes *kube.Kubernetes, kubeResources *connectivitykube.Resources, timeoutSeconds int) error {
+func waitForPodsReady(kubernetes *kube.Kubernetes, kubeResources *types.Resources, timeoutSeconds int) error {
 	sleep := 5
 	for i := 0; i < timeoutSeconds; i += sleep {
 		podList, err := kubernetes.GetPodsInNamespaces(kubeResources.NamespacesSlice())

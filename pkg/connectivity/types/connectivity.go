@@ -41,29 +41,20 @@ func (p Connectivity) ShortString() string {
 	}
 }
 
-type Answer struct {
-	Ingress Connectivity
-	Egress  Connectivity
-}
-
-func (a *Answer) ShortString() string {
-	return a.Combined().ShortString()
-}
-
-func (a *Answer) Combined() Connectivity {
-	switch a.Egress {
+func CombineIngressEgressConnectivity(ingress Connectivity, egress Connectivity) Connectivity {
+	switch egress {
 	case ConnectivityBlocked:
 		return ConnectivityBlocked
 	case ConnectivityAllowed:
-		return a.Ingress
+		return ingress
 	case ConnectivityUnknown:
-		switch a.Ingress {
+		switch ingress {
 		case ConnectivityAllowed:
 			return ConnectivityUnknown
 		default:
-			return a.Ingress
+			return ingress
 		}
 	default:
-		panic(errors.Errorf("invalid Egress value %+v", a.Egress))
+		panic(errors.Errorf("invalid egress Connectivity value %+v", egress))
 	}
 }

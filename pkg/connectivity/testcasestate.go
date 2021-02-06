@@ -1,7 +1,7 @@
 package connectivity
 
 import (
-	"github.com/mattfenwick/cyclonus/pkg/connectivity/synthetic"
+	"github.com/mattfenwick/cyclonus/pkg/connectivity/types"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -9,7 +9,7 @@ import (
 
 type TestCaseState struct {
 	Kubernetes *kube.Kubernetes
-	Resources  *synthetic.Resources
+	Resources  *types.Resources
 	Policies   []*networkingv1.NetworkPolicy
 }
 

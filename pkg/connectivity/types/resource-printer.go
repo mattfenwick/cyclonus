@@ -1,4 +1,4 @@
-package kube
+package types
 
 import (
 	"fmt"
@@ -8,11 +8,11 @@ import (
 	"strings"
 )
 
-func (r *Resources) Table() string {
+func (r *Resources) RenderTable() string {
 	tableString := &strings.Builder{}
 	table := tablewriter.NewWriter(tableString)
 
-	table.SetHeader([]string{"Namespace", "NS Labels", "Pod", "Pod Labels", "Container", "Ports"})
+	table.SetHeader([]string{"Namespace", "NS Labels", "Pod", "Pod Labels", "Pod IP", "Containers/Ports"})
 	table.SetAutoMergeCells(true)
 	table.SetRowLine(true)
 
@@ -36,19 +36,14 @@ func (r *Resources) Table() string {
 	for _, ns := range nsSlice {
 		labels := r.Namespaces[ns]
 		for _, pod := range nsToPod[ns] {
-			for _, cont := range pod.KubeContainers() {
-				var ports []string
-				for _, p := range cont.Ports {
-					ports = append(ports, fmt.Sprintf("%s: %d on %s", p.Name, p.ContainerPort, p.Protocol))
-				}
+			for _, cont := range pod.Containers {
 				table.Append([]string{
 					ns,
 					labelsToLines(labels),
 					pod.Name,
 					labelsToLines(pod.Labels),
-					cont.Name,
-					//strings.Join(cont.Command, " "),
-					strings.Join(ports, "\n"),
+					pod.IP,
+					fmt.Sprintf("%s, port %s: %d on %s", cont.Name, cont.PortName, cont.Port, cont.Protocol),
 				})
 			}
 		}

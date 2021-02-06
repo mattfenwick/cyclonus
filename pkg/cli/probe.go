@@ -2,7 +2,7 @@ package cli
 
 import (
 	"github.com/mattfenwick/cyclonus/pkg/connectivity"
-	connectivitykube "github.com/mattfenwick/cyclonus/pkg/connectivity/kube"
+	"github.com/mattfenwick/cyclonus/pkg/connectivity/types"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
@@ -74,7 +74,7 @@ func RunProbeCommand(args *ProbeArgs) {
 		protocols = append(protocols, parsedProtocol)
 	}
 
-	kubeResources := connectivitykube.NewDefaultResources(args.Namespaces, args.Pods, args.ServerPorts, protocols, externalIPs)
+	kubeResources := types.NewDefaultResources(args.Namespaces, args.Pods, args.ServerPorts, protocols, externalIPs)
 	interpreter, err := connectivity.NewInterpreter(kubernetes, kubeResources, false, 0, args.PerturbationWaitSeconds, args.PodCreationTimeoutSeconds, false)
 	utils.DoOrDie(err)
 

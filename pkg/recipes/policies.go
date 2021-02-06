@@ -1,12 +1,12 @@
 package recipes
 
 import (
-	. "github.com/mattfenwick/cyclonus/pkg/connectivity/synthetic"
+	"github.com/mattfenwick/cyclonus/pkg/connectivity/types"
 	v1 "k8s.io/api/core/v1"
 )
 
-var container = []*Container{{Port: 80, Protocol: v1.ProtocolTCP}}
-var cont5000 = []*Container{{Port: 5000, Protocol: v1.ProtocolTCP}}
+var container = []*types.Container{{Port: 80, Protocol: v1.ProtocolTCP}}
+var cont5000 = []*types.Container{{Port: 5000, Protocol: v1.ProtocolTCP}}
 
 const Recipe01 = `
 kind: NetworkPolicy
@@ -21,22 +21,22 @@ spec:
       app: web
   ingress: []`
 
-var Resources01 = &Resources{
+var Resources01 = &types.Resources{
 	Namespaces: map[string]map[string]string{
 		"x":       {},
 		"default": {},
 		"y":       {},
 	},
-	Pods: []*Pod{
-		NewPod("x", "a", nil, "", container),
-		NewPod("x", "b", nil, "", container),
-		NewPod("x", "c", nil, "", container),
-		NewPod("default", "a", nil, "", container),
-		NewPod("default", "b", map[string]string{"app": "web"}, "", container),
-		NewPod("default", "c", nil, "", container),
-		NewPod("y", "a", nil, "", container),
-		NewPod("y", "b", nil, "", container),
-		NewPod("y", "c", nil, "", container),
+	Pods: []*types.Pod{
+		types.NewPod("x", "a", nil, "", container),
+		types.NewPod("x", "b", nil, "", container),
+		types.NewPod("x", "c", nil, "", container),
+		types.NewPod("default", "a", nil, "", container),
+		types.NewPod("default", "b", map[string]string{"app": "web"}, "", container),
+		types.NewPod("default", "c", nil, "", container),
+		types.NewPod("y", "a", nil, "", container),
+		types.NewPod("y", "b", nil, "", container),
+		types.NewPod("y", "c", nil, "", container),
 	},
 }
 
@@ -58,22 +58,22 @@ spec:
             matchLabels:
               app: bookstore`
 
-var Resources02 = &Resources{
+var Resources02 = &types.Resources{
 	Namespaces: map[string]map[string]string{
 		"x":       {},
 		"default": {},
 		"y":       {},
 	},
-	Pods: []*Pod{
-		NewPod("x", "a", nil, "", container),
-		NewPod("x", "b", map[string]string{"app": "bookstore"}, "", container),
-		NewPod("x", "c", nil, "", container),
-		NewPod("default", "a", map[string]string{"app": "bookstore"}, "", container),
-		NewPod("default", "b", map[string]string{"app": "bookstore", "role": "api"}, "", container),
-		NewPod("default", "c", map[string]string{"role": "api"}, "", container),
-		NewPod("y", "a", nil, "", container),
-		NewPod("y", "b", nil, "", container),
-		NewPod("y", "c", map[string]string{"app": "bookstore"}, "", container),
+	Pods: []*types.Pod{
+		types.NewPod("x", "a", nil, "", container),
+		types.NewPod("x", "b", map[string]string{"app": "bookstore"}, "", container),
+		types.NewPod("x", "c", nil, "", container),
+		types.NewPod("default", "a", map[string]string{"app": "bookstore"}, "", container),
+		types.NewPod("default", "b", map[string]string{"app": "bookstore", "role": "api"}, "", container),
+		types.NewPod("default", "c", map[string]string{"role": "api"}, "", container),
+		types.NewPod("y", "a", nil, "", container),
+		types.NewPod("y", "b", nil, "", container),
+		types.NewPod("y", "c", map[string]string{"app": "bookstore"}, "", container),
 	},
 }
 
@@ -93,22 +93,22 @@ spec:
   ingress:
     - {}`
 
-var Resources02A = &Resources{
+var Resources02A = &types.Resources{
 	Namespaces: map[string]map[string]string{
 		"x":       {},
 		"default": {},
 		"y":       {},
 	},
-	Pods: []*Pod{
-		NewPod("x", "a", nil, "", container),
-		NewPod("x", "b", nil, "", container),
-		NewPod("x", "c", nil, "", container),
-		NewPod("default", "a", nil, "", container),
-		NewPod("default", "b", map[string]string{"app": "web"}, "", container),
-		NewPod("default", "c", nil, "", container),
-		NewPod("y", "a", nil, "", container),
-		NewPod("y", "b", nil, "", container),
-		NewPod("y", "c", nil, "", container),
+	Pods: []*types.Pod{
+		types.NewPod("x", "a", nil, "", container),
+		types.NewPod("x", "b", nil, "", container),
+		types.NewPod("x", "c", nil, "", container),
+		types.NewPod("default", "a", nil, "", container),
+		types.NewPod("default", "b", map[string]string{"app": "web"}, "", container),
+		types.NewPod("default", "c", nil, "", container),
+		types.NewPod("y", "a", nil, "", container),
+		types.NewPod("y", "b", nil, "", container),
+		types.NewPod("y", "c", nil, "", container),
 	},
 }
 
@@ -124,22 +124,22 @@ spec:
   podSelector: {}
   ingress: []`
 
-var Resources03 = &Resources{
+var Resources03 = &types.Resources{
 	Namespaces: map[string]map[string]string{
 		"x":       {},
 		"default": {},
 		"y":       {},
 	},
-	Pods: []*Pod{
-		NewPod("x", "a", nil, "", container),
-		NewPod("x", "b", nil, "", container),
-		NewPod("x", "c", nil, "", container),
-		NewPod("default", "a", nil, "", container),
-		NewPod("default", "b", nil, "", container),
-		NewPod("default", "c", nil, "", container),
-		NewPod("y", "a", nil, "", container),
-		NewPod("y", "b", nil, "", container),
-		NewPod("y", "c", nil, "", container),
+	Pods: []*types.Pod{
+		types.NewPod("x", "a", nil, "", container),
+		types.NewPod("x", "b", nil, "", container),
+		types.NewPod("x", "c", nil, "", container),
+		types.NewPod("default", "a", nil, "", container),
+		types.NewPod("default", "b", nil, "", container),
+		types.NewPod("default", "c", nil, "", container),
+		types.NewPod("y", "a", nil, "", container),
+		types.NewPod("y", "b", nil, "", container),
+		types.NewPod("y", "c", nil, "", container),
 	},
 }
 
@@ -158,22 +158,22 @@ spec:
     - from:
         - podSelector: {}`
 
-var Resources04 = &Resources{
+var Resources04 = &types.Resources{
 	Namespaces: map[string]map[string]string{
 		"x":         {},
 		"default":   {},
 		"secondary": {},
 	},
-	Pods: []*Pod{
-		NewPod("x", "a", nil, "", container),
-		NewPod("x", "b", nil, "", container),
-		NewPod("x", "c", nil, "", container),
-		NewPod("default", "a", nil, "", container),
-		NewPod("default", "b", nil, "", container),
-		NewPod("default", "c", nil, "", container),
-		NewPod("secondary", "a", nil, "", container),
-		NewPod("secondary", "b", nil, "", container),
-		NewPod("secondary", "c", nil, "", container),
+	Pods: []*types.Pod{
+		types.NewPod("x", "a", nil, "", container),
+		types.NewPod("x", "b", nil, "", container),
+		types.NewPod("x", "c", nil, "", container),
+		types.NewPod("default", "a", nil, "", container),
+		types.NewPod("default", "b", nil, "", container),
+		types.NewPod("default", "c", nil, "", container),
+		types.NewPod("secondary", "a", nil, "", container),
+		types.NewPod("secondary", "b", nil, "", container),
+		types.NewPod("secondary", "c", nil, "", container),
 	},
 }
 
@@ -193,22 +193,22 @@ spec:
     - from:
         - namespaceSelector: {}`
 
-var Resources05 = &Resources{
+var Resources05 = &types.Resources{
 	Namespaces: map[string]map[string]string{
 		"x":       {},
 		"default": {},
 		"y":       {},
 	},
-	Pods: []*Pod{
-		NewPod("x", "a", nil, "", container),
-		NewPod("x", "b", nil, "", container),
-		NewPod("x", "c", nil, "", container),
-		NewPod("default", "a", nil, "", container),
-		NewPod("default", "b", map[string]string{"app": "web"}, "", container),
-		NewPod("default", "c", nil, "", container),
-		NewPod("y", "a", nil, "", container),
-		NewPod("y", "b", nil, "", container),
-		NewPod("y", "c", nil, "", container),
+	Pods: []*types.Pod{
+		types.NewPod("x", "a", nil, "", container),
+		types.NewPod("x", "b", nil, "", container),
+		types.NewPod("x", "c", nil, "", container),
+		types.NewPod("default", "a", nil, "", container),
+		types.NewPod("default", "b", map[string]string{"app": "web"}, "", container),
+		types.NewPod("default", "c", nil, "", container),
+		types.NewPod("y", "a", nil, "", container),
+		types.NewPod("y", "b", nil, "", container),
+		types.NewPod("y", "c", nil, "", container),
 	},
 }
 
@@ -229,22 +229,22 @@ spec:
             matchLabels:
               purpose: production`
 
-var Resources06 = &Resources{
+var Resources06 = &types.Resources{
 	Namespaces: map[string]map[string]string{
 		"x":       {"purpose": "production"},
 		"default": {},
 		"y":       {},
 	},
-	Pods: []*Pod{
-		NewPod("x", "a", nil, "", container),
-		NewPod("x", "b", nil, "", container),
-		NewPod("x", "c", nil, "", container),
-		NewPod("default", "a", nil, "", container),
-		NewPod("default", "b", map[string]string{"app": "web"}, "", container),
-		NewPod("default", "c", nil, "", container),
-		NewPod("y", "a", nil, "", container),
-		NewPod("y", "b", nil, "", container),
-		NewPod("y", "c", nil, "", container),
+	Pods: []*types.Pod{
+		types.NewPod("x", "a", nil, "", container),
+		types.NewPod("x", "b", nil, "", container),
+		types.NewPod("x", "c", nil, "", container),
+		types.NewPod("default", "a", nil, "", container),
+		types.NewPod("default", "b", map[string]string{"app": "web"}, "", container),
+		types.NewPod("default", "c", nil, "", container),
+		types.NewPod("y", "a", nil, "", container),
+		types.NewPod("y", "b", nil, "", container),
+		types.NewPod("y", "c", nil, "", container),
 	},
 }
 
@@ -269,22 +269,22 @@ spec:
             matchLabels:
               type: monitoring`
 
-var Resources07 = &Resources{
+var Resources07 = &types.Resources{
 	Namespaces: map[string]map[string]string{
 		"x":       {"team": "operations"},
 		"default": {},
 		"y":       {"team": "operations"},
 	},
-	Pods: []*Pod{
-		NewPod("x", "a", map[string]string{"type": "monitoring"}, "", container),
-		NewPod("x", "b", nil, "", container),
-		NewPod("x", "c", nil, "", container),
-		NewPod("default", "a", map[string]string{"type": "monitoring"}, "", container),
-		NewPod("default", "b", map[string]string{"app": "web"}, "", container),
-		NewPod("default", "c", nil, "", container),
-		NewPod("y", "a", map[string]string{"type": "monitoring"}, "", container),
-		NewPod("y", "b", nil, "", container),
-		NewPod("y", "c", nil, "", container),
+	Pods: []*types.Pod{
+		types.NewPod("x", "a", map[string]string{"type": "monitoring"}, "", container),
+		types.NewPod("x", "b", nil, "", container),
+		types.NewPod("x", "c", nil, "", container),
+		types.NewPod("default", "a", map[string]string{"type": "monitoring"}, "", container),
+		types.NewPod("default", "b", map[string]string{"app": "web"}, "", container),
+		types.NewPod("default", "c", nil, "", container),
+		types.NewPod("y", "a", map[string]string{"type": "monitoring"}, "", container),
+		types.NewPod("y", "b", nil, "", container),
+		types.NewPod("y", "c", nil, "", container),
 	},
 }
 
@@ -303,22 +303,22 @@ spec:
   ingress:
     - from: []`
 
-var Resources08 = &Resources{
+var Resources08 = &types.Resources{
 	Namespaces: map[string]map[string]string{
 		"x":       {},
 		"default": {},
 		"y":       {},
 	},
-	Pods: []*Pod{
-		NewPod("x", "a", nil, "", container),
-		NewPod("x", "b", nil, "", container),
-		NewPod("x", "c", nil, "", container),
-		NewPod("default", "a", nil, "", container),
-		NewPod("default", "b", map[string]string{"app": "web"}, "", container),
-		NewPod("default", "c", nil, "", container),
-		NewPod("y", "a", nil, "", container),
-		NewPod("y", "b", nil, "", container),
-		NewPod("y", "c", nil, "", container),
+	Pods: []*types.Pod{
+		types.NewPod("x", "a", nil, "", container),
+		types.NewPod("x", "b", nil, "", container),
+		types.NewPod("x", "c", nil, "", container),
+		types.NewPod("default", "a", nil, "", container),
+		types.NewPod("default", "b", map[string]string{"app": "web"}, "", container),
+		types.NewPod("default", "c", nil, "", container),
+		types.NewPod("y", "a", nil, "", container),
+		types.NewPod("y", "b", nil, "", container),
+		types.NewPod("y", "c", nil, "", container),
 	},
 }
 
@@ -342,22 +342,22 @@ spec:
               role: monitoring`
 
 // TODO this example could be improved by adding some probes over a different port
-var Resources09 = &Resources{
+var Resources09 = &types.Resources{
 	Namespaces: map[string]map[string]string{
 		"x":       {},
 		"default": {},
 		"y":       {},
 	},
-	Pods: []*Pod{
-		NewPod("x", "a", map[string]string{"role": "monitoring"}, "", cont5000),
-		NewPod("x", "b", nil, "", cont5000),
-		NewPod("x", "c", nil, "", cont5000),
-		NewPod("default", "a", map[string]string{"role": "monitoring"}, "", cont5000),
-		NewPod("default", "b", map[string]string{"app": "apiserver"}, "", cont5000),
-		NewPod("default", "c", nil, "", cont5000),
-		NewPod("y", "a", map[string]string{"role": "monitoring"}, "", cont5000),
-		NewPod("y", "b", nil, "", cont5000),
-		NewPod("y", "c", nil, "", cont5000),
+	Pods: []*types.Pod{
+		types.NewPod("x", "a", map[string]string{"role": "monitoring"}, "", cont5000),
+		types.NewPod("x", "b", nil, "", cont5000),
+		types.NewPod("x", "c", nil, "", cont5000),
+		types.NewPod("default", "a", map[string]string{"role": "monitoring"}, "", cont5000),
+		types.NewPod("default", "b", map[string]string{"app": "apiserver"}, "", cont5000),
+		types.NewPod("default", "c", nil, "", cont5000),
+		types.NewPod("y", "a", map[string]string{"role": "monitoring"}, "", cont5000),
+		types.NewPod("y", "b", nil, "", cont5000),
+		types.NewPod("y", "c", nil, "", cont5000),
 	},
 }
 
@@ -388,23 +388,23 @@ spec:
               app: inventory
               role: web`
 
-var Resources10 = &Resources{
+var Resources10 = &types.Resources{
 	Namespaces: map[string]map[string]string{
 		"x":       {},
 		"default": {},
 		"y":       {},
 	},
-	Pods: []*Pod{
-		NewPod("x", "a", nil, "", container),
-		NewPod("x", "b", nil, "", container),
-		NewPod("x", "c", nil, "", container),
-		NewPod("default", "a", map[string]string{"app": "bookstore", "role": "search"}, "", container),
-		NewPod("default", "b", map[string]string{"app": "bookstore", "role": "db"}, "", container),
-		NewPod("default", "c", map[string]string{"app": "bookstore", "role": "api"}, "", container),
-		NewPod("default", "d", map[string]string{"app": "inventory", "role": "web"}, "", container),
-		NewPod("y", "a", map[string]string{"app": "bookstore", "role": "search"}, "", container),
-		NewPod("y", "b", map[string]string{"app": "bookstore", "role": "api"}, "", container),
-		NewPod("y", "c", map[string]string{"app": "inventory", "role": "web"}, "", container),
+	Pods: []*types.Pod{
+		types.NewPod("x", "a", nil, "", container),
+		types.NewPod("x", "b", nil, "", container),
+		types.NewPod("x", "c", nil, "", container),
+		types.NewPod("default", "a", map[string]string{"app": "bookstore", "role": "search"}, "", container),
+		types.NewPod("default", "b", map[string]string{"app": "bookstore", "role": "db"}, "", container),
+		types.NewPod("default", "c", map[string]string{"app": "bookstore", "role": "api"}, "", container),
+		types.NewPod("default", "d", map[string]string{"app": "inventory", "role": "web"}, "", container),
+		types.NewPod("y", "a", map[string]string{"app": "bookstore", "role": "search"}, "", container),
+		types.NewPod("y", "b", map[string]string{"app": "bookstore", "role": "api"}, "", container),
+		types.NewPod("y", "c", map[string]string{"app": "inventory", "role": "web"}, "", container),
 	},
 }
 
@@ -421,22 +421,22 @@ spec:
     - Egress
   egress: []`
 
-var Resources11_1 = &Resources{
+var Resources11_1 = &types.Resources{
 	Namespaces: map[string]map[string]string{
 		"x":       {},
 		"default": {},
 		"y":       {},
 	},
-	Pods: []*Pod{
-		NewPod("x", "a", nil, "", container),
-		NewPod("x", "b", nil, "", container),
-		NewPod("x", "c", nil, "", container),
-		NewPod("default", "a", nil, "", container),
-		NewPod("default", "b", map[string]string{"app": "foo"}, "", container),
-		NewPod("default", "c", nil, "", container),
-		NewPod("y", "a", nil, "", container),
-		NewPod("y", "b", nil, "", container),
-		NewPod("y", "c", nil, "", container),
+	Pods: []*types.Pod{
+		types.NewPod("x", "a", nil, "", container),
+		types.NewPod("x", "b", nil, "", container),
+		types.NewPod("x", "c", nil, "", container),
+		types.NewPod("default", "a", nil, "", container),
+		types.NewPod("default", "b", map[string]string{"app": "foo"}, "", container),
+		types.NewPod("default", "c", nil, "", container),
+		types.NewPod("y", "a", nil, "", container),
+		types.NewPod("y", "b", nil, "", container),
+		types.NewPod("y", "c", nil, "", container),
 	},
 }
 
@@ -459,22 +459,22 @@ spec:
         - port: 53
           protocol: TCP`
 
-var Resources11_2 = &Resources{
+var Resources11_2 = &types.Resources{
 	Namespaces: map[string]map[string]string{
 		"x":       {},
 		"default": {},
 		"y":       {},
 	},
-	Pods: []*Pod{
-		NewPod("x", "a", nil, "", container),
-		NewPod("x", "b", nil, "", container),
-		NewPod("x", "c", nil, "", container),
-		NewPod("default", "a", nil, "", container),
-		NewPod("default", "b", map[string]string{"app": "foo"}, "", container),
-		NewPod("default", "c", nil, "", container),
-		NewPod("y", "a", nil, "", container),
-		NewPod("y", "b", nil, "", container),
-		NewPod("y", "c", nil, "", container),
+	Pods: []*types.Pod{
+		types.NewPod("x", "a", nil, "", container),
+		types.NewPod("x", "b", nil, "", container),
+		types.NewPod("x", "c", nil, "", container),
+		types.NewPod("default", "a", nil, "", container),
+		types.NewPod("default", "b", map[string]string{"app": "foo"}, "", container),
+		types.NewPod("default", "c", nil, "", container),
+		types.NewPod("y", "a", nil, "", container),
+		types.NewPod("y", "b", nil, "", container),
+		types.NewPod("y", "c", nil, "", container),
 	},
 }
 
@@ -490,22 +490,22 @@ spec:
   podSelector: {}
   egress: []`
 
-var Resources12 = &Resources{
+var Resources12 = &types.Resources{
 	Namespaces: map[string]map[string]string{
 		"x":       {},
 		"default": {},
 		"y":       {},
 	},
-	Pods: []*Pod{
-		NewPod("x", "a", nil, "", container),
-		NewPod("x", "b", nil, "", container),
-		NewPod("x", "c", nil, "", container),
-		NewPod("default", "a", nil, "", container),
-		NewPod("default", "b", nil, "", container),
-		NewPod("default", "c", nil, "", container),
-		NewPod("y", "a", nil, "", container),
-		NewPod("y", "b", nil, "", container),
-		NewPod("y", "c", nil, "", container),
+	Pods: []*types.Pod{
+		types.NewPod("x", "a", nil, "", container),
+		types.NewPod("x", "b", nil, "", container),
+		types.NewPod("x", "c", nil, "", container),
+		types.NewPod("default", "a", nil, "", container),
+		types.NewPod("default", "b", nil, "", container),
+		types.NewPod("default", "c", nil, "", container),
+		types.NewPod("y", "a", nil, "", container),
+		types.NewPod("y", "b", nil, "", container),
+		types.NewPod("y", "c", nil, "", container),
 	},
 }
 
@@ -529,21 +529,21 @@ spec:
     - to:
         - namespaceSelector: {}`
 
-var Resources14 = &Resources{
+var Resources14 = &types.Resources{
 	Namespaces: map[string]map[string]string{
 		"x":       {},
 		"default": {},
 		"y":       {},
 	},
-	Pods: []*Pod{
-		NewPod("x", "a", nil, "", container),
-		NewPod("x", "b", nil, "", container),
-		NewPod("x", "c", nil, "", container),
-		NewPod("default", "a", nil, "", container),
-		NewPod("default", "b", nil, "", container),
-		NewPod("default", "c", nil, "", container),
-		NewPod("y", "a", nil, "", container),
-		NewPod("y", "b", nil, "", container),
-		NewPod("y", "c", nil, "", container),
+	Pods: []*types.Pod{
+		types.NewPod("x", "a", nil, "", container),
+		types.NewPod("x", "b", nil, "", container),
+		types.NewPod("x", "c", nil, "", container),
+		types.NewPod("default", "a", nil, "", container),
+		types.NewPod("default", "b", nil, "", container),
+		types.NewPod("default", "c", nil, "", container),
+		types.NewPod("y", "a", nil, "", container),
+		types.NewPod("y", "b", nil, "", container),
+		types.NewPod("y", "c", nil, "", container),
 	},
 }

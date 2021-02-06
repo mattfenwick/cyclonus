@@ -1,4 +1,4 @@
-package kube
+package types
 
 import (
 	"fmt"
@@ -9,48 +9,45 @@ import (
 	"strings"
 )
 
-const (
-	agnhostImage = "k8s.gcr.io/e2e-test-images/agnhost:2.21"
-)
+func NewPod(ns string, name string, labels map[string]string, ip string, containers []*Container) *Pod {
+	return &Pod{
+		Namespace:  ns,
+		Name:       name,
+		Labels:     labels,
+		IP:         ip,
+		Containers: containers,
+	}
+}
+
+func NewDefaultPod(ns string, name string, labels map[string]string, ip string, ports []int, protocols []v1.Protocol) *Pod {
+	var containers []*Container
+	for _, port := range ports {
+		for _, protocol := range protocols {
+			containers = append(containers, NewDefaultContainer(port, protocol))
+		}
+	}
+	return &Pod{
+		Namespace:  ns,
+		Name:       name,
+		Labels:     labels,
+		IP:         ip,
+		Containers: containers,
+	}
+}
 
 type Pod struct {
 	Namespace  string
 	Name       string
 	Labels     map[string]string
+	IP         string
 	Containers []*Container
-	// derived
-	KubeService *v1.Service
-	PodString   utils.PodString
-	KubePod     *v1.Pod
-}
-
-func NewPod(ns string, name string, labels map[string]string, ports []int, protocols []v1.Protocol) *Pod {
-	p := &Pod{
-		Namespace: ns,
-		Name:      name,
-		Labels:    labels,
-	}
-	for _, port := range ports {
-		for _, protocol := range protocols {
-			p.Containers = append(p.Containers, &Container{Port: port, Protocol: protocol})
-		}
-	}
-	p.KubeService = p.kubeService()
-	p.PodString = p.podString()
-	p.KubePod = p.kubePod()
-	return p
 }
 
 func (p *Pod) ServiceName() string {
 	return fmt.Sprintf("s-%s-%s", p.Namespace, p.Name)
 }
 
-func (p *Pod) podString() utils.PodString {
-	return utils.NewPodString(p.Namespace, p.Name)
-}
-
-// KubePod returns the kube pod
-func (p *Pod) kubePod() *v1.Pod {
+func (p *Pod) KubePod() *v1.Pod {
 	zero := int64(0)
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -65,8 +62,7 @@ func (p *Pod) kubePod() *v1.Pod {
 	}
 }
 
-// Service returns a kube service spec
-func (p *Pod) kubeService() *v1.Service {
+func (p *Pod) KubeService() *v1.Service {
 	service := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      p.ServiceName(),
@@ -94,7 +90,7 @@ func (p *Pod) KubeContainers() []v1.Container {
 
 func (p *Pod) ResolveNamedPort(port string) (int, error) {
 	for _, c := range p.Containers {
-		if c.ContainerPortName() == port {
+		if c.PortName == port {
 			return c.Port, nil
 		}
 	}
@@ -110,17 +106,34 @@ func (p *Pod) IsServingPortProtocol(port int, protocol v1.Protocol) bool {
 	return false
 }
 
+func (p *Pod) SetLabels(labels map[string]string) *Pod {
+	return &Pod{
+		Namespace:  p.Namespace,
+		Name:       p.Name,
+		Labels:     labels,
+		IP:         p.IP,
+		Containers: p.Containers,
+	}
+}
+
+func (p *Pod) PodString() utils.PodString {
+	return utils.NewPodString(p.Namespace, p.Name)
+}
+
 type Container struct {
+	Name     string
 	Port     int
 	Protocol v1.Protocol
+	PortName string
 }
 
-func (c *Container) Name() string {
-	return fmt.Sprintf("cont-%d-%s", c.Port, strings.ToLower(string(c.Protocol)))
-}
-
-func (c *Container) ContainerPortName() string {
-	return fmt.Sprintf("serve-%d-%s", c.Port, strings.ToLower(string(c.Protocol)))
+func NewDefaultContainer(port int, protocol v1.Protocol) *Container {
+	return &Container{
+		Name:     fmt.Sprintf("cont-%d-%s", port, strings.ToLower(string(protocol))),
+		Port:     port,
+		Protocol: protocol,
+		PortName: fmt.Sprintf("serve-%d-%s", port, strings.ToLower(string(protocol))),
+	}
 }
 
 func (c *Container) KubeServicePort() v1.ServicePort {
@@ -145,7 +158,7 @@ func (c *Container) KubeContainer() v1.Container {
 		panic(errors.Errorf("invalid protocol %s", c.Protocol))
 	}
 	return v1.Container{
-		Name:            c.Name(),
+		Name:            c.Name,
 		ImagePullPolicy: v1.PullIfNotPresent,
 		Image:           agnhostImage,
 		Command:         cmd,
@@ -153,7 +166,7 @@ func (c *Container) KubeContainer() v1.Container {
 		Ports: []v1.ContainerPort{
 			{
 				ContainerPort: int32(c.Port),
-				Name:          c.ContainerPortName(),
+				Name:          c.PortName,
 				Protocol:      c.Protocol,
 			},
 		},
