@@ -2,11 +2,13 @@ package types
 
 import (
 	"github.com/mattfenwick/cyclonus/pkg/kube"
+	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sort"
+	"time"
 )
 
 const (
@@ -19,7 +21,7 @@ type Resources struct {
 	ExternalIPs []string
 }
 
-func NewDefaultResources(namespaces []string, podNames []string, ports []int, protocols []v1.Protocol, externalIPs []string) *Resources {
+func NewDefaultResources(kubernetes *kube.Kubernetes, namespaces []string, podNames []string, ports []int, protocols []v1.Protocol, externalIPs []string, podCreationTimeoutSeconds int) (*Resources, error) {
 	sort.Strings(externalIPs)
 	r := &Resources{
 		Namespaces:  map[string]map[string]string{},
@@ -33,71 +35,49 @@ func NewDefaultResources(namespaces []string, podNames []string, ports []int, pr
 		r.Namespaces[ns] = map[string]string{"ns": ns}
 	}
 
-	return r
-}
-
-func NewResources(namespaces map[string]map[string]string, pods []*Pod, externalIPs []string) (*Resources, error) {
-	sort.Strings(externalIPs)
-	model := &Resources{Namespaces: namespaces, ExternalIPs: externalIPs}
-
-	for _, pod := range pods {
-		if _, ok := namespaces[pod.Namespace]; !ok {
-			return nil, errors.Errorf("namespace for pod %s/%s not found", pod.Namespace, pod.Name)
-		}
-		model.Pods = append(model.Pods, pod)
-	}
-
-	return model, nil
-}
-
-func NewResourcesFromKube(kubernetes *kube.Kubernetes, namespaces []string) (*Resources, error) {
-	podList, err := kubernetes.GetPodsInNamespaces(namespaces)
-	if err != nil {
+	if err := r.CreateResourcesInKube(kubernetes); err != nil {
 		return nil, err
 	}
-	var pods []*Pod
-	for _, pod := range podList {
-		ip := pod.Status.PodIP
-		if ip == "" {
-			return nil, errors.Errorf("no ip found for pod %s/%s", pod.Namespace, pod.Name)
-		}
-		var containers []*Container
-		for _, kubeCont := range pod.Spec.Containers {
-			if len(kubeCont.Ports) != 1 {
-				return nil, errors.Errorf("expected 1 port on kube container, found %d", len(kubeCont.Ports))
-			}
-			kubePort := kubeCont.Ports[0]
-			containers = append(containers, &Container{
-				Name:     kubeCont.Name,
-				Port:     int(kubePort.ContainerPort),
-				Protocol: kubePort.Protocol,
-				PortName: kubePort.Name,
-			})
-		}
-		pods = append(pods, &Pod{
-			Namespace:  pod.Namespace,
-			Name:       pod.Name,
-			Labels:     pod.Labels,
-			IP:         ip,
-			Containers: containers,
-		})
-		logrus.Debugf("ip for pod %s/%s: %s", pod.Namespace, pod.Name, ip)
+	if err := r.waitForPodsReady(kubernetes, podCreationTimeoutSeconds); err != nil {
+		return nil, err
+	}
+	if err := r.getPodIPsFromKube(kubernetes); err != nil {
+		return nil, err
 	}
 
-	kubeNamespaces := map[string]map[string]string{}
-	for _, ns := range namespaces {
-		kubeNs, err := kubernetes.GetNamespace(ns)
+	return r, nil
+}
+
+func (r *Resources) getPodIPsFromKube(kubernetes *kube.Kubernetes) error {
+	podList, err := kubernetes.GetPodsInNamespaces(r.NamespacesSlice())
+	if err != nil {
+		return err
+	}
+
+	for _, kubePod := range podList {
+		if kubePod.Status.PodIP == "" {
+			return errors.Errorf("no ip found for pod %s/%s", kubePod.Namespace, kubePod.Name)
+		}
+
+		pod, err := r.GetPod(kubePod.Namespace, kubePod.Name)
 		if err != nil {
-			return nil, err
+			return errors.Errorf("unable to find pod %s/%s in resources", kubePod.Namespace, kubePod.Name)
 		}
-		kubeNamespaces[ns] = kubeNs.Labels
+		pod.IP = kubePod.Status.PodIP
+
+		logrus.Debugf("ip for pod %s/%s: %s", pod.Namespace, pod.Name, pod.IP)
 	}
 
-	return &Resources{
-		Namespaces:  kubeNamespaces,
-		Pods:        pods,
-		ExternalIPs: nil,
-	}, nil
+	return nil
+}
+
+func (r *Resources) GetPod(ns string, name string) (*Pod, error) {
+	for _, pod := range r.Pods {
+		if pod.Namespace == ns && pod.Name == name {
+			return pod, nil
+		}
+	}
+	return nil, errors.Errorf("unable to find pod %s/%s", ns, name)
 }
 
 // UpdateNamespaceLabels returns a new object with an updated namespace.  It should not affect the original Resources object.
@@ -155,22 +135,161 @@ func (r *Resources) NamespacesSlice() []string {
 	return nss
 }
 
-func (r *Resources) CreateResourcesInKube(kube *kube.Kubernetes) error {
+func (r *Resources) CreateResourcesInKube(kubernetes *kube.Kubernetes) error {
 	for ns, labels := range r.Namespaces {
-		_, err := kube.CreateOrUpdateNamespace(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns, Labels: labels}})
+		_, err := kubernetes.CreateOrUpdateNamespace(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns, Labels: labels}})
 		if err != nil {
 			return err
 		}
 	}
 	for _, pod := range r.Pods {
-		_, err := kube.CreatePodIfNotExists(pod.KubePod())
+		_, err := kubernetes.CreatePodIfNotExists(pod.KubePod())
 		if err != nil {
 			return err
 		}
-		_, err = kube.CreateServiceIfNotExists(pod.KubeService())
+		_, err = kubernetes.CreateServiceIfNotExists(pod.KubeService())
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (r *Resources) VerifyClusterState(kubernetes *kube.Kubernetes) error {
+	kubePods, err := kubernetes.GetPodsInNamespaces(r.NamespacesSlice())
+	if err != nil {
+		return err
+	}
+
+	// 1. pods: labels, ips, containers, ports
+	actualPods := map[string]v1.Pod{}
+	for _, kubePod := range kubePods {
+		actualPods[utils.NewPodString(kubePod.Namespace, kubePod.Name).String()] = kubePod
+	}
+	// are we missing any pods?
+	for _, pod := range r.Pods {
+		if actualPod, ok := actualPods[pod.PodString().String()]; ok {
+			if !areLabelsEqual(actualPod.Labels, pod.Labels) {
+				return errors.Errorf("for pod %s, expected labels %+v (found %+v)", pod.PodString().String(), pod.Labels, actualPod.Labels)
+			}
+			if actualPod.Status.PodIP != pod.IP {
+				return errors.Errorf("for pod %s, expected ip %s (found %s)", pod.PodString().String(), pod.IP, actualPod.Status.PodIP)
+			}
+			if !areContainersEqual(actualPod, pod) {
+				return errors.Errorf("for pod %s, expected containers %+v (found %+v)", pod.PodString().String(), pod.Containers, actualPod.Spec.Containers)
+			}
+		} else {
+			return errors.Errorf("missing expected pod %s", pod.PodString().String())
+		}
+	}
+
+	// 2. services: selectors, ports
+	for _, pod := range r.Pods {
+		expected := pod.KubeService()
+		svc, err := kubernetes.GetService(expected.Namespace, expected.Name)
+		if err != nil {
+			return err
+		}
+		if !areLabelsEqual(svc.Spec.Selector, pod.Labels) {
+			return errors.Errorf("for service %s/%s, expected labels %+v (found %+v)", pod.Namespace, pod.Name, pod.Labels, svc.Spec.Selector)
+		}
+		if len(expected.Spec.Ports) != len(svc.Spec.Ports) {
+			return errors.Errorf("for service %s/%s, expected %d ports (found %d)", expected.Namespace, expected.Name, len(expected.Spec.Ports), len(svc.Spec.Ports))
+		}
+		for i, port := range expected.Spec.Ports {
+			kubePort := svc.Spec.Ports[i]
+			if kubePort.Protocol != port.Protocol || kubePort.Port != port.Port {
+				return errors.Errorf("for service %s/%s, expected port %+v (found %+v)", expected.Namespace, expected.Name, port, kubePort)
+			}
+		}
+	}
+
+	// 3. namespaces: names, labels
+	for ns, labels := range r.Namespaces {
+		namespace, err := kubernetes.GetNamespace(ns)
+		if err != nil {
+			return err
+		}
+		if !areLabelsEqual(namespace.Labels, labels) {
+			return errors.Errorf("for namespace %s, expected labels %+v (found %+v)", ns, labels, namespace.Labels)
+		}
+	}
+
+	// nothing wrong: we're good to go
+	return nil
+}
+
+func areContainersEqual(kubePod v1.Pod, expectedPod *Pod) bool {
+	kubeConts := kubePod.Spec.Containers
+	if len(kubeConts) != len(expectedPod.Containers) {
+		return false
+	}
+	for i, kubeCont := range kubeConts {
+		cont := expectedPod.Containers[i]
+		if len(kubeCont.Ports) != 1 {
+			return false
+		}
+		if int(kubeCont.Ports[0].ContainerPort) != cont.Port {
+			return false
+		}
+		if kubeCont.Ports[0].Protocol != cont.Protocol {
+			return false
+		}
+	}
+
+	return true
+}
+
+func areLabelsEqual(l map[string]string, r map[string]string) bool {
+	if len(l) != len(r) {
+		return false
+	}
+	for k, lv := range l {
+		rv, ok := r[k]
+		if !ok || lv != rv {
+			return false
+		}
+	}
+	return true
+}
+
+func (r *Resources) ResetLabelsInKube(kubernetes *kube.Kubernetes) error {
+	for ns, labels := range r.Namespaces {
+		_, err := kubernetes.SetNamespaceLabels(ns, labels)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, pod := range r.Pods {
+		_, err := kubernetes.SetPodLabels(pod.Namespace, pod.Name, pod.Labels)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *Resources) waitForPodsReady(kubernetes *kube.Kubernetes, timeoutSeconds int) error {
+	sleep := 5
+	for i := 0; i < timeoutSeconds; i += sleep {
+		podList, err := kubernetes.GetPodsInNamespaces(r.NamespacesSlice())
+		if err != nil {
+			return err
+		}
+
+		ready := 0
+		for _, pod := range podList {
+			if pod.Status.Phase == "Running" && pod.Status.PodIP != "" {
+				ready++
+			}
+		}
+		if ready == len(r.Pods) {
+			return nil
+		}
+
+		logrus.Infof("waiting for pods to be running and have IP addresses")
+		time.Sleep(time.Duration(sleep) * time.Second)
+	}
+	return errors.Errorf("pods not ready")
 }

@@ -80,7 +80,7 @@ func (t *Printer) PrintTestCaseResult(result *Result) {
 	}
 
 	for i := range result.Steps {
-		t.PrintStep(i, result.TestCase.Steps[i], result.Steps[i])
+		t.PrintStep(i+1, result.TestCase.Steps[i], result.Steps[i])
 	}
 
 	fmt.Printf("\n\n")
@@ -104,7 +104,6 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 	}
 
 	lastKubeProbe := stepResult.LastKubeProbe()
-	fmt.Printf("%s\n", lastKubeProbe.RenderTable())
 
 	comparison := NewResultTableFrom(lastKubeProbe, stepResult.SimulatedProbe.Combined)
 	counts := comparison.ValueCounts(t.IgnoreLoopback)
@@ -114,18 +113,14 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 	fmt.Printf("%d wrong, %d ignore, %d correct\n", counts[DifferentComparison], counts[IgnoredComparison], counts[SameComparison])
 
 	if counts[DifferentComparison] > 0 || t.Noisy {
-		//fmt.Println("Ingress:")
-		//step.SyntheticResult.Ingress.Table().Render()
-		//
-		//fmt.Println("Egress:")
-		//step.SyntheticResult.Egress.Table().Render()
+		fmt.Printf("Expected ingress:\n%s\n", stepResult.SimulatedProbe.Ingress.RenderTable())
 
-		fmt.Println("Expected:")
-		fmt.Println(stepResult.SimulatedProbe.Combined.RenderTable())
+		fmt.Printf("Expected egress:\n%s\n", stepResult.SimulatedProbe.Egress.RenderTable())
+
+		fmt.Printf("Expected combined:\n%s\n", stepResult.SimulatedProbe.Combined.RenderTable())
 
 		for i, kubeResult := range stepResult.KubeProbes {
-			fmt.Printf("kube results, try %d:\n", i)
-			fmt.Println(kubeResult.RenderTable())
+			fmt.Printf("kube results, try %d:\n%s\n", i, kubeResult.RenderTable())
 		}
 
 		if len(stepResult.KubePolicies) > 0 {
@@ -136,8 +131,9 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 			fmt.Println("no network policies")
 		}
 
-		fmt.Printf("\nActual vs expected (last round):\n")
-		fmt.Println(comparison.RenderTable())
+		fmt.Printf("\nActual vs expected (last round):\n%s\n", comparison.RenderTable())
+	} else {
+		fmt.Printf("%s\n", lastKubeProbe.RenderTable())
 	}
 }
 

@@ -64,27 +64,24 @@ func RunGenerateCommand(args *GenerateArgs) {
 	kubernetes, err := kube.NewKubernetesForContext(args.Context)
 	utils.DoOrDie(err)
 
-	kubeResources := types.NewDefaultResources(args.Namespaces, args.Pods, serverPorts, serverProtocols, externalIPs)
-	interpreter, err := connectivity.NewInterpreter(kubernetes, kubeResources, true, 1, args.PerturbationWaitSeconds, args.PodCreationTimeoutSeconds, true)
+	resources, err := types.NewDefaultResources(kubernetes, args.Namespaces, args.Pods, serverPorts, serverProtocols, externalIPs, args.PodCreationTimeoutSeconds)
+	utils.DoOrDie(err)
+	interpreter, err := connectivity.NewInterpreter(kubernetes, resources, true, 1, args.PerturbationWaitSeconds, true)
 	utils.DoOrDie(err)
 	printer := &connectivity.Printer{
 		Noisy:          args.Noisy,
 		IgnoreLoopback: args.IgnoreLoopback,
 	}
 
-	zcPod, err := kubernetes.GetPod("z", "c")
+	zcPod, err := resources.GetPod("z", "c")
 	utils.DoOrDie(err)
-	if zcPod.Status.PodIP == "" {
-		panic(errors.Errorf("no ip found for pod z/c"))
-	}
-	zcIP := zcPod.Status.PodIP
 
 	var testCaseGenerator generator.TestCaseGenerator
 	switch args.Mode {
 	case "upstream":
 		testCaseGenerator = &generator.UpstreamE2EGenerator{}
 	case "simple-fragments":
-		testCaseGenerator = generator.NewDefaultFragmentGenerator(args.AllowDNS, args.Namespaces, zcIP)
+		testCaseGenerator = generator.NewDefaultFragmentGenerator(args.AllowDNS, args.Namespaces, zcPod.IP)
 	case "conflicts":
 		testCaseGenerator = &generator.ConflictGenerator{
 			AllowDNS:    args.AllowDNS,

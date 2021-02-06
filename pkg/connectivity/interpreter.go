@@ -6,7 +6,6 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
-	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -25,17 +24,8 @@ type Interpreter struct {
 	kubeCollector                    *types.KubeCollector
 }
 
-func NewInterpreter(kubernetes *kube.Kubernetes, kubeResources *types.Resources, resetClusterBeforeTestCase bool, kubeProbeRetries int, perturbationWaitSeconds int, podCreationTimeoutSeconds int, verifyClusterStateBeforeTestCase bool) (*Interpreter, error) {
-	fmt.Printf("kube resources:\n%s\n", kubeResources.RenderTable())
-	err := SetupCluster(kubernetes, kubeResources, podCreationTimeoutSeconds)
-	if err != nil {
-		return nil, err
-	}
-	resources, err := types.NewResourcesFromKube(kubernetes, kubeResources.NamespacesSlice())
-	if err != nil {
-		return nil, err
-	}
-	fmt.Printf("synthetic resources:\n%s\n", resources.RenderTable())
+func NewInterpreter(kubernetes *kube.Kubernetes, resources *types.Resources, resetClusterBeforeTestCase bool, kubeProbeRetries int, perturbationWaitSeconds int, verifyClusterStateBeforeTestCase bool) (*Interpreter, error) {
+	fmt.Printf("resources:\n%s\n", resources.RenderTable())
 
 	return &Interpreter{
 		kubernetes:                       kubernetes,
@@ -58,6 +48,7 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 			result.Err = err
 			return result
 		}
+		logrus.Info("cluster state reset")
 	}
 
 	if t.verifyClusterStateBeforeTestCase {
@@ -151,121 +142,15 @@ func (t *Interpreter) resetClusterState() error {
 		return err
 	}
 
-	for ns, labels := range t.resources.Namespaces {
-		_, err = t.kubernetes.SetNamespaceLabels(ns, labels)
-		if err != nil {
-			return err
-		}
-	}
-
-	for _, pod := range t.resources.Pods {
-		_, err = t.kubernetes.SetPodLabels(pod.Namespace, pod.Name, pod.Labels)
-		if err != nil {
-			return err
-		}
-	}
-
-	//for _, step := range steps {
-	//	for _, action := range step.Actions {
-	//		if action.CreatePolicy != nil {
-	//			// nothing to do
-	//		} else if action.UpdatePolicy != nil {
-	//			// nothing to do
-	//		} else if action.SetNamespaceLabels != nil {
-	//			newNs := action.SetNamespaceLabels.Namespace
-	//			expectedLabels := t.resources.Namespaces[newNs]
-	//			_, err := t.kubernetes.SetNamespaceLabels(newNs, expectedLabels)
-	//			if err != nil {
-	//				return err
-	//			}
-	//		} else if action.SetPodLabels != nil {
-	//			update := action.SetPodLabels
-	//			var pod *synthetic.Pod
-	//			for _, p := range t.resources.Pods {
-	//				if p.Namespace == update.Namespace && p.Name == update.Pod {
-	//					pod = p
-	//				}
-	//			}
-	//			if pod == nil {
-	//				return errors.Errorf("pod %s/%s not found", update.Namespace, update.Pod)
-	//			}
-	//			_, err := t.kubernetes.SetPodLabels(update.Namespace, update.Pod, pod.Labels)
-	//			if err != nil {
-	//				return err
-	//			}
-	//		} else if action.ReadNetworkPolicies != nil {
-	//			// nothing to do
-	//		} else if action.DeletePolicy != nil {
-	//			// nothing to do
-	//		} else {
-	//			panic(errors.Errorf("invalid Action"))
-	//		}
-	//	}
-	//}
-	return nil
+	return t.resources.ResetLabelsInKube(t.kubernetes)
 }
 
 func (t *Interpreter) verifyClusterState() error {
-	kubePods, err := t.kubernetes.GetPodsInNamespaces(t.resources.NamespacesSlice())
+	err := t.resources.VerifyClusterState(t.kubernetes)
 	if err != nil {
 		return err
 	}
 
-	// 1. pods: labels, ips, containers, ports
-	actualPods := map[string]v1.Pod{}
-	for _, kubePod := range kubePods {
-		actualPods[utils.NewPodString(kubePod.Namespace, kubePod.Name).String()] = kubePod
-	}
-	// are we missing any pods?
-	for _, pod := range t.resources.Pods {
-		if actualPod, ok := actualPods[pod.PodString().String()]; ok {
-			if !areLabelsEqual(actualPod.Labels, pod.Labels) {
-				return errors.Errorf("for pod %s, expected labels %+v (found %+v)", pod.PodString().String(), pod.Labels, actualPod.Labels)
-			}
-			if actualPod.Status.PodIP != pod.IP {
-				return errors.Errorf("for pod %s, expected ip %s (found %s)", pod.PodString().String(), pod.IP, actualPod.Status.PodIP)
-			}
-			if !areContainersEqual(actualPod, pod) {
-				return errors.Errorf("for pod %s, expected containers %+v (found %+v)", pod.PodString().String(), pod.Containers, actualPod.Spec.Containers)
-			}
-		} else {
-			return errors.Errorf("missing expected pod %s", pod.PodString().String())
-		}
-	}
-
-	// 2. services: selectors, ports
-	for _, pod := range t.resources.Pods {
-		expected := pod.KubeService()
-		svc, err := t.kubernetes.GetService(expected.Namespace, expected.Name)
-		if err != nil {
-			return err
-		}
-		if !areLabelsEqual(svc.Spec.Selector, pod.Labels) {
-			return errors.Errorf("for service %s/%s, expected labels %+v (found %+v)", pod.Namespace, pod.Name, pod.Labels, svc.Spec.Selector)
-		}
-		if len(expected.Spec.Ports) != len(svc.Spec.Ports) {
-			return errors.Errorf("for service %s/%s, expected %d ports (found %d)", expected.Namespace, expected.Name, len(expected.Spec.Ports), len(svc.Spec.Ports))
-		}
-		for i, port := range expected.Spec.Ports {
-			kubePort := svc.Spec.Ports[i]
-			if kubePort.Protocol != port.Protocol || kubePort.Port != port.Port {
-				return errors.Errorf("for service %s/%s, expected port %+v (found %+v)", expected.Namespace, expected.Name, port, kubePort)
-			}
-		}
-	}
-
-	// 3. namespaces: names, labels
-	for ns, labels := range t.resources.Namespaces {
-		namespace, err := t.kubernetes.GetNamespace(ns)
-		if err != nil {
-			return err
-		}
-		if !areLabelsEqual(namespace.Labels, labels) {
-			return errors.Errorf("for namespace %s, expected labels %+v (found %+v)", ns, labels, namespace.Labels)
-		}
-	}
-
-	// 4. network policies
 	policies, err := t.kubernetes.GetNetworkPoliciesInNamespaces(t.resources.NamespacesSlice())
 	if err != nil {
 		return err
@@ -273,41 +158,5 @@ func (t *Interpreter) verifyClusterState() error {
 	if len(policies) > 0 {
 		return errors.Errorf("expected 0 policies in namespaces %+v, found %d", t.resources.NamespacesSlice(), len(policies))
 	}
-
-	// nothing wrong: we're good to go
 	return nil
-}
-
-func areContainersEqual(kubePod v1.Pod, expectedPod *types.Pod) bool {
-	kubeConts := kubePod.Spec.Containers
-	if len(kubeConts) != len(expectedPod.Containers) {
-		return false
-	}
-	for i, kubeCont := range kubeConts {
-		cont := expectedPod.Containers[i]
-		if len(kubeCont.Ports) != 1 {
-			return false
-		}
-		if int(kubeCont.Ports[0].ContainerPort) != cont.Port {
-			return false
-		}
-		if kubeCont.Ports[0].Protocol != cont.Protocol {
-			return false
-		}
-	}
-
-	return true
-}
-
-func areLabelsEqual(l map[string]string, r map[string]string) bool {
-	if len(l) != len(r) {
-		return false
-	}
-	for k, lv := range l {
-		rv, ok := r[k]
-		if !ok || lv != rv {
-			return false
-		}
-	}
-	return true
 }
