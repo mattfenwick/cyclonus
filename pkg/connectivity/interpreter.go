@@ -106,9 +106,9 @@ func (t *Interpreter) runProbe(testCaseState *TestCaseState, port intstr.IntOrSt
 
 	logrus.Infof("running probe on port %s, protocol %s", port.String(), protocol)
 
-	jobs := t.resources.GetJobsForSpecificPortProtocol(port, protocol)
+	jobs := testCaseState.Resources.GetJobsForSpecificPortProtocol(port, protocol)
 	kubeRunner := types.NewKubeProbeRunner(t.kubernetes, 5)
-	newTable := func() *types.Table { return t.resources.NewTable() }
+	newTable := func() *types.Table { return testCaseState.Resources.NewTable() }
 
 	simRunner := types.NewSimulatedProbeRunner(parsedPolicy)
 
