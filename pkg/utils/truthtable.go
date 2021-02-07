@@ -98,10 +98,10 @@ func (tt *TruthTable) Keys() []*TableKey {
 	return keys
 }
 
-func (tt *TruthTable) Table(rowLine bool, printElement func(interface{}) string) string {
+func (tt *TruthTable) Table(schema string, rowLine bool, printElement func(interface{}) string) string {
 	tableString := &strings.Builder{}
 	table := tablewriter.NewWriter(tableString)
-	table.SetHeader(append([]string{"-"}, tt.Tos...))
+	table.SetHeader(append([]string{schema}, tt.Tos...))
 	table.SetRowLine(rowLine)
 
 	for _, from := range tt.Froms {

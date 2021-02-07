@@ -12,6 +12,10 @@ import (
 	"time"
 )
 
+const (
+	defaultWorkersCount = 15
+)
+
 type Interpreter struct {
 	kubernetes                       *kube.Kubernetes
 	resources                        *types.Resources
@@ -104,7 +108,7 @@ func (t *Interpreter) runProbe(testCaseState *TestCaseState, probe *generator.Pr
 
 	logrus.Infof("running probe %+v", probe)
 
-	kubeRunner := types.NewKubeProbeRunner(t.kubernetes, 5)
+	kubeRunner := types.NewKubeProbeRunner(t.kubernetes, defaultWorkersCount)
 
 	simRunner := types.NewSimulatedProbeRunner(parsedPolicy)
 

@@ -74,7 +74,7 @@ func (r *ResultTable) ValueCounts(ignoreLoopback bool) map[Comparison]int {
 }
 
 func (r *ResultTable) RenderTable() string {
-	return r.Wrapped.Table(false, func(i interface{}) string {
+	return r.Wrapped.Table("", false, func(i interface{}) string {
 		if i.(bool) {
 			return "."
 		} else {

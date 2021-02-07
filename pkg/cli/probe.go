@@ -52,7 +52,8 @@ func SetupProbeCommand() *cobra.Command {
 	command.Flags().StringSliceVar(&args.Protocols, "protocol", []string{"tcp"}, "protocols to run probes on")
 
 	command.Flags().IntSliceVar(&args.ServerPorts, "server-port", []int{80, 81}, "ports to run server on")
-	command.Flags().StringSliceVar(&args.ServerProtocols, "server-protocol", []string{"tcp", "udp"}, "protocols to run server on")
+	// TODO add UDP to defaults once support has been added
+	command.Flags().StringSliceVar(&args.ServerProtocols, "server-protocol", []string{"tcp"}, "protocols to run server on")
 
 	command.Flags().BoolVar(&args.Noisy, "noisy", false, "if true, print all results")
 	command.Flags().BoolVar(&args.IgnoreLoopback, "ignore-loopback", false, "if true, ignore loopback for truthtable correctness verification")

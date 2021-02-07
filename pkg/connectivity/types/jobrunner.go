@@ -5,6 +5,7 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
+	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"strings"
@@ -131,7 +132,7 @@ func (s *SimulatedProbeJobRunner) RunJob(job *Job) *JobResult {
 	allowed := s.Policies.IsTrafficAllowed(job.Traffic())
 	// TODO could also keep the whole `allowed` struct somewhere
 
-	logrus.Tracef("to %s:\n%s\n", job.ToHost, allowed.Table())
+	logrus.Tracef("to %s\n%s\n", utils.JsonString(job), allowed.Table())
 
 	var combined, ingress, egress = ConnectivityBlocked, ConnectivityBlocked, ConnectivityBlocked
 	if allowed.Ingress.IsAllowed() {

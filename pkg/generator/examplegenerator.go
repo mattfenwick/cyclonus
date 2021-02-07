@@ -8,6 +8,7 @@ import (
 )
 
 var (
+	portServe80TCP = &ProbeConfig{PortProtocol: &matcher.PortProtocol{Port: intstr.FromString("serve-80-tcp"), Protocol: tcp}}
 	portServe81TCP = &ProbeConfig{PortProtocol: &matcher.PortProtocol{Port: intstr.FromString("serve-81-tcp"), Protocol: tcp}}
 )
 
@@ -16,7 +17,7 @@ type ExampleGenerator struct{}
 func (e *ExampleGenerator) GenerateTestCases() []*TestCase {
 	return []*TestCase{
 		NewTestCase("should allow ingress access on one named port",
-			NewTestStep(portServe81TCP, CreatePolicy(
+			NewTestStep(allAvailable, CreatePolicy(
 				&NetworkPolicy{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "allow-all",
@@ -36,6 +37,9 @@ func (e *ExampleGenerator) GenerateTestCases() []*TestCase {
 						PolicyTypes: []PolicyType{PolicyTypeIngress},
 					},
 				})),
-			NewTestStep(port80TCP)),
+			NewTestStep(port80TCP),
+			NewTestStep(port81TCP),
+			NewTestStep(portServe80TCP),
+			NewTestStep(portServe81TCP)),
 	}
 }

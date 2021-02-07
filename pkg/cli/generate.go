@@ -57,7 +57,8 @@ func SetupGenerateCommand() *cobra.Command {
 }
 
 func RunGenerateCommand(args *GenerateArgs) {
-	serverProtocols := []v1.Protocol{v1.ProtocolTCP, v1.ProtocolUDP}
+	// TODO add UDP to defaults once support has been added
+	serverProtocols := []v1.Protocol{v1.ProtocolTCP}
 	serverPorts := []int{80, 81}
 	externalIPs := []string{} // "http://www.google.com"} // TODO make these be IPs?  or not?
 
