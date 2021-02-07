@@ -6,7 +6,6 @@ import (
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/yaml"
 )
 
@@ -48,7 +47,9 @@ spec:
 					},
 					IP: "1.2.3.5",
 				},
-				PortProtocol: &PortProtocol{Protocol: v1.ProtocolTCP, Port: port103},
+				ResolvedPort: 103,
+				//ResolvedPortName: "port-hello",
+				Protocol: v1.ProtocolTCP,
 			})
 			Expect(tcpAllowed.IsAllowed()).To(BeFalse())
 		})
@@ -71,7 +72,9 @@ spec:
 					},
 					IP: "1.2.3.5",
 				},
-				PortProtocol: &PortProtocol{Protocol: v1.ProtocolSCTP, Port: port103},
+				ResolvedPort: 103,
+				//ResolvedPortName: "port-hello",
+				Protocol: v1.ProtocolSCTP,
 			})
 			Expect(sctpAllowed.IsAllowed()).To(BeTrue())
 		})
@@ -92,7 +95,9 @@ spec:
 					},
 					IP: "1.2.3.5",
 				},
-				PortProtocol: &PortProtocol{Protocol: v1.ProtocolTCP, Port: port103},
+				ResolvedPort: 103,
+				//ResolvedPortName: "port-hello",
+				Protocol: v1.ProtocolTCP,
 			})
 			Expect(tcpAllowed.IsAllowed()).To(BeFalse())
 		})
@@ -111,7 +116,9 @@ spec:
 					},
 					IP: "1.2.3.5",
 				},
-				PortProtocol: &PortProtocol{Protocol: v1.ProtocolSCTP, Port: port103},
+				ResolvedPort: 103,
+				//ResolvedPortName: "port-hello",
+				Protocol: v1.ProtocolSCTP,
 			})
 			Expect(sctpAllowed.IsAllowed()).To(BeTrue())
 		})
@@ -165,10 +172,9 @@ spec:
 					},
 					IP: "192.168.242.249",
 				},
-				PortProtocol: &PortProtocol{
-					Port:     intstr.FromInt(80),
-					Protocol: v1.ProtocolTCP,
-				},
+				ResolvedPort: 80,
+				//ResolvedPortName: "port-hello",
+				Protocol: v1.ProtocolTCP,
 			}).IsAllowed()).To(BeTrue())
 		})
 	})
@@ -208,10 +214,9 @@ spec:
 					},
 					IP: "192.168.242.249",
 				},
-				PortProtocol: &PortProtocol{
-					Port:     intstr.FromString("port-hello"),
-					Protocol: v1.ProtocolTCP,
-				},
+				//ResolvedPort: 0, // TODO
+				ResolvedPortName: "port-hello",
+				Protocol:         v1.ProtocolTCP,
 			}).IsAllowed()).To(BeTrue())
 		})
 	})

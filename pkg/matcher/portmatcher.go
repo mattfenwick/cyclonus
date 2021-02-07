@@ -8,7 +8,7 @@ import (
 )
 
 type PortMatcher interface {
-	Allows(port intstr.IntOrString, protocol v1.Protocol) bool
+	Allows(portInt int, portName string, protocol v1.Protocol) bool
 }
 
 func CombinePortMatchers(a PortMatcher, b PortMatcher) PortMatcher {
@@ -35,7 +35,7 @@ func CombinePortMatchers(a PortMatcher, b PortMatcher) PortMatcher {
 
 type NonePortMatcher struct{}
 
-func (n *NonePortMatcher) Allows(port intstr.IntOrString, protocol v1.Protocol) bool {
+func (n *NonePortMatcher) Allows(portInt int, portName string, protocol v1.Protocol) bool {
 	return false
 }
 
@@ -47,7 +47,7 @@ func (n *NonePortMatcher) MarshalJSON() (b []byte, e error) {
 
 type AllPortMatcher struct{}
 
-func (ap *AllPortMatcher) Allows(port intstr.IntOrString, protocol v1.Protocol) bool {
+func (ap *AllPortMatcher) Allows(portInt int, portName string, protocol v1.Protocol) bool {
 	return true
 }
 
@@ -64,9 +64,9 @@ type PortProtocolMatcher struct {
 	Protocol v1.Protocol
 }
 
-func (p *PortProtocolMatcher) Allows(port intstr.IntOrString, protocol v1.Protocol) bool {
+func (p *PortProtocolMatcher) Allows(portInt int, portName string, protocol v1.Protocol) bool {
 	if p.Port != nil {
-		return isPortMatch(*p.Port, port) && p.Protocol == protocol
+		return isPortMatch(*p.Port, portInt, portName) && p.Protocol == protocol
 	}
 	return p.Protocol == protocol
 }
@@ -81,7 +81,7 @@ func (p *PortProtocolMatcher) Equals(other *PortProtocolMatcher) bool {
 	if (p.Port == nil && other.Port != nil) || (p.Port != nil && other.Port == nil) {
 		return false
 	}
-	return isPortMatch(*p.Port, *other.Port)
+	return isIntStringEqual(*p.Port, *other.Port)
 }
 
 // SpecificPortMatcher models the case where traffic must match a named or numbered port
@@ -89,9 +89,9 @@ type SpecificPortMatcher struct {
 	Ports []*PortProtocolMatcher
 }
 
-func (s *SpecificPortMatcher) Allows(port intstr.IntOrString, protocol v1.Protocol) bool {
+func (s *SpecificPortMatcher) Allows(portInt int, portName string, protocol v1.Protocol) bool {
 	for _, matcher := range s.Ports {
-		if matcher.Allows(port, protocol) {
+		if matcher.Allows(portInt, portName, protocol) {
 			return true
 		}
 	}
@@ -121,14 +121,24 @@ func (s *SpecificPortMatcher) Combine(other *SpecificPortMatcher) *SpecificPortM
 	return &SpecificPortMatcher{Ports: pps}
 }
 
-func isPortMatch(a intstr.IntOrString, b intstr.IntOrString) bool {
+func isPortMatch(a intstr.IntOrString, portInt int, portName string) bool {
+	switch a.Type {
+	case intstr.Int:
+		return int(a.IntVal) == portInt
+	case intstr.String:
+		return a.StrVal == portName
+	default:
+		panic("invalid type")
+	}
+}
+
+func isIntStringEqual(a intstr.IntOrString, b intstr.IntOrString) bool {
 	switch a.Type {
 	case intstr.Int:
 		switch b.Type {
 		case intstr.Int:
 			return a.IntVal == b.IntVal
 		case intstr.String:
-			// TODO what if this named port resolves to same int?
 			return false
 		default:
 			panic("invalid type")
@@ -136,7 +146,6 @@ func isPortMatch(a intstr.IntOrString, b intstr.IntOrString) bool {
 	case intstr.String:
 		switch b.Type {
 		case intstr.Int:
-			// TODO what if this named port resolves to same int?
 			return false
 		case intstr.String:
 			return a.StrVal == b.StrVal

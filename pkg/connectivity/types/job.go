@@ -41,8 +41,9 @@ type Job struct {
 	ToContainer       string
 	ToIP              string
 
-	ResolvedPort int
-	PortProtocol *matcher.PortProtocol
+	ResolvedPort     int
+	ResolvedPortName string
+	Protocol         v1.Protocol
 }
 
 func (j *Job) ToAddress() string {
@@ -50,7 +51,7 @@ func (j *Job) ToAddress() string {
 }
 
 func (j *Job) ClientCommand() []string {
-	switch j.PortProtocol.Protocol {
+	switch j.Protocol {
 	case v1.ProtocolSCTP:
 		return []string{"/agnhost", "connect", j.ToAddress(), "--timeout=1s", "--protocol=sctp"}
 	case v1.ProtocolTCP:
@@ -58,7 +59,7 @@ func (j *Job) ClientCommand() []string {
 	case v1.ProtocolUDP:
 		return []string{"nc", "-v", "-z", "-w", "1", "-u", j.ToHost, fmt.Sprintf("%d", j.ResolvedPort)}
 	default:
-		panic(errors.Errorf("protocol %s not supported", j.PortProtocol.Protocol))
+		panic(errors.Errorf("protocol %s not supported", j.Protocol))
 	}
 }
 
@@ -96,6 +97,8 @@ func (j *Job) Traffic() *matcher.Traffic {
 			},
 			IP: j.ToIP,
 		},
-		PortProtocol: j.PortProtocol,
+		ResolvedPort:     j.ResolvedPort,
+		ResolvedPortName: j.ResolvedPortName,
+		Protocol:         j.Protocol,
 	}
 }

@@ -2,7 +2,6 @@ package types
 
 import (
 	"github.com/mattfenwick/cyclonus/pkg/kube"
-	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -297,7 +296,7 @@ func (r *Resources) waitForPodsReady(kubernetes *kube.Kubernetes, timeoutSeconds
 	return errors.Errorf("pods not ready")
 }
 
-func (r *Resources) GetJobsForSpecificPortProtocol(pp *matcher.PortProtocol) *Jobs {
+func (r *Resources) GetJobsForNamedPortProtocol(port intstr.IntOrString, protocol v1.Protocol) *Jobs {
 	jobs := &Jobs{}
 	for _, podFrom := range r.Pods {
 		for _, podTo := range r.Pods {
@@ -316,29 +315,34 @@ func (r *Resources) GetJobsForSpecificPortProtocol(pp *matcher.PortProtocol) *Jo
 				ToPodLabels:         podTo.Labels,
 				ToIP:                podTo.IP,
 				ResolvedPort:        -1,
-				PortProtocol:        pp,
+				ResolvedPortName:    "",
+				Protocol:            protocol,
 			}
 
-			var portInt int
-			var err error
-			switch pp.Port.Type {
-			case intstr.Int:
-				portInt = int(pp.Port.IntVal)
+			switch port.Type {
 			case intstr.String:
-				portInt, err = podTo.ResolveNamedPort(pp.Port.StrVal)
-			}
-			if err != nil {
-				jobs.BadNamedPort = append(jobs.BadNamedPort, job)
-				continue
+				job.ResolvedPortName = port.StrVal
+				// TODO what about protocol?
+				portInt, err := podTo.ResolveNamedPort(port.StrVal)
+				if err != nil {
+					jobs.BadNamedPort = append(jobs.BadNamedPort, job)
+					continue
+				}
+				job.ResolvedPort = portInt
+			case intstr.Int:
+				job.ResolvedPort = int(port.IntVal)
+				// TODO what about protocol?
+				portName, err := podTo.ResolveNumberedPort(int(port.IntVal))
+				if err != nil {
+					jobs.BadPortProtocol = append(jobs.BadPortProtocol, job)
+					continue
+				}
+				job.ResolvedPortName = portName
+			default:
+				panic(errors.Errorf("invalid IntOrString value %+v", port))
 			}
 
-			job.ResolvedPort = portInt
-
-			if !podTo.IsServingPortProtocol(portInt, pp.Protocol) {
-				jobs.BadPortProtocol = append(jobs.BadPortProtocol, job)
-			} else {
-				jobs.Valid = append(jobs.Valid, job)
-			}
+			jobs.Valid = append(jobs.Valid, job)
 		}
 	}
 	return jobs
@@ -365,10 +369,8 @@ func (r *Resources) GetJobsAllAvailableServers() *Jobs {
 					ToContainer:         contTo.Name,
 					ToIP:                podTo.IP,
 					ResolvedPort:        contTo.Port,
-					PortProtocol: &matcher.PortProtocol{
-						Protocol: contTo.Protocol,
-						Port:     intstr.FromInt(contTo.Port),
-					},
+					ResolvedPortName:    contTo.PortName,
+					Protocol:            contTo.Protocol,
 				})
 			}
 		}

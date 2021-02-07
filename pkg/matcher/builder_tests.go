@@ -179,7 +179,7 @@ func RunBuilderTests() {
 					Port:      port53UDPMatcher,
 				}),
 			}))
-			Expect(ip.Allows("192.168.242.249", &PortProtocol{Port: port80, Protocol: tcp})).To(Equal(true))
+			Expect(ip.Allows("192.168.242.249", 80, "", tcp)).To(Equal(true))
 		})
 	})
 

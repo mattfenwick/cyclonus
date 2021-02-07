@@ -101,6 +101,15 @@ func (p *Pod) ResolveNamedPort(port string) (int, error) {
 	return 0, errors.Errorf("unable to resolve named port %s on pod %s/%s", port, p.Namespace, p.Name)
 }
 
+func (p *Pod) ResolveNumberedPort(port int) (string, error) {
+	for _, c := range p.Containers {
+		if c.Port == port {
+			return c.PortName, nil
+		}
+	}
+	return "", errors.Errorf("unable to resolve numbered port %d on pod %s/%s", port, p.Namespace, p.Name)
+}
+
 func (p *Pod) IsServingPortProtocol(port int, protocol v1.Protocol) bool {
 	for _, cont := range p.Containers {
 		if cont.Port == port && cont.Protocol == protocol {

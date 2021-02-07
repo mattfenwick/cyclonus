@@ -3,11 +3,12 @@ package matcher
 import (
 	"encoding/json"
 	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
 	"sort"
 )
 
 type InternalMatcher interface {
-	Allows(peer *InternalPeer, portProtocol *PortProtocol) bool
+	Allows(peer *InternalPeer, portInt int, portName string, protocol v1.Protocol) bool
 }
 
 func CombineInternalMatchers(a InternalMatcher, b InternalMatcher) InternalMatcher {
@@ -39,7 +40,7 @@ func CombineInternalMatchers(a InternalMatcher, b InternalMatcher) InternalMatch
 //   maybe indirectly through: 1) deny all, 2) allow external with 0.0.0.0
 type NoneInternalMatcher struct{}
 
-func (n *NoneInternalMatcher) Allows(peer *InternalPeer, portProtocol *PortProtocol) bool {
+func (n *NoneInternalMatcher) Allows(peer *InternalPeer, portInt int, portName string, protocol v1.Protocol) bool {
 	return false
 }
 
@@ -51,7 +52,7 @@ func (n *NoneInternalMatcher) MarshalJSON() (b []byte, e error) {
 
 type AllInternalMatcher struct{}
 
-func (a *AllInternalMatcher) Allows(peer *InternalPeer, portProtocol *PortProtocol) bool {
+func (a *AllInternalMatcher) Allows(peer *InternalPeer, portInt int, portName string, protocol v1.Protocol) bool {
 	return true
 }
 
@@ -84,9 +85,9 @@ func (a *SpecificInternalMatcher) SortedNamespacePods() []*NamespacePodMatcher {
 	return matchers
 }
 
-func (a *SpecificInternalMatcher) Allows(peer *InternalPeer, portProtocol *PortProtocol) bool {
+func (a *SpecificInternalMatcher) Allows(peer *InternalPeer, portInt int, portName string, protocol v1.Protocol) bool {
 	for _, podPeer := range a.NamespacePods {
-		if podPeer.Allows(peer, portProtocol) {
+		if podPeer.Allows(peer, portInt, portName, protocol) {
 			return true
 		}
 	}

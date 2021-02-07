@@ -175,21 +175,16 @@ func ProbeSyntheticConnectivity(explainedPolicies *matcher.Policy, modelPath str
 
 	// run probes
 	for _, probe := range config.Probes {
-		request := &types.Request{
-			Protocol:  probe.Protocol,
-			Port:      probe.Port,
-			Resources: config.Resources,
-		}
-		probe := types.
+		probeResult := types.
 			NewSimulatedProbeRunner(explainedPolicies).
-			RunProbeFixedPortProtocol(config.Resources, probe)
+			RunProbeFixedPortProtocol(config.Resources, probe.Port, probe.Protocol)
 
-		logrus.Infof("probe on port %s, protocol %s", request.Port.String(), request.Protocol)
+		logrus.Infof("probe on port %s, protocol %s", probe.Port.String(), probe.Protocol)
 
-		fmt.Printf("Ingress:\n%s\n", probe.Ingress.RenderTable())
+		fmt.Printf("Ingress:\n%s\n", probeResult.Ingress.RenderTable())
 
-		fmt.Printf("Egress:\n%s\n", probe.Egress.RenderTable())
+		fmt.Printf("Egress:\n%s\n", probeResult.Egress.RenderTable())
 
-		fmt.Printf("Combined:\n%s\n", probe.Combined.RenderTable())
+		fmt.Printf("Combined:\n%s\n", probeResult.Combined.RenderTable())
 	}
 }

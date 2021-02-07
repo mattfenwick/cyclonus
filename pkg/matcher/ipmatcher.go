@@ -3,11 +3,12 @@ package matcher
 import (
 	"encoding/json"
 	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
 	"sort"
 )
 
 type IPMatcher interface {
-	Allows(ip string, portProtocol *PortProtocol) bool
+	Allows(ip string, portInt int, portName string, protocol v1.Protocol) bool
 }
 
 func CombineIPMatchers(a IPMatcher, b IPMatcher) IPMatcher {
@@ -35,7 +36,7 @@ func CombineIPMatchers(a IPMatcher, b IPMatcher) IPMatcher {
 // TODO why have this?  it's not used anywhere ... is there a way to write a NetworkPolicy that would actually need this?
 type AllIPMatcher struct{}
 
-func (aip *AllIPMatcher) Allows(ip string, portProtocol *PortProtocol) bool {
+func (aip *AllIPMatcher) Allows(ip string, portInt int, portName string, protocol v1.Protocol) bool {
 	return true
 }
 
@@ -47,7 +48,7 @@ func (aip *AllIPMatcher) MarshalJSON() (b []byte, e error) {
 
 type NoneIPMatcher struct{}
 
-func (aip *NoneIPMatcher) Allows(ip string, portProtocol *PortProtocol) bool {
+func (aip *NoneIPMatcher) Allows(ip string, portInt int, portName string, protocol v1.Protocol) bool {
 	return false
 }
 
@@ -84,12 +85,12 @@ func (sip *SpecificIPMatcher) SortedIPBlocks() []*IPBlockMatcher {
 	return blocks
 }
 
-func (sip *SpecificIPMatcher) Allows(ip string, portProtocol *PortProtocol) bool {
-	if sip.PortsForAllIPs.Allows(portProtocol.Port, portProtocol.Protocol) {
+func (sip *SpecificIPMatcher) Allows(ip string, portInt int, portName string, protocol v1.Protocol) bool {
+	if sip.PortsForAllIPs.Allows(portInt, portName, protocol) {
 		return true
 	}
 	for _, ipMatcher := range sip.IPBlocks {
-		if ipMatcher.Allows(ip, portProtocol) {
+		if ipMatcher.Allows(ip, portInt, portName, protocol) {
 			return true
 		}
 	}

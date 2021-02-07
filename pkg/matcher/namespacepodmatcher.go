@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -17,10 +18,10 @@ func (ppm *NamespacePodMatcher) PrimaryKey() string {
 	return ppm.Namespace.PrimaryKey() + "---" + ppm.Pod.PrimaryKey()
 }
 
-func (ppm *NamespacePodMatcher) Allows(peer *InternalPeer, portProtocol *PortProtocol) bool {
+func (ppm *NamespacePodMatcher) Allows(peer *InternalPeer, portInt int, portName string, protocol v1.Protocol) bool {
 	return ppm.Namespace.Allows(peer.Namespace, peer.NamespaceLabels) &&
 		ppm.Pod.Allows(peer.PodLabels) &&
-		ppm.Port.Allows(portProtocol.Port, portProtocol.Protocol)
+		ppm.Port.Allows(portInt, portName, protocol)
 }
 
 func (ppm *NamespacePodMatcher) Combine(otherPort PortMatcher) *NamespacePodMatcher {

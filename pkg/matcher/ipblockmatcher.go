@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"sort"
 	"strings"
@@ -40,13 +41,13 @@ func (i *IPBlockMatcher) MarshalJSON() (b []byte, e error) {
 	})
 }
 
-func (i *IPBlockMatcher) Allows(ip string, portProtocol *PortProtocol) bool {
+func (i *IPBlockMatcher) Allows(ip string, portInt int, portName string, protocol v1.Protocol) bool {
 	isIpMatch, err := kube.IsIPAddressMatchForIPBlock(ip, i.IPBlock)
 	// TODO propagate this error instead of panic
 	if err != nil {
 		panic(err)
 	}
-	return isIpMatch && i.Port.Allows(portProtocol.Port, portProtocol.Protocol)
+	return isIpMatch && i.Port.Allows(portInt, portName, protocol)
 }
 
 func (i *IPBlockMatcher) Combine(other *IPBlockMatcher) *IPBlockMatcher {

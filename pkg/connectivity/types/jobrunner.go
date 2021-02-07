@@ -8,6 +8,8 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"strings"
 )
 
@@ -34,7 +36,7 @@ func (p *ProbeRunner) RunProbeForConfig(probeConfig *generator.ProbeConfig, reso
 	if probeConfig.AllAvailable {
 		return p.RunAllAvailablePortsProbe(resources)
 	} else if probeConfig.PortProtocol != nil {
-		return p.RunProbeFixedPortProtocol(resources, probeConfig.PortProtocol)
+		return p.RunProbeFixedPortProtocol(resources, probeConfig.PortProtocol.Port, probeConfig.PortProtocol.Protocol)
 	} else {
 		panic(errors.Errorf("invalid ProbeConfig value %+v", probeConfig))
 	}
@@ -45,7 +47,7 @@ func (p *ProbeRunner) RunAllAvailablePortsProbe(resources *Resources) *Probe {
 	for _, result := range p.runProbe(resources.GetJobsAllAvailableServers()) {
 		fr := result.Job.FromKey
 		to := result.Job.ToKey
-		key := fmt.Sprintf("%s/%d", result.Job.PortProtocol.Protocol, result.Job.ResolvedPort)
+		key := fmt.Sprintf("%s/%d", result.Job.Protocol, result.Job.ResolvedPort)
 		if result.Ingress != nil {
 			probe.Ingress.Set(fr, to, key, *result.Ingress)
 		}
@@ -57,8 +59,8 @@ func (p *ProbeRunner) RunAllAvailablePortsProbe(resources *Resources) *Probe {
 	return probe
 }
 
-func (p *ProbeRunner) RunProbeFixedPortProtocol(resources *Resources, pp *matcher.PortProtocol) *Probe {
-	jobs := resources.GetJobsForSpecificPortProtocol(pp)
+func (p *ProbeRunner) RunProbeFixedPortProtocol(resources *Resources, port intstr.IntOrString, protocol v1.Protocol) *Probe {
+	jobs := resources.GetJobsForNamedPortProtocol(port, protocol)
 	probe := &Probe{Ingress: resources.NewTable(), Egress: resources.NewTable(), Combined: resources.NewTable()}
 	for _, result := range p.runProbe(jobs) {
 		fr := result.Job.FromKey

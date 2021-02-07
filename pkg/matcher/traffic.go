@@ -12,7 +12,9 @@ type Traffic struct {
 	Source      *TrafficPeer
 	Destination *TrafficPeer
 
-	PortProtocol *PortProtocol
+	ResolvedPort     int
+	ResolvedPortName string
+	Protocol         v1.Protocol
 }
 
 func (t *Traffic) Table() string {
@@ -21,7 +23,7 @@ func (t *Traffic) Table() string {
 	table.SetRowLine(true)
 	table.SetAutoMergeCells(true)
 
-	pp := fmt.Sprintf("%s on %s", t.PortProtocol.Port.String(), t.PortProtocol.Protocol)
+	pp := fmt.Sprintf("%d (%s) on %s", t.ResolvedPort, t.ResolvedPortName, t.Protocol)
 	table.SetHeader([]string{"Port/Protocol", "Source/Dest", "Pod IP", "Namespace", "NS Labels", "Pod Labels"})
 
 	source := []string{pp, "source", t.Source.IP}
