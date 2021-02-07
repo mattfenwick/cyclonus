@@ -1,8 +1,11 @@
 package types
 
 import (
+	"fmt"
+	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"strings"
 )
@@ -26,7 +29,51 @@ func NewKubeProbeRunner(kubernetes *kube.Kubernetes, workers int) *ProbeRunner {
 	return &ProbeRunner{JobRunner: &KubeProbeJobRunner{Kubernetes: kubernetes}, Workers: workers}
 }
 
-func (p *ProbeRunner) RunProbe(jobs *Jobs, newTable func() *Table) *Probe {
+func (p *ProbeRunner) RunProbeForConfig(probeConfig *generator.ProbeConfig, resources *Resources) *Probe {
+	if probeConfig.AllAvailable {
+		return p.RunAllAvailablePortsProbe(resources)
+	} else if probeConfig.PortProtocol != nil {
+		return p.RunProbeFixedPortProtocol(resources, probeConfig.PortProtocol)
+	} else {
+		panic(errors.Errorf("invalid ProbeConfig value %+v", probeConfig))
+	}
+}
+
+func (p *ProbeRunner) RunAllAvailablePortsProbe(resources *Resources) *Probe {
+	probe := &Probe{Ingress: resources.NewTable(), Egress: resources.NewTable(), Combined: resources.NewTable()}
+	for _, result := range p.runProbe(resources.GetJobsAllAvailableServers()) {
+		fr := result.Job.FromKey
+		to := result.Job.ToKey
+		key := fmt.Sprintf("%s/%d", result.Job.PortProtocol.Protocol, result.Job.ResolvedPort)
+		if result.Ingress != nil {
+			probe.Ingress.Set(fr, to, key, *result.Ingress)
+		}
+		if result.Egress != nil {
+			probe.Egress.Set(fr, to, key, *result.Egress)
+		}
+		probe.Combined.Set(fr, to, key, result.Combined)
+	}
+	return probe
+}
+
+func (p *ProbeRunner) RunProbeFixedPortProtocol(resources *Resources, pp *matcher.PortProtocol) *Probe {
+	jobs := resources.GetJobsForSpecificPortProtocol(pp)
+	probe := &Probe{Ingress: resources.NewTable(), Egress: resources.NewTable(), Combined: resources.NewTable()}
+	for _, result := range p.runProbe(jobs) {
+		fr := result.Job.FromKey
+		to := result.Job.ToKey
+		if result.Ingress != nil {
+			probe.Ingress.Set(fr, to, "", *result.Ingress)
+		}
+		if result.Egress != nil {
+			probe.Egress.Set(fr, to, "", *result.Egress)
+		}
+		probe.Combined.Set(fr, to, "", result.Combined)
+	}
+	return probe
+}
+
+func (p *ProbeRunner) runProbe(jobs *Jobs) []*JobResult {
 	size := len(jobs.Valid)
 	jobsChan := make(chan *Job, size)
 	resultsChan := make(chan *JobResult, size)
@@ -43,34 +90,25 @@ func (p *ProbeRunner) RunProbe(jobs *Jobs, newTable func() *Table) *Probe {
 		result := <-resultsChan
 		resultSlice = append(resultSlice, result)
 	}
-
-	probe := &Probe{Ingress: newTable(), Egress: newTable(), Combined: newTable()}
-	buildTable(probe, jobs, resultSlice)
-	return probe
-}
-
-func buildTable(probe *Probe, jobs *Jobs, results []*JobResult) {
+	invalidPP := ConnectivityInvalidPortProtocol
 	for _, j := range jobs.BadPortProtocol {
-		probe.Ingress.Set(j.FromKey, j.ToKey, ConnectivityInvalidPortProtocol)
-		probe.Combined.Set(j.FromKey, j.ToKey, ConnectivityInvalidPortProtocol)
+		resultSlice = append(resultSlice, &JobResult{
+			Job:      j,
+			Ingress:  &invalidPP,
+			Combined: ConnectivityInvalidPortProtocol,
+		})
 	}
 
+	invalidNamedPort := ConnectivityInvalidNamedPort
 	for _, j := range jobs.BadNamedPort {
-		probe.Ingress.Set(j.FromKey, j.ToKey, ConnectivityInvalidNamedPort)
-		probe.Combined.Set(j.FromKey, j.ToKey, ConnectivityInvalidNamedPort)
+		resultSlice = append(resultSlice, &JobResult{
+			Job:      j,
+			Ingress:  &invalidNamedPort,
+			Combined: ConnectivityInvalidNamedPort,
+		})
 	}
 
-	for _, result := range results {
-		fr := result.Job.FromKey
-		to := result.Job.ToKey
-		if result.Ingress != nil {
-			probe.Ingress.Set(fr, to, *result.Ingress)
-		}
-		if result.Egress != nil {
-			probe.Egress.Set(fr, to, *result.Egress)
-		}
-		probe.Combined.Set(fr, to, result.Combined)
-	}
+	return resultSlice
 }
 
 // probeWorker continues polling a pod connectivity status, until the incoming "jobs" channel is closed, and writes results back out to the "results" channel.
@@ -92,6 +130,8 @@ type SimulatedProbeJobRunner struct {
 func (s *SimulatedProbeJobRunner) RunJob(job *Job) *JobResult {
 	allowed := s.Policies.IsTrafficAllowed(job.Traffic())
 	// TODO could also keep the whole `allowed` struct somewhere
+
+	logrus.Tracef("to %s:\n%s\n", job.ToHost, allowed.Table())
 
 	var combined, ingress, egress = ConnectivityBlocked, ConnectivityBlocked, ConnectivityBlocked
 	if allowed.Ingress.IsAllowed() {

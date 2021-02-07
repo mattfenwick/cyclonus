@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	v1 "k8s.io/api/core/v1"
 	. "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -9,6 +10,9 @@ import (
 
 var (
 	port81 = intstr.FromInt(81)
+
+	port80TCP = &ProbeConfig{PortProtocol: &matcher.PortProtocol{Port: port80, Protocol: v1.ProtocolTCP}}
+	port81TCP = &ProbeConfig{PortProtocol: &matcher.PortProtocol{Port: port81, Protocol: v1.ProtocolTCP}}
 )
 
 type UpstreamE2EGenerator struct{}
@@ -16,7 +20,7 @@ type UpstreamE2EGenerator struct{}
 func (u *UpstreamE2EGenerator) GenerateTestCases() []*TestCase {
 	return []*TestCase{
 		NewSingleStepTestCase("should support a 'default-deny-ingress' policy",
-			port80, v1.ProtocolTCP,
+			port80TCP,
 			CreatePolicy(&NetworkPolicy{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "deny-ingress",
@@ -30,7 +34,7 @@ func (u *UpstreamE2EGenerator) GenerateTestCases() []*TestCase {
 			})),
 
 		NewSingleStepTestCase("should support a 'default-deny-all' policy",
-			port80, v1.ProtocolTCP,
+			port80TCP,
 			CreatePolicy(&NetworkPolicy{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "deny-all-tcp-allow-dns",
@@ -45,7 +49,7 @@ func (u *UpstreamE2EGenerator) GenerateTestCases() []*TestCase {
 			})),
 
 		NewSingleStepTestCase("should enforce policy based on Multiple PodSelectors and NamespaceSelectors",
-			port80, v1.ProtocolTCP,
+			port80TCP,
 			CreatePolicy(&NetworkPolicy{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "allow-ns-y-z-pod-b-c",
@@ -78,7 +82,7 @@ func (u *UpstreamE2EGenerator) GenerateTestCases() []*TestCase {
 			})),
 
 		NewTestCase("should enforce multiple, stacked policies with overlapping podSelectors [Feature:NetworkPolicy]",
-			NewTestStep(port81, tcp,
+			NewTestStep(port81TCP,
 				CreatePolicy(&NetworkPolicy{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "allow-client-a-via-ns-selector-81",
@@ -96,8 +100,8 @@ func (u *UpstreamE2EGenerator) GenerateTestCases() []*TestCase {
 					},
 				}),
 			),
-			NewTestStep(port80, tcp),
-			NewTestStep(port80, tcp,
+			NewTestStep(port80TCP),
+			NewTestStep(port80TCP,
 				CreatePolicy(&NetworkPolicy{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "allow-client-a-via-ns-selector-80",
@@ -115,7 +119,7 @@ func (u *UpstreamE2EGenerator) GenerateTestCases() []*TestCase {
 					}}))),
 
 		NewTestCase("should support allow-all policy",
-			NewTestStep(port80, tcp, CreatePolicy(
+			NewTestStep(port80TCP, CreatePolicy(
 				&NetworkPolicy{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "allow-all",
@@ -128,10 +132,10 @@ func (u *UpstreamE2EGenerator) GenerateTestCases() []*TestCase {
 						Ingress:     []NetworkPolicyIngressRule{{}},
 						PolicyTypes: []PolicyType{PolicyTypeIngress},
 					}})),
-			NewTestStep(port81, tcp)),
+			NewTestStep(port81TCP)),
 
 		NewTestCase("should allow ingress access on one named port",
-			NewTestStep(intstr.FromString("serve-81-tcp"), tcp, CreatePolicy(
+			NewTestStep(portServe81TCP, CreatePolicy(
 				&NetworkPolicy{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "allow-all",
@@ -151,10 +155,10 @@ func (u *UpstreamE2EGenerator) GenerateTestCases() []*TestCase {
 						PolicyTypes: []PolicyType{PolicyTypeIngress},
 					},
 				})),
-			NewTestStep(port80, tcp)),
+			NewTestStep(port80TCP)),
 
 		NewTestCase("should enforce updated policy",
-			NewTestStep(port81, tcp, CreatePolicy(
+			NewTestStep(port81TCP, CreatePolicy(
 				&NetworkPolicy{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "allow-all-mutate-to-deny-all",
@@ -168,7 +172,7 @@ func (u *UpstreamE2EGenerator) GenerateTestCases() []*TestCase {
 						PolicyTypes: []PolicyType{PolicyTypeIngress},
 					},
 				})),
-			NewTestStep(port81, tcp, UpdatePolicy(&NetworkPolicy{
+			NewTestStep(port81TCP, UpdatePolicy(&NetworkPolicy{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "allow-all-mutate-to-deny-all",
 					Namespace: "x",
@@ -183,7 +187,7 @@ func (u *UpstreamE2EGenerator) GenerateTestCases() []*TestCase {
 			}))),
 
 		NewTestCase("should allow ingress access from updated namespace",
-			NewTestStep(port80, tcp, CreatePolicy(
+			NewTestStep(port80TCP, CreatePolicy(
 				&NetworkPolicy{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "allow-client-a-via-ns-selector",
@@ -201,10 +205,10 @@ func (u *UpstreamE2EGenerator) GenerateTestCases() []*TestCase {
 						PolicyTypes: []PolicyType{PolicyTypeIngress},
 					},
 				})),
-			NewTestStep(port80, tcp, SetNamespaceLabels("y", map[string]string{"ns": "y", "ns2": "updated"}))),
+			NewTestStep(port80TCP, SetNamespaceLabels("y", map[string]string{"ns": "y", "ns2": "updated"}))),
 
 		NewTestCase("should allow ingress access from updated pod",
-			NewTestStep(port80, tcp, CreatePolicy(
+			NewTestStep(port80TCP, CreatePolicy(
 				&NetworkPolicy{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "allow-client-a-via-pod-selector",
@@ -222,10 +226,10 @@ func (u *UpstreamE2EGenerator) GenerateTestCases() []*TestCase {
 						PolicyTypes: []PolicyType{PolicyTypeIngress},
 					},
 				})),
-			NewTestStep(port80, tcp, SetPodLabels("x", "b", map[string]string{"pod": "b", "pod2": "updated"}))),
+			NewTestStep(port80TCP, SetPodLabels("x", "b", map[string]string{"pod": "b", "pod2": "updated"}))),
 
 		NewTestCase("should deny ingress access to updated pod",
-			NewTestStep(port80, tcp, CreatePolicy(
+			NewTestStep(port80TCP, CreatePolicy(
 				&NetworkPolicy{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "deny-ingress-via-label-selector",
@@ -237,10 +241,10 @@ func (u *UpstreamE2EGenerator) GenerateTestCases() []*TestCase {
 						Ingress:     []NetworkPolicyIngressRule{},
 					},
 				})),
-			NewTestStep(port80, tcp, SetPodLabels("x", "a", map[string]string{"target": "isolated"}))),
+			NewTestStep(port80TCP, SetPodLabels("x", "a", map[string]string{"target": "isolated"}))),
 
 		NewTestCase("should work with Ingress, Egress specified together",
-			NewTestStep(port80, tcp, CreatePolicy(
+			NewTestStep(port80TCP, CreatePolicy(
 				&NetworkPolicy{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "allow-client-a-via-pod-selector",
@@ -263,10 +267,10 @@ func (u *UpstreamE2EGenerator) GenerateTestCases() []*TestCase {
 						PolicyTypes: []PolicyType{PolicyTypeIngress, PolicyTypeEgress},
 					},
 				})),
-			NewTestStep(port81, tcp)),
+			NewTestStep(port81TCP)),
 
 		NewTestCase("should support denying of egress traffic on the client side (even if the server explicitly allows this traffic)",
-			NewTestStep(port80, tcp,
+			NewTestStep(port80TCP,
 				CreatePolicy(
 					&NetworkPolicy{
 						ObjectMeta: metav1.ObjectMeta{
@@ -327,7 +331,7 @@ func (u *UpstreamE2EGenerator) GenerateTestCases() []*TestCase {
 					}))),
 
 		NewTestCase("should stop enforcing policies after they are deleted",
-			NewTestStep(port80, tcp, CreatePolicy(
+			NewTestStep(port80TCP, CreatePolicy(
 				&NetworkPolicy{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "deny-all",
@@ -340,6 +344,6 @@ func (u *UpstreamE2EGenerator) GenerateTestCases() []*TestCase {
 						Egress:      []NetworkPolicyEgressRule{},
 					},
 				})),
-			NewTestStep(port80, tcp, DeletePolicy("x", "deny-all"))),
+			NewTestStep(port80TCP, DeletePolicy("x", "deny-all"))),
 	}
 }

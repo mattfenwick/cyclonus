@@ -8,9 +8,7 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"time"
 )
 
@@ -95,32 +93,30 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 		logrus.Infof("waiting %f seconds for perturbation to take effect", t.perturbationWaitDuration.Seconds())
 		time.Sleep(t.perturbationWaitDuration)
 
-		result.Steps = append(result.Steps, t.runProbe(testCaseState, step.Port, step.Protocol))
+		result.Steps = append(result.Steps, t.runProbe(testCaseState, step.Probe))
 	}
 
 	return result
 }
 
-func (t *Interpreter) runProbe(testCaseState *TestCaseState, port intstr.IntOrString, protocol v1.Protocol) *StepResult {
+func (t *Interpreter) runProbe(testCaseState *TestCaseState, probe *generator.ProbeConfig) *StepResult {
 	parsedPolicy := matcher.BuildNetworkPolicies(testCaseState.Policies)
 
-	logrus.Infof("running probe on port %s, protocol %s", port.String(), protocol)
+	logrus.Infof("running probe %+v", probe)
 
-	jobs := testCaseState.Resources.GetJobsForSpecificPortProtocol(port, protocol)
 	kubeRunner := types.NewKubeProbeRunner(t.kubernetes, 5)
-	newTable := func() *types.Table { return testCaseState.Resources.NewTable() }
 
 	simRunner := types.NewSimulatedProbeRunner(parsedPolicy)
 
 	stepResult := &StepResult{
-		SimulatedProbe: simRunner.RunProbe(jobs, newTable),
+		SimulatedProbe: simRunner.RunProbeForConfig(probe, testCaseState.Resources),
 		Policy:         parsedPolicy,
 		KubePolicies:   append([]*networkingv1.NetworkPolicy{}, testCaseState.Policies...), // this looks weird, but just making a new copy to avoid accidentally mutating it elsewhere
 	}
 
 	for i := 0; i <= t.kubeProbeRetries; i++ {
 		logrus.Infof("running kube probe on try %d", i)
-		kubeProbe := kubeRunner.RunProbe(jobs, newTable)
+		kubeProbe := kubeRunner.RunProbeForConfig(probe, testCaseState.Resources)
 		resultTable := NewResultTableFrom(kubeProbe.Combined, stepResult.SimulatedProbe.Combined)
 		stepResult.KubeProbes = append(stepResult.KubeProbes, kubeProbe.Combined)
 		// no differences between synthetic and kube probes?  then we can stop

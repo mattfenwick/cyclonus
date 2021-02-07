@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -69,10 +70,7 @@ func (k *Kubernetes) CreateOrUpdateNamespace(ns *v1.Namespace) (*v1.Namespace, e
 
 	log.Debugf("unable to create namespace %s, let's try updating it instead (error: %s)", ns.Name, err)
 	nsr, err = k.ClientSet.CoreV1().Namespaces().Update(context.TODO(), ns, metav1.UpdateOptions{})
-	if err != nil {
-		return nil, errors.Wrapf(err, "unable to update namespace %s", ns.Name)
-	}
-	return nsr, nil
+	return nsr, errors.Wrapf(err, "unable to update namespace %s", ns.Name)
 }
 
 func (k *Kubernetes) DeleteAllNetworkPoliciesInNamespace(ns string) error {
@@ -216,7 +214,7 @@ func (k *Kubernetes) CreatePodIfNotExists(pod *v1.Pod) (*v1.Pod, error) {
 	if err.Error() == fmt.Sprintf(`pods "%s" already exists`, pod.Name) {
 		return nil, nil
 	}
-	return nil, err
+	return nil, errors.Wrapf(err, "unable to create pod %s/%s:\n%s", pod.Namespace, pod.Name, utils.JsonString(pod))
 }
 
 // ExecuteRemoteCommand executes a remote shell command on the given pod

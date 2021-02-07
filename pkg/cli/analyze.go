@@ -17,7 +17,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 type AnalyzeArgs struct {
@@ -164,10 +163,7 @@ func QueryTraffic(explainedPolicies *matcher.Policy, trafficPath string) {
 
 type SyntheticProbeConnectivityConfig struct {
 	Resources *types.Resources
-	Probes    []*struct {
-		Protocol v1.Protocol
-		Port     intstr.IntOrString
-	}
+	Probes    []*matcher.PortProtocol
 }
 
 func ProbeSyntheticConnectivity(explainedPolicies *matcher.Policy, modelPath string) {
@@ -186,9 +182,7 @@ func ProbeSyntheticConnectivity(explainedPolicies *matcher.Policy, modelPath str
 		}
 		probe := types.
 			NewSimulatedProbeRunner(explainedPolicies).
-			RunProbe(
-				config.Resources.GetJobsForSpecificPortProtocol(probe.Port, probe.Protocol),
-				func() *types.Table { return config.Resources.NewTable() })
+			RunProbeFixedPortProtocol(config.Resources, probe)
 
 		logrus.Infof("probe on port %s, protocol %s", request.Port.String(), request.Protocol)
 

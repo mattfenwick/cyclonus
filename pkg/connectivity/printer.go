@@ -87,16 +87,18 @@ func (t *Printer) PrintTestCaseResult(result *Result) {
 }
 
 func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepResult) {
-	fmt.Printf("step %d on port %s, protocol %s:\n", i, step.Port.String(), step.Protocol)
+	if step.Probe.PortProtocol != nil {
+		fmt.Printf("step %d on port %s, protocol %s:\n", i, step.Probe.PortProtocol.Port.String(), step.Probe.PortProtocol.Protocol)
+	} else {
+		fmt.Printf("step %d on all available ports/protocols:\n", i)
+	}
 	policy := stepResult.Policy
 
-	if t.Noisy {
-		fmt.Printf("Policy explained:\n%s\n", explainer.TableExplainer(policy))
-	}
+	fmt.Printf("Policy explanation:\n%s\n", explainer.TableExplainer(policy))
 
-	fmt.Printf("\n\nKube results for:\n")
+	fmt.Printf("\n\nKube results for network policies:\n")
 	for _, netpol := range stepResult.KubePolicies {
-		fmt.Printf("  policy %s/%s:\n", netpol.Namespace, netpol.Name)
+		fmt.Printf(" - %s/%s:\n", netpol.Namespace, netpol.Name)
 	}
 
 	if len(stepResult.KubeProbes) == 0 {

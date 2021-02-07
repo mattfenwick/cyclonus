@@ -32,9 +32,10 @@ func (r *Recipe) Policies() []*networkingv1.NetworkPolicy {
 
 func (r *Recipe) RunProbe() *types.Probe {
 	runner := types.NewSimulatedProbeRunner(matcher.BuildNetworkPolicies(r.Policies()))
-	return runner.RunProbe(
-		r.Resources.GetJobsForSpecificPortProtocol(intstr.FromInt(r.Port), r.Protocol),
-		func() *types.Table { return r.Resources.NewTable() })
+	return runner.RunProbeFixedPortProtocol(r.Resources, &matcher.PortProtocol{
+		Protocol: r.Protocol,
+		Port:     intstr.FromInt(r.Port),
+	})
 }
 
 var AllRecipes = []*Recipe{

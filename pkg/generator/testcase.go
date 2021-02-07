@@ -1,9 +1,8 @@
 package generator
 
 import (
-	v1 "k8s.io/api/core/v1"
+	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 type CreatePolicyAction struct {
@@ -73,17 +72,22 @@ type Action struct {
 	// TODO create pod?  create namespace?
 }
 
-type TestStep struct {
-	Port     intstr.IntOrString
-	Protocol v1.Protocol
-	Actions  []*Action
+// ProbeConfig: exactly one field must be non-null (or, in AllAvailable's case, non-false).  This
+//   models a discriminated union (sum type).
+type ProbeConfig struct {
+	AllAvailable bool
+	PortProtocol *matcher.PortProtocol
 }
 
-func NewTestStep(port intstr.IntOrString, protocol v1.Protocol, actions ...*Action) *TestStep {
+type TestStep struct {
+	Probe   *ProbeConfig
+	Actions []*Action
+}
+
+func NewTestStep(pp *ProbeConfig, actions ...*Action) *TestStep {
 	return &TestStep{
-		Port:     port,
-		Protocol: protocol,
-		Actions:  actions,
+		Probe:   pp,
+		Actions: actions,
 	}
 }
 
@@ -92,10 +96,10 @@ type TestCase struct {
 	Steps       []*TestStep
 }
 
-func NewSingleStepTestCase(description string, port intstr.IntOrString, protocol v1.Protocol, actions ...*Action) *TestCase {
+func NewSingleStepTestCase(description string, pp *ProbeConfig, actions ...*Action) *TestCase {
 	return &TestCase{
 		Description: description,
-		Steps:       []*TestStep{NewTestStep(port, protocol, actions...)},
+		Steps:       []*TestStep{NewTestStep(pp, actions...)},
 	}
 }
 

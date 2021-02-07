@@ -2,7 +2,6 @@ package generator
 
 import (
 	"fmt"
-	v1 "k8s.io/api/core/v1"
 	. "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -173,7 +172,7 @@ func (g *FragmentGenerator) FragmentPolicies() []*NetworkPolicy {
 func (g *FragmentGenerator) GenerateTestCases() []*TestCase {
 	var testCases []*TestCase
 	for _, netpol := range g.FragmentPolicies() {
-		testCases = append(testCases, NewSingleStepTestCase("TODO", port80, v1.ProtocolTCP, CreatePolicy(netpol)))
+		testCases = append(testCases, NewSingleStepTestCase("TODO", port80TCP, CreatePolicy(netpol)))
 	}
 	return testCases
 }

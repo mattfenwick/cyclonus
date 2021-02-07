@@ -78,6 +78,8 @@ func RunGenerateCommand(args *GenerateArgs) {
 
 	var testCaseGenerator generator.TestCaseGenerator
 	switch args.Mode {
+	case "example":
+		testCaseGenerator = &generator.ExampleGenerator{}
 	case "upstream":
 		testCaseGenerator = &generator.UpstreamE2EGenerator{}
 	case "simple-fragments":

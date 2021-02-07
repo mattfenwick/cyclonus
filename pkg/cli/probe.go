@@ -5,6 +5,7 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/types"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
+	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -24,9 +25,11 @@ type ProbeArgs struct {
 	PerturbationWaitSeconds   int
 	PodCreationTimeoutSeconds int
 	PolicyPath                string
+	ProbeAllAvailabe          bool
 	Ports                     []string
 	ServerPorts               []int
 	Protocols                 []string
+	ServerProtocols           []string
 }
 
 func SetupProbeCommand() *cobra.Command {
@@ -44,9 +47,12 @@ func SetupProbeCommand() *cobra.Command {
 	command.Flags().StringSliceVarP(&args.Namespaces, "namespace", "n", []string{"x", "y", "z"}, "namespaces to create/use pods in")
 	command.Flags().StringSliceVar(&args.Pods, "pod", []string{"a", "b", "c"}, "pods to create in namespaces")
 
-	command.Flags().StringSliceVar(&args.Ports, "port", []string{"80"}, "port to run probes on; may be named port or numbered port")
-	command.Flags().IntSliceVar(&args.ServerPorts, "server-port", []int{80}, "ports to run server on")
-	command.Flags().StringSliceVar(&args.Protocols, "protocol", []string{string(v1.ProtocolTCP)}, "protocol to run probes on")
+	command.Flags().BoolVar(&args.ProbeAllAvailabe, "all-available", false, "if true, probe all available ports and protocols on each pod")
+	command.Flags().StringSliceVar(&args.Ports, "port", []string{"80"}, "ports to run probes on; may be named port or numbered port")
+	command.Flags().StringSliceVar(&args.Protocols, "protocol", []string{"tcp"}, "protocols to run probes on")
+
+	command.Flags().IntSliceVar(&args.ServerPorts, "server-port", []int{80, 81}, "ports to run server on")
+	command.Flags().StringSliceVar(&args.ServerProtocols, "server-protocol", []string{"tcp", "udp"}, "protocols to run server on")
 
 	command.Flags().BoolVar(&args.Noisy, "noisy", false, "if true, print all results")
 	command.Flags().BoolVar(&args.IgnoreLoopback, "ignore-loopback", false, "if true, ignore loopback for truthtable correctness verification")
@@ -67,14 +73,10 @@ func RunProbeCommand(args *ProbeArgs) {
 	kubernetes, err := kube.NewKubernetesForContext(args.KubeContext)
 	utils.DoOrDie(err)
 
-	var protocols []v1.Protocol
-	for _, protocol := range args.Protocols {
-		parsedProtocol, err := kube.ParseProtocol(protocol)
-		utils.DoOrDie(err)
-		protocols = append(protocols, parsedProtocol)
-	}
+	protocols := parseProtocols(args.Protocols)
+	serverProtocols := parseProtocols(args.ServerProtocols)
 
-	resources, err := types.NewDefaultResources(kubernetes, args.Namespaces, args.Pods, args.ServerPorts, protocols, externalIPs, args.PodCreationTimeoutSeconds)
+	resources, err := types.NewDefaultResources(kubernetes, args.Namespaces, args.Pods, args.ServerPorts, serverProtocols, externalIPs, args.PodCreationTimeoutSeconds)
 	utils.DoOrDie(err)
 	interpreter, err := connectivity.NewInterpreter(kubernetes, resources, false, 0, args.PerturbationWaitSeconds, false)
 	utils.DoOrDie(err)
@@ -97,12 +99,32 @@ func RunProbeCommand(args *ProbeArgs) {
 		IgnoreLoopback: args.IgnoreLoopback,
 	}
 
-	for _, port := range args.Ports {
-		for _, protocol := range protocols {
-			parsedPort := intstr.Parse(port)
-			result := interpreter.ExecuteTestCase(generator.NewSingleStepTestCase("one-off probe", parsedPort, protocol, actions...))
+	if args.ProbeAllAvailabe {
+		result := interpreter.ExecuteTestCase(generator.NewSingleStepTestCase("all available one-off probe", &generator.ProbeConfig{AllAvailable: true}))
+		printer.PrintTestCaseResult(result)
+	} else {
+		for _, port := range args.Ports {
+			for _, protocol := range protocols {
+				parsedPort := intstr.Parse(port)
+				pp := &matcher.PortProtocol{
+					Protocol: protocol,
+					Port:     parsedPort,
+				}
+				probeConfig := &generator.ProbeConfig{PortProtocol: pp}
+				result := interpreter.ExecuteTestCase(generator.NewSingleStepTestCase("one-off probe", probeConfig, actions...))
 
-			printer.PrintTestCaseResult(result)
+				printer.PrintTestCaseResult(result)
+			}
 		}
 	}
+}
+
+func parseProtocols(strs []string) []v1.Protocol {
+	var protocols []v1.Protocol
+	for _, protocol := range strs {
+		parsedProtocol, err := kube.ParseProtocol(protocol)
+		utils.DoOrDie(err)
+		protocols = append(protocols, parsedProtocol)
+	}
+	return protocols
 }

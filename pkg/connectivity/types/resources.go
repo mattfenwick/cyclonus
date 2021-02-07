@@ -2,6 +2,7 @@ package types
 
 import (
 	"github.com/mattfenwick/cyclonus/pkg/kube"
+	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -10,10 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sort"
 	"time"
-)
-
-const (
-	agnhostImage = "k8s.gcr.io/e2e-test-images/agnhost:2.21"
 )
 
 type Resources struct {
@@ -119,13 +116,17 @@ func (r *Resources) SetPodLabels(ns string, podName string, labels map[string]st
 	}, nil
 }
 
-func (r *Resources) NewTable() *Table {
+func (r *Resources) sortedPodNames() []string {
 	var podNames []string
 	for _, pod := range r.Pods {
 		podNames = append(podNames, pod.PodString().String())
 	}
 	sort.Strings(podNames)
-	return NewTable(podNames)
+	return podNames
+}
+
+func (r *Resources) NewTable() *Table {
+	return NewTable(r.sortedPodNames())
 	//return NewTable(append(podNames, r.ExternalIPs...))
 }
 
@@ -296,7 +297,7 @@ func (r *Resources) waitForPodsReady(kubernetes *kube.Kubernetes, timeoutSeconds
 	return errors.Errorf("pods not ready")
 }
 
-func (r *Resources) GetJobsForSpecificPortProtocol(port intstr.IntOrString, protocol v1.Protocol) *Jobs {
+func (r *Resources) GetJobsForSpecificPortProtocol(pp *matcher.PortProtocol) *Jobs {
 	jobs := &Jobs{}
 	for _, podFrom := range r.Pods {
 		for _, podTo := range r.Pods {
@@ -314,26 +315,26 @@ func (r *Resources) GetJobsForSpecificPortProtocol(port intstr.IntOrString, prot
 				ToNamespaceLabels:   r.Namespaces[podTo.Namespace],
 				ToPodLabels:         podTo.Labels,
 				ToIP:                podTo.IP,
-				Port:                -1,
-				Protocol:            protocol,
+				ResolvedPort:        -1,
+				PortProtocol:        pp,
 			}
 
 			var portInt int
 			var err error
-			switch port.Type {
+			switch pp.Port.Type {
 			case intstr.Int:
-				portInt = int(port.IntVal)
+				portInt = int(pp.Port.IntVal)
 			case intstr.String:
-				portInt, err = podTo.ResolveNamedPort(port.StrVal)
+				portInt, err = podTo.ResolveNamedPort(pp.Port.StrVal)
 			}
 			if err != nil {
 				jobs.BadNamedPort = append(jobs.BadNamedPort, job)
 				continue
 			}
 
-			job.Port = portInt
+			job.ResolvedPort = portInt
 
-			if !podTo.IsServingPortProtocol(portInt, protocol) {
+			if !podTo.IsServingPortProtocol(portInt, pp.Protocol) {
 				jobs.BadPortProtocol = append(jobs.BadPortProtocol, job)
 			} else {
 				jobs.Valid = append(jobs.Valid, job)
@@ -361,9 +362,13 @@ func (r *Resources) GetJobsAllAvailableServers() *Jobs {
 					ToNamespace:         podTo.Namespace,
 					ToNamespaceLabels:   r.Namespaces[podTo.Namespace],
 					ToPodLabels:         podTo.Labels,
+					ToContainer:         contTo.Name,
 					ToIP:                podTo.IP,
-					Port:                contTo.Port,
-					Protocol:            contTo.Protocol,
+					ResolvedPort:        contTo.Port,
+					PortProtocol: &matcher.PortProtocol{
+						Protocol: contTo.Protocol,
+						Port:     intstr.FromInt(contTo.Port),
+					},
 				})
 			}
 		}

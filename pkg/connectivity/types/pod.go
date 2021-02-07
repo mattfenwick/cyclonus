@@ -9,6 +9,10 @@ import (
 	"strings"
 )
 
+const (
+	agnhostImage = "k8s.gcr.io/e2e-test-images/agnhost:2.21"
+)
+
 func NewPod(ns string, name string, labels map[string]string, ip string, containers []*Container) *Pod {
 	return &Pod{
 		Namespace:  ns,

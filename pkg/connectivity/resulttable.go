@@ -31,10 +31,22 @@ func NewResultTableFrom(kubeProbe *types.Table, simulatedProbe *types.Table) *Re
 
 	table := NewResultTable(kubeProbe.Wrapped.Froms)
 	for _, key := range kubeProbe.Wrapped.Keys() {
-		table.Set(key.From, key.To, kubeProbe.Get(key.From, key.To) == simulatedProbe.Get(key.From, key.To))
+		table.Set(key.From, key.To, equalsDict(kubeProbe.Get(key.From, key.To), simulatedProbe.Get(key.From, key.To)))
 	}
 
 	return table
+}
+
+func equalsDict(l map[string]types.Connectivity, r map[string]types.Connectivity) bool {
+	if len(l) != len(r) {
+		return false
+	}
+	for k, lv := range l {
+		if rv, ok := r[k]; !ok || rv != lv {
+			return false
+		}
+	}
+	return true
 }
 
 func (r *ResultTable) Set(from string, to string, value bool) {
@@ -62,7 +74,7 @@ func (r *ResultTable) ValueCounts(ignoreLoopback bool) map[Comparison]int {
 }
 
 func (r *ResultTable) RenderTable() string {
-	return r.Wrapped.Table(func(i interface{}) string {
+	return r.Wrapped.Table(false, func(i interface{}) string {
 		if i.(bool) {
 			return "."
 		} else {

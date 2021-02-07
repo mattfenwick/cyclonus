@@ -5,7 +5,6 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 type Jobs struct {
@@ -39,26 +38,27 @@ type Job struct {
 	ToNamespace       string
 	ToNamespaceLabels map[string]string
 	ToPodLabels       map[string]string
+	ToContainer       string
 	ToIP              string
 
-	Port     int
-	Protocol v1.Protocol
+	ResolvedPort int
+	PortProtocol *matcher.PortProtocol
 }
 
 func (j *Job) ToAddress() string {
-	return fmt.Sprintf("%s:%d", j.ToHost, j.Port)
+	return fmt.Sprintf("%s:%d", j.ToHost, j.ResolvedPort)
 }
 
 func (j *Job) ClientCommand() []string {
-	switch j.Protocol {
+	switch j.PortProtocol.Protocol {
 	case v1.ProtocolSCTP:
 		return []string{"/agnhost", "connect", j.ToAddress(), "--timeout=1s", "--protocol=sctp"}
 	case v1.ProtocolTCP:
 		return []string{"/agnhost", "connect", j.ToAddress(), "--timeout=1s", "--protocol=tcp"}
 	case v1.ProtocolUDP:
-		return []string{"nc", "-v", "-z", "-w", "1", "-u", j.ToHost, fmt.Sprintf("%d", j.Port)}
+		return []string{"nc", "-v", "-z", "-w", "1", "-u", j.ToHost, fmt.Sprintf("%d", j.ResolvedPort)}
 	default:
-		panic(errors.Errorf("protocol %s not supported", j.Protocol))
+		panic(errors.Errorf("protocol %s not supported", j.PortProtocol.Protocol))
 	}
 }
 
@@ -96,9 +96,6 @@ func (j *Job) Traffic() *matcher.Traffic {
 			},
 			IP: j.ToIP,
 		},
-		PortProtocol: &matcher.PortProtocol{
-			Protocol: j.Protocol,
-			Port:     intstr.FromInt(j.Port),
-		},
+		PortProtocol: j.PortProtocol,
 	}
 }
