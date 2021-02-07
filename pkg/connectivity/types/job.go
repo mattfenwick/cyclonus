@@ -2,34 +2,51 @@ package types
 
 import (
 	"fmt"
-	"github.com/mattfenwick/cyclonus/pkg/kube"
+	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-type JobResult struct {
-	Job          *Job
-	Connectivity Connectivity
-	Err          error
-	Command      string
+type Jobs struct {
+	Valid           []*Job
+	BadNamedPort    []*Job
+	BadPortProtocol []*Job
 }
+
+type JobResult struct {
+	Job      *Job
+	Ingress  *Connectivity
+	Egress   *Connectivity
+	Combined Connectivity
+}
+
+//func (j *JobResult) Connectivity() Connectivity {
+//	return CombineIngressEgressConnectivity(j.Ingress, j.Egress)
+//}
 
 type Job struct {
-	FromPod             *Pod
-	ToPod               *Pod
-	Port                int
-	Protocol            v1.Protocol
-	InvalidNamedPort    bool
-	InvalidPortProtocol bool
-}
+	FromKey             string
+	FromNamespace       string
+	FromNamespaceLabels map[string]string
+	FromPod             string
+	FromPodLabels       map[string]string
+	FromContainer       string
+	FromIP              string
 
-func (j *Job) FromContainer() string {
-	return j.FromPod.KubePod().Spec.Containers[0].Name
+	ToKey             string
+	ToHost            string
+	ToNamespace       string
+	ToNamespaceLabels map[string]string
+	ToPodLabels       map[string]string
+	ToIP              string
+
+	Port     int
+	Protocol v1.Protocol
 }
 
 func (j *Job) ToAddress() string {
-	return fmt.Sprintf("%s:%d", kube.QualifiedServiceAddress(j.ToPod.ServiceName(), j.ToPod.Namespace), j.Port)
+	return fmt.Sprintf("%s:%d", j.ToHost, j.Port)
 }
 
 func (j *Job) ClientCommand() []string {
@@ -39,7 +56,7 @@ func (j *Job) ClientCommand() []string {
 	case v1.ProtocolTCP:
 		return []string{"/agnhost", "connect", j.ToAddress(), "--timeout=1s", "--protocol=tcp"}
 	case v1.ProtocolUDP:
-		return []string{"nc", "-v", "-z", "-w", "1", "-u", kube.QualifiedServiceAddress(j.ToPod.ServiceName(), j.ToPod.Namespace), fmt.Sprintf("%d", j.Port)}
+		return []string{"nc", "-v", "-z", "-w", "1", "-u", j.ToHost, fmt.Sprintf("%d", j.Port)}
 	default:
 		panic(errors.Errorf("protocol %s not supported", j.Protocol))
 	}
@@ -48,62 +65,40 @@ func (j *Job) ClientCommand() []string {
 func (j *Job) KubeExecCommand() []string {
 	return append([]string{
 		"kubectl", "exec",
-		j.FromPod.Name,
-		"-c", j.FromContainer(),
-		"-n", j.FromPod.Namespace,
+		j.FromPod,
+		"-c", j.FromContainer,
+		"-n", j.FromNamespace,
 		"--",
 	},
 		j.ClientCommand()...)
 }
 
-func (j *Job) ToURL() string {
-	return fmt.Sprintf("http://%s:%d", j.ToAddress(), j.Port)
-}
+// TODO why is this here?
+//func (j *Job) ToURL() string {
+//	return fmt.Sprintf("http://%s:%d", j.ToAddress(), j.Port)
+//}
 
-type Jobs struct {
-	Valid           []*Job
-	BadNamedPort    []*Job
-	BadPortProtocol []*Job
-}
-
-func (r *Resources) GetJobsForSpecificPortProtocol(port intstr.IntOrString, protocol v1.Protocol) *Jobs {
-	jobs := &Jobs{}
-	for _, podFrom := range r.Pods {
-		for _, podTo := range r.Pods {
-			var portInt int
-			var err error
-			switch port.Type {
-			case intstr.Int:
-				portInt = int(port.IntVal)
-			case intstr.String:
-				portInt, err = podTo.ResolveNamedPort(port.StrVal)
-			}
-			if err != nil {
-				jobs.BadNamedPort = append(jobs.BadNamedPort, &Job{
-					FromPod:  podFrom,
-					ToPod:    podTo,
-					Port:     -1,
-					Protocol: protocol,
-				})
-				continue
-			}
-			job := &Job{
-				FromPod:  podFrom,
-				ToPod:    podTo,
-				Port:     portInt,
-				Protocol: protocol,
-			}
-			if !podTo.IsServingPortProtocol(portInt, protocol) {
-				jobs.BadPortProtocol = append(jobs.BadPortProtocol, job)
-			} else {
-				jobs.Valid = append(jobs.Valid, job)
-			}
-		}
-		// TODO from pod to external ip
-		//for _, ip := range r.ExternalIPs {
-		//
-		//}
-		// TODO no way to do from external ip to pod?
+func (j *Job) Traffic() *matcher.Traffic {
+	return &matcher.Traffic{
+		Source: &matcher.TrafficPeer{
+			Internal: &matcher.InternalPeer{
+				PodLabels:       j.FromPodLabels,
+				NamespaceLabels: j.FromNamespaceLabels,
+				Namespace:       j.FromNamespace,
+			},
+			IP: j.FromIP,
+		},
+		Destination: &matcher.TrafficPeer{
+			Internal: &matcher.InternalPeer{
+				PodLabels:       j.ToPodLabels,
+				NamespaceLabels: j.ToNamespaceLabels,
+				Namespace:       j.ToNamespace,
+			},
+			IP: j.ToIP,
+		},
+		PortProtocol: &matcher.PortProtocol{
+			Protocol: j.Protocol,
+			Port:     intstr.FromInt(j.Port),
+		},
 	}
-	return jobs
 }

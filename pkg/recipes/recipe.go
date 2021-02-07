@@ -31,11 +31,10 @@ func (r *Recipe) Policies() []*networkingv1.NetworkPolicy {
 }
 
 func (r *Recipe) RunProbe() *types.Probe {
-	return (&types.SimulatedCollector{Policies: matcher.BuildNetworkPolicies(r.Policies())}).RunProbe(&types.Request{
-		Protocol:  r.Protocol,
-		Port:      intstr.FromInt(r.Port),
-		Resources: r.Resources,
-	})
+	runner := types.NewSimulatedProbeRunner(matcher.BuildNetworkPolicies(r.Policies()))
+	return runner.RunProbe(
+		r.Resources.GetJobsForSpecificPortProtocol(intstr.FromInt(r.Port), r.Protocol),
+		func() *types.Table { return r.Resources.NewTable() })
 }
 
 var AllRecipes = []*Recipe{

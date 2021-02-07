@@ -21,7 +21,6 @@ type Interpreter struct {
 	perturbationWaitDuration         time.Duration
 	resetClusterBeforeTestCase       bool
 	verifyClusterStateBeforeTestCase bool
-	kubeCollector                    *types.KubeCollector
 }
 
 func NewInterpreter(kubernetes *kube.Kubernetes, resources *types.Resources, resetClusterBeforeTestCase bool, kubeProbeRetries int, perturbationWaitSeconds int, verifyClusterStateBeforeTestCase bool) (*Interpreter, error) {
@@ -34,7 +33,6 @@ func NewInterpreter(kubernetes *kube.Kubernetes, resources *types.Resources, res
 		perturbationWaitDuration:         time.Duration(perturbationWaitSeconds) * time.Second,
 		resetClusterBeforeTestCase:       resetClusterBeforeTestCase,
 		verifyClusterStateBeforeTestCase: verifyClusterStateBeforeTestCase,
-		kubeCollector:                    &types.KubeCollector{Kubernetes: kubernetes, NumberOfWorkers: 5},
 	}, nil
 }
 
@@ -108,25 +106,23 @@ func (t *Interpreter) runProbe(testCaseState *TestCaseState, port intstr.IntOrSt
 
 	logrus.Infof("running probe on port %s, protocol %s", port.String(), protocol)
 
+	jobs := t.resources.GetJobsForSpecificPortProtocol(port, protocol)
+	kubeRunner := types.NewKubeProbeRunner(t.kubernetes, 5)
+	newTable := func() *types.Table { return t.resources.NewTable() }
+
+	simRunner := types.NewSimulatedProbeRunner(parsedPolicy)
+
 	stepResult := &StepResult{
-		SimulatedProbe: (&types.SimulatedCollector{Policies: parsedPolicy}).RunProbe(&types.Request{
-			Protocol:  protocol,
-			Port:      port,
-			Resources: testCaseState.Resources,
-		}),
-		Policy:       parsedPolicy,
-		KubePolicies: append([]*networkingv1.NetworkPolicy{}, testCaseState.Policies...), // this looks weird, but just making a new copy to avoid accidentally mutating it elsewhere
+		SimulatedProbe: simRunner.RunProbe(jobs, newTable),
+		Policy:         parsedPolicy,
+		KubePolicies:   append([]*networkingv1.NetworkPolicy{}, testCaseState.Policies...), // this looks weird, but just making a new copy to avoid accidentally mutating it elsewhere
 	}
 
 	for i := 0; i <= t.kubeProbeRetries; i++ {
 		logrus.Infof("running kube probe on try %d", i)
-		kubeProbe := t.kubeCollector.RunProbe(&types.Request{
-			Resources: t.resources,
-			Port:      port,
-			Protocol:  protocol,
-		})
-		resultTable := NewResultTableFrom(kubeProbe, stepResult.SimulatedProbe.Combined)
-		stepResult.KubeProbes = append(stepResult.KubeProbes, kubeProbe)
+		kubeProbe := kubeRunner.RunProbe(jobs, newTable)
+		resultTable := NewResultTableFrom(kubeProbe.Combined, stepResult.SimulatedProbe.Combined)
+		stepResult.KubeProbes = append(stepResult.KubeProbes, kubeProbe.Combined)
 		// no differences between synthetic and kube probes?  then we can stop
 		if resultTable.ValueCounts(false)[DifferentComparison] == 0 {
 			break

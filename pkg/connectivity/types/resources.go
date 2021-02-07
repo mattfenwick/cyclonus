@@ -7,6 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sort"
 	"time"
 )
@@ -16,16 +17,16 @@ const (
 )
 
 type Resources struct {
-	Namespaces  map[string]map[string]string
-	Pods        []*Pod
-	ExternalIPs []string
+	Namespaces map[string]map[string]string
+	Pods       []*Pod
+	//ExternalIPs []string
 }
 
 func NewDefaultResources(kubernetes *kube.Kubernetes, namespaces []string, podNames []string, ports []int, protocols []v1.Protocol, externalIPs []string, podCreationTimeoutSeconds int) (*Resources, error) {
 	sort.Strings(externalIPs)
 	r := &Resources{
-		Namespaces:  map[string]map[string]string{},
-		ExternalIPs: externalIPs,
+		Namespaces: map[string]map[string]string{},
+		//ExternalIPs: externalIPs,
 	}
 
 	for _, ns := range namespaces {
@@ -112,9 +113,9 @@ func (r *Resources) SetPodLabels(ns string, podName string, labels map[string]st
 		return nil, errors.Errorf("no pod named %s/%s found", ns, podName)
 	}
 	return &Resources{
-		Namespaces:  r.Namespaces,
-		Pods:        pods,
-		ExternalIPs: r.ExternalIPs,
+		Namespaces: r.Namespaces,
+		Pods:       pods,
+		//ExternalIPs: r.ExternalIPs,
 	}, nil
 }
 
@@ -124,7 +125,8 @@ func (r *Resources) NewTable() *Table {
 		podNames = append(podNames, pod.PodString().String())
 	}
 	sort.Strings(podNames)
-	return NewTable(append(podNames, r.ExternalIPs...))
+	return NewTable(podNames)
+	//return NewTable(append(podNames, r.ExternalIPs...))
 }
 
 func (r *Resources) NamespacesSlice() []string {
@@ -292,4 +294,79 @@ func (r *Resources) waitForPodsReady(kubernetes *kube.Kubernetes, timeoutSeconds
 		time.Sleep(time.Duration(sleep) * time.Second)
 	}
 	return errors.Errorf("pods not ready")
+}
+
+func (r *Resources) GetJobsForSpecificPortProtocol(port intstr.IntOrString, protocol v1.Protocol) *Jobs {
+	jobs := &Jobs{}
+	for _, podFrom := range r.Pods {
+		for _, podTo := range r.Pods {
+			job := &Job{
+				FromKey:             podFrom.PodString().String(),
+				FromNamespace:       podFrom.Namespace,
+				FromNamespaceLabels: r.Namespaces[podFrom.Namespace],
+				FromPod:             podFrom.Name,
+				FromPodLabels:       podFrom.Labels,
+				FromContainer:       podFrom.Containers[0].Name,
+				FromIP:              podFrom.IP,
+				ToKey:               podTo.PodString().String(),
+				ToHost:              kube.QualifiedServiceAddress(podTo.ServiceName(), podTo.Namespace),
+				ToNamespace:         podTo.Namespace,
+				ToNamespaceLabels:   r.Namespaces[podTo.Namespace],
+				ToPodLabels:         podTo.Labels,
+				ToIP:                podTo.IP,
+				Port:                -1,
+				Protocol:            protocol,
+			}
+
+			var portInt int
+			var err error
+			switch port.Type {
+			case intstr.Int:
+				portInt = int(port.IntVal)
+			case intstr.String:
+				portInt, err = podTo.ResolveNamedPort(port.StrVal)
+			}
+			if err != nil {
+				jobs.BadNamedPort = append(jobs.BadNamedPort, job)
+				continue
+			}
+
+			job.Port = portInt
+
+			if !podTo.IsServingPortProtocol(portInt, protocol) {
+				jobs.BadPortProtocol = append(jobs.BadPortProtocol, job)
+			} else {
+				jobs.Valid = append(jobs.Valid, job)
+			}
+		}
+	}
+	return jobs
+}
+
+func (r *Resources) GetJobsAllAvailableServers() *Jobs {
+	var jobs []*Job
+	for _, podFrom := range r.Pods {
+		for _, podTo := range r.Pods {
+			for _, contTo := range podTo.Containers {
+				jobs = append(jobs, &Job{
+					FromKey:             podFrom.PodString().String(),
+					FromNamespace:       podFrom.Namespace,
+					FromNamespaceLabels: r.Namespaces[podFrom.Namespace],
+					FromPod:             podFrom.Name,
+					FromPodLabels:       podFrom.Labels,
+					FromContainer:       podFrom.Containers[0].Name,
+					FromIP:              podFrom.IP,
+					ToKey:               podTo.PodString().String(),
+					ToHost:              kube.QualifiedServiceAddress(podTo.ServiceName(), podTo.Namespace),
+					ToNamespace:         podTo.Namespace,
+					ToNamespaceLabels:   r.Namespaces[podTo.Namespace],
+					ToPodLabels:         podTo.Labels,
+					ToIP:                podTo.IP,
+					Port:                contTo.Port,
+					Protocol:            contTo.Protocol,
+				})
+			}
+		}
+	}
+	return &Jobs{Valid: jobs}
 }

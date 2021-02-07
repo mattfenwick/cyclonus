@@ -184,7 +184,11 @@ func ProbeSyntheticConnectivity(explainedPolicies *matcher.Policy, modelPath str
 			Port:      probe.Port,
 			Resources: config.Resources,
 		}
-		probe := (&types.SimulatedCollector{Policies: explainedPolicies}).RunProbe(request)
+		probe := types.
+			NewSimulatedProbeRunner(explainedPolicies).
+			RunProbe(
+				config.Resources.GetJobsForSpecificPortProtocol(probe.Port, probe.Protocol),
+				func() *types.Table { return config.Resources.NewTable() })
 
 		logrus.Infof("probe on port %s, protocol %s", request.Port.String(), request.Protocol)
 
