@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/olekukonko/tablewriter"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"strings"
 )
 
@@ -12,7 +11,9 @@ type Traffic struct {
 	Source      *TrafficPeer
 	Destination *TrafficPeer
 
-	PortProtocol *PortProtocol
+	ResolvedPort     int
+	ResolvedPortName string
+	Protocol         v1.Protocol
 }
 
 func (t *Traffic) Table() string {
@@ -21,7 +22,7 @@ func (t *Traffic) Table() string {
 	table.SetRowLine(true)
 	table.SetAutoMergeCells(true)
 
-	pp := fmt.Sprintf("%s on %s", t.PortProtocol.Port.String(), t.PortProtocol.Protocol)
+	pp := fmt.Sprintf("%d (%s) on %s", t.ResolvedPort, t.ResolvedPortName, t.Protocol)
 	table.SetHeader([]string{"Port/Protocol", "Source/Dest", "Pod IP", "Namespace", "NS Labels", "Pod Labels"})
 
 	source := []string{pp, "source", t.Source.IP}
@@ -52,11 +53,6 @@ func labelsToString(labels map[string]string) string {
 		kvs = append(kvs, fmt.Sprintf("%s: %s", k, v))
 	}
 	return strings.Join(kvs, "\n")
-}
-
-type PortProtocol struct {
-	Protocol v1.Protocol
-	Port     intstr.IntOrString
 }
 
 type TrafficPeer struct {

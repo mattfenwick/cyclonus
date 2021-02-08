@@ -3,7 +3,7 @@ package cli
 import (
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity"
-	connectivitykube "github.com/mattfenwick/cyclonus/pkg/connectivity/kube"
+	"github.com/mattfenwick/cyclonus/pkg/connectivity/types"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
@@ -57,33 +57,34 @@ func SetupGenerateCommand() *cobra.Command {
 }
 
 func RunGenerateCommand(args *GenerateArgs) {
-	serverProtocols := []v1.Protocol{v1.ProtocolTCP, v1.ProtocolUDP}
+	// TODO add UDP to defaults once support has been added
+	serverProtocols := []v1.Protocol{v1.ProtocolTCP}
 	serverPorts := []int{80, 81}
+	externalIPs := []string{} // "http://www.google.com"} // TODO make these be IPs?  or not?
 
 	kubernetes, err := kube.NewKubernetesForContext(args.Context)
 	utils.DoOrDie(err)
 
-	kubeResources := connectivitykube.NewDefaultResources(args.Namespaces, args.Pods, serverPorts, serverProtocols)
-	interpreter, err := connectivity.NewInterpreter(kubernetes, kubeResources, true, 1, args.PerturbationWaitSeconds, args.PodCreationTimeoutSeconds, true)
+	resources, err := types.NewDefaultResources(kubernetes, args.Namespaces, args.Pods, serverPorts, serverProtocols, externalIPs, args.PodCreationTimeoutSeconds)
+	utils.DoOrDie(err)
+	interpreter, err := connectivity.NewInterpreter(kubernetes, resources, true, 1, args.PerturbationWaitSeconds, true)
 	utils.DoOrDie(err)
 	printer := &connectivity.Printer{
 		Noisy:          args.Noisy,
 		IgnoreLoopback: args.IgnoreLoopback,
 	}
 
-	zcPod, err := kubernetes.GetPod("z", "c")
+	zcPod, err := resources.GetPod("z", "c")
 	utils.DoOrDie(err)
-	if zcPod.Status.PodIP == "" {
-		panic(errors.Errorf("no ip found for pod z/c"))
-	}
-	zcIP := zcPod.Status.PodIP
 
 	var testCaseGenerator generator.TestCaseGenerator
 	switch args.Mode {
+	case "example":
+		testCaseGenerator = &generator.ExampleGenerator{}
 	case "upstream":
 		testCaseGenerator = &generator.UpstreamE2EGenerator{}
 	case "simple-fragments":
-		testCaseGenerator = generator.NewDefaultFragmentGenerator(args.AllowDNS, args.Namespaces, zcIP)
+		testCaseGenerator = generator.NewDefaultFragmentGenerator(args.AllowDNS, args.Namespaces, zcPod.IP)
 	case "conflicts":
 		testCaseGenerator = &generator.ConflictGenerator{
 			AllowDNS:    args.AllowDNS,
@@ -96,13 +97,13 @@ func RunGenerateCommand(args *GenerateArgs) {
 	testCases := testCaseGenerator.GenerateTestCases()
 	fmt.Printf("testing %d cases\n\n", len(testCases))
 	for i, testCase := range testCases {
-		logrus.Infof("starting test case #%d", i)
+		logrus.Infof("starting test case #%d", i+1)
 
 		result := interpreter.ExecuteTestCase(testCase)
 		utils.DoOrDie(result.Err)
 
 		printer.PrintTestCaseResult(result)
-		logrus.Infof("finished policy #%d", i)
+		logrus.Infof("finished policy #%d", i+1)
 	}
 
 	printer.PrintSummary()

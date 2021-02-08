@@ -6,27 +6,32 @@ import (
 	"strings"
 )
 
+type TableKey struct {
+	From string
+	To   string
+}
+
 // TruthTable takes in n items and maintains an n x n table of booleans for each ordered pair
 type TruthTable struct {
 	Froms  []string
 	Tos    []string
 	toSet  map[string]bool
-	Values map[string]map[string]bool
+	Values map[string]map[string]interface{}
 }
 
 // NewTruthTableFromItems creates a new truth table with items
-func NewTruthTableFromItems(items []string, defaultValue *bool) *TruthTable {
+func NewTruthTableFromItems(items []string, defaultValue func() interface{}) *TruthTable {
 	return NewTruthTable(items, items, defaultValue)
 }
 
 // NewTruthTable creates a new truth table with froms and tos
-func NewTruthTable(froms []string, tos []string, defaultValue *bool) *TruthTable {
-	values := map[string]map[string]bool{}
+func NewTruthTable(froms []string, tos []string, defaultValue func() interface{}) *TruthTable {
+	values := map[string]map[string]interface{}{}
 	for _, from := range froms {
-		values[from] = map[string]bool{}
+		values[from] = map[string]interface{}{}
 		for _, to := range tos {
 			if defaultValue != nil {
-				values[from][to] = *defaultValue
+				values[from][to] = defaultValue()
 			}
 		}
 	}
@@ -55,7 +60,7 @@ func (tt *TruthTable) IsComplete() bool {
 }
 
 // Set sets the value for from->to
-func (tt *TruthTable) Set(from string, to string, value bool) {
+func (tt *TruthTable) Set(from string, to string, value interface{}) {
 	dict, ok := tt.Values[from]
 	if !ok {
 		panic(errors.Errorf("from-key %s not found", from))
@@ -66,29 +71,8 @@ func (tt *TruthTable) Set(from string, to string, value bool) {
 	dict[to] = value
 }
 
-//// SetAllFrom sets all values where from = 'from'
-//func (tt *TruthTable) SetAllFrom(from string, value bool) {
-//	dict, ok := tt.Values[from]
-//	if !ok {
-//		panic(errors.Errorf("from-key %s not found", from))
-//	}
-//	for _, to := range tt.Tos {
-//		dict[to] = value
-//	}
-//}
-//
-//// SetAllTo sets all values where to = 'to'
-//func (tt *TruthTable) SetAllTo(to string, value bool) {
-//	if _, ok := tt.toSet[to]; !ok {
-//		panic(errors.Errorf("to-key %s not found", to))
-//	}
-//	for _, from := range tt.Froms {
-//		tt.Values[from][to] = value
-//	}
-//}
-
 // Get gets the specified value
-func (tt *TruthTable) Get(from string, to string) bool {
+func (tt *TruthTable) Get(from string, to string) interface{} {
 	dict, ok := tt.Values[from]
 	if !ok {
 		panic(errors.Errorf("from-key %s not found", from))
@@ -100,109 +84,30 @@ func (tt *TruthTable) Get(from string, to string) bool {
 	return val
 }
 
-type TruthTableSummary struct {
-	True    int
-	False   int
-	NoValue int
-	Ignored int
-	Total   int
+func (tt *TruthTable) GetKey(key *TableKey) interface{} {
+	return tt.Get(key.From, key.To)
 }
 
-func (tt *TruthTable) ValueCounts(ignoreLoopback bool) *TruthTableSummary {
-	trueCount, falseCount, noValueCount, totalChecked, ignored := 0, 0, 0, 0, 0
+func (tt *TruthTable) Keys() []*TableKey {
+	var keys []*TableKey
 	for _, from := range tt.Froms {
 		for _, to := range tt.Tos {
-			if ignoreLoopback && from == to {
-				ignored++
-			} else if _, ok := tt.Values[from][to]; !ok {
-				noValueCount++
-			} else if tt.Values[from][to] {
-				trueCount++
-			} else {
-				falseCount++
-			}
-			totalChecked++
+			keys = append(keys, &TableKey{From: from, To: to})
 		}
 	}
-	return &TruthTableSummary{
-		True:    trueCount,
-		False:   falseCount,
-		NoValue: noValueCount,
-		Ignored: ignored,
-		Total:   totalChecked,
-	}
+	return keys
 }
 
-// Compare is used to check two truth tables for equality, returning its
-// result in the form of a third truth table.  Both tables are expected to
-// have identical items.
-func (tt *TruthTable) Compare(other *TruthTable) *TruthTable {
-	if len(tt.Froms) != len(other.Froms) || len(tt.Tos) != len(other.Tos) {
-		panic(errors.Errorf("cannot compare tables of different dimensions"))
-	}
-	for i, fr := range tt.Froms {
-		if other.Froms[i] != fr {
-			panic(errors.Errorf("cannot compare: from keys at index %d do not match (%s vs %s)", i, other.Froms[i], fr))
-		}
-	}
-	for i, to := range tt.Tos {
-		if other.Tos[i] != to {
-			panic(errors.Errorf("cannot compare: to keys at index %d do not match (%s vs %s)", i, other.Tos[i], to))
-		}
-	}
-
-	values := map[string]map[string]bool{}
-	for from, dict := range tt.Values {
-		values[from] = map[string]bool{}
-		for to, val := range dict {
-			values[from][to] = val == other.Values[from][to]
-		}
-	}
-	return &TruthTable{
-		Froms:  tt.Froms,
-		Tos:    tt.Tos,
-		toSet:  tt.toSet,
-		Values: values,
-	}
-}
-
-// PrettyPrint produces a nice visual representation.
-//func (tt *TruthTable) PrettyPrint(indent string) string {
-//	header := indent + strings.Join(append([]string{"-\t"}, tt.Tos...), "\t")
-//	lines := []string{header}
-//	for _, from := range tt.Froms {
-//		line := []string{from}
-//		for _, to := range tt.Tos {
-//			mark := "X"
-//			val, ok := tt.Values[from][to]
-//			if !ok {
-//				mark = "?"
-//			} else if val {
-//				mark = "."
-//			}
-//			line = append(line, mark+"\t")
-//		}
-//		lines = append(lines, indent+strings.Join(line, "\t"))
-//	}
-//	return strings.Join(lines, "\n")
-//}
-
-func (tt *TruthTable) Table() string {
+func (tt *TruthTable) Table(schema string, rowLine bool, printElement func(interface{}) string) string {
 	tableString := &strings.Builder{}
 	table := tablewriter.NewWriter(tableString)
-	table.SetHeader(append([]string{"-"}, tt.Tos...))
+	table.SetHeader(append([]string{schema}, tt.Tos...))
+	table.SetRowLine(rowLine)
 
 	for _, from := range tt.Froms {
 		line := []string{from}
 		for _, to := range tt.Tos {
-			val := "?"
-			isTrue, ok := tt.Values[from][to]
-			if isTrue {
-				val = "."
-			} else if ok {
-				val = "X"
-			}
-			line = append(line, val)
+			line = append(line, printElement(tt.Values[from][to]))
 		}
 		table.Append(line)
 	}

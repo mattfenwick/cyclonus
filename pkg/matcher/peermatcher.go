@@ -3,10 +3,11 @@ package matcher
 import (
 	"encoding/json"
 	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
 )
 
 type PeerMatcher interface {
-	Allows(peer *TrafficPeer, portProtocol *PortProtocol) bool
+	Allows(peer *TrafficPeer, portInt int, portName string, protocol v1.Protocol) bool
 }
 
 func CombinePeerMatchers(a PeerMatcher, b PeerMatcher) PeerMatcher {
@@ -33,7 +34,7 @@ func CombinePeerMatchers(a PeerMatcher, b PeerMatcher) PeerMatcher {
 
 type NonePeerMatcher struct{}
 
-func (nem *NonePeerMatcher) Allows(peer *TrafficPeer, portProtocol *PortProtocol) bool {
+func (nem *NonePeerMatcher) Allows(peer *TrafficPeer, portInt int, portName string, protocol v1.Protocol) bool {
 	return false
 }
 
@@ -45,7 +46,7 @@ func (nem *NonePeerMatcher) MarshalJSON() (b []byte, e error) {
 
 type AllPeerMatcher struct{}
 
-func (aem *AllPeerMatcher) Allows(peer *TrafficPeer, portProtocol *PortProtocol) bool {
+func (aem *AllPeerMatcher) Allows(peer *TrafficPeer, portInt int, portName string, protocol v1.Protocol) bool {
 	return true
 }
 
@@ -68,14 +69,14 @@ func (em *SpecificPeerMatcher) MarshalJSON() (b []byte, e error) {
 	})
 }
 
-func (em *SpecificPeerMatcher) Allows(peer *TrafficPeer, portProtocol *PortProtocol) bool {
+func (em *SpecificPeerMatcher) Allows(peer *TrafficPeer, portInt int, portName string, protocol v1.Protocol) bool {
 	// can always match by ip
-	if em.IP.Allows(peer.IP, portProtocol) {
+	if em.IP.Allows(peer.IP, portInt, portName, protocol) {
 		return true
 	}
 	// internal? can also match by pod
 	if !peer.IsExternal() {
-		return em.Internal.Allows(peer.Internal, portProtocol)
+		return em.Internal.Allows(peer.Internal, portInt, portName, protocol)
 	}
 
 	return false

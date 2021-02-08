@@ -2,7 +2,7 @@ package recipes
 
 import (
 	"fmt"
-	"github.com/mattfenwick/cyclonus/pkg/connectivity/synthetic"
+	"github.com/mattfenwick/cyclonus/pkg/connectivity/types"
 	"github.com/mattfenwick/cyclonus/pkg/explainer"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
@@ -14,7 +14,7 @@ import (
 
 type Recipe struct {
 	PolicyYamls []string
-	Resources   *synthetic.Resources
+	Resources   *types.Resources
 	Protocol    v1.Protocol
 	Port        int
 }
@@ -30,13 +30,9 @@ func (r *Recipe) Policies() []*networkingv1.NetworkPolicy {
 	return policies
 }
 
-func (r *Recipe) RunProbe() *synthetic.Result {
-	return synthetic.RunSyntheticProbe(&synthetic.Request{
-		Protocol:  r.Protocol,
-		Port:      intstr.FromInt(r.Port),
-		Policies:  matcher.BuildNetworkPolicies(r.Policies()),
-		Resources: r.Resources,
-	})
+func (r *Recipe) RunProbe() *types.Probe {
+	runner := types.NewSimulatedProbeRunner(matcher.BuildNetworkPolicies(r.Policies()))
+	return runner.RunProbeFixedPortProtocol(r.Resources, intstr.FromInt(r.Port), r.Protocol)
 }
 
 var AllRecipes = []*Recipe{
@@ -59,17 +55,17 @@ var AllRecipes = []*Recipe{
 
 func Run() {
 	for _, recipe := range AllRecipes {
-		result := recipe.RunProbe()
+		probe := recipe.RunProbe()
 
 		fmt.Printf("Policies:\n%s\n", explainer.TableExplainer(matcher.BuildNetworkPolicies(recipe.Policies())))
 
-		fmt.Printf("resources:\n%s\n", recipe.Resources.Table())
+		fmt.Printf("resources:\n%s\n", recipe.Resources.RenderTable())
 
-		fmt.Printf("ingress:\n%s\n", result.Ingress.Table())
+		fmt.Printf("Results:\n%s\n", probe.Combined.RenderTable())
 
-		fmt.Printf("egress:\n%s\n", result.Egress.Table())
+		fmt.Printf("Ingress:\n%s\n", probe.Ingress.RenderTable())
 
-		fmt.Printf("combined:\n%s\n", result.Combined.Table())
+		fmt.Printf("Egress:\n%s\n", probe.Egress.RenderTable())
 
 		fmt.Printf("\n\n\n")
 	}

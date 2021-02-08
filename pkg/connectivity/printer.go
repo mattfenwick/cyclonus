@@ -31,9 +31,9 @@ func (t *Printer) PrintSummary() {
 		// preprocess to figure out whether it passed or failed
 		passed := true
 		for _, step := range result.Steps {
-			lastKubeResult := step.LastKubeResult()
-			counts := step.SyntheticResult.Combined.Compare(lastKubeResult.TruthTable()).ValueCounts(t.IgnoreLoopback)
-			if counts.False > 0 {
+			lastKubeResult := step.LastKubeProbe()
+			comparison := NewComparisonTableFrom(lastKubeResult, step.SimulatedProbe.Combined)
+			if comparison.ValueCounts(t.IgnoreLoopback)[DifferentComparison] > 0 {
 				passed = false
 			}
 		}
@@ -48,10 +48,10 @@ func (t *Printer) PrintSummary() {
 		})
 
 		for stepNumber, step := range result.Steps {
-			for tryNumber, kubeResult := range step.KubeResults {
-				comparison := step.SyntheticResult.Combined.Compare(kubeResult.TruthTable())
+			for tryNumber, kubeProbe := range step.KubeProbes {
+				comparison := NewComparisonTableFrom(kubeProbe, step.SimulatedProbe.Combined)
 				counts := comparison.ValueCounts(t.IgnoreLoopback)
-				table.Append([]string{"", "", intToString(stepNumber + 1), intToString(tryNumber + 1), intToString(counts.False), intToString(counts.True)})
+				table.Append([]string{"", "", intToString(stepNumber + 1), intToString(tryNumber + 1), intToString(counts[DifferentComparison]), intToString(counts[SameComparison])})
 			}
 		}
 	}
@@ -80,52 +80,49 @@ func (t *Printer) PrintTestCaseResult(result *Result) {
 	}
 
 	for i := range result.Steps {
-		t.PrintStep(i, result.TestCase.Steps[i], result.Steps[i])
+		t.PrintStep(i+1, result.TestCase.Steps[i], result.Steps[i])
 	}
 
 	fmt.Printf("\n\n")
 }
 
 func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepResult) {
-	fmt.Printf("step %d on port %s, protocol %s:\n", i, step.Port.String(), step.Protocol)
+	if step.Probe.PortProtocol != nil {
+		fmt.Printf("step %d on port %s, protocol %s:\n", i, step.Probe.PortProtocol.Port.String(), step.Probe.PortProtocol.Protocol)
+	} else {
+		fmt.Printf("step %d on all available ports/protocols:\n", i)
+	}
 	policy := stepResult.Policy
 
-	if t.Noisy {
-		fmt.Printf("Policy explained:\n%s\n", explainer.TableExplainer(policy))
-	}
+	fmt.Printf("Policy explanation:\n%s\n", explainer.TableExplainer(policy))
 
-	fmt.Printf("\n\nKube results for:\n")
+	fmt.Printf("\n\nKube results for network policies:\n")
 	for _, netpol := range stepResult.KubePolicies {
-		fmt.Printf("  policy %s/%s:\n", netpol.Namespace, netpol.Name)
+		fmt.Printf(" - %s/%s:\n", netpol.Namespace, netpol.Name)
 	}
 
-	if len(stepResult.KubeResults) == 0 {
+	if len(stepResult.KubeProbes) == 0 {
 		panic(errors.Errorf("found 0 KubeResults for step, expected 1 or more"))
 	}
 
-	lastKubeProbe := stepResult.LastKubeResult().TruthTable()
-	fmt.Println(lastKubeProbe.Table())
+	lastKubeProbe := stepResult.LastKubeProbe()
 
-	comparison := stepResult.SyntheticResult.Combined.Compare(lastKubeProbe)
+	comparison := NewComparisonTableFrom(lastKubeProbe, stepResult.SimulatedProbe.Combined)
 	counts := comparison.ValueCounts(t.IgnoreLoopback)
-	if counts.False > 0 {
+	if counts[DifferentComparison] > 0 {
 		fmt.Printf("Discrepancy found:")
 	}
-	fmt.Printf("%d wrong, %d no value, %d correct, %d ignored out of %d total\n", counts.False, counts.True, counts.NoValue, counts.Ignored, counts.Total)
+	fmt.Printf("%d wrong, %d ignored, %d correct\n", counts[DifferentComparison], counts[IgnoredComparison], counts[SameComparison])
 
-	if counts.False > 0 || t.Noisy {
-		//fmt.Println("Ingress:")
-		//step.SyntheticResult.Ingress.Table().Render()
-		//
-		//fmt.Println("Egress:")
-		//step.SyntheticResult.Egress.Table().Render()
+	if counts[DifferentComparison] > 0 || t.Noisy {
+		fmt.Printf("Expected ingress:\n%s\n", stepResult.SimulatedProbe.Ingress.RenderTable())
 
-		fmt.Println("Expected:")
-		fmt.Println(stepResult.SyntheticResult.Combined.Table())
+		fmt.Printf("Expected egress:\n%s\n", stepResult.SimulatedProbe.Egress.RenderTable())
 
-		for i, kubeResult := range stepResult.KubeResults {
-			fmt.Printf("kube results, try %d:\n", i)
-			fmt.Println(kubeResult.TruthTable().Table())
+		fmt.Printf("Expected combined:\n%s\n", stepResult.SimulatedProbe.Combined.RenderTable())
+
+		for i, kubeResult := range stepResult.KubeProbes {
+			fmt.Printf("kube results, try %d:\n%s\n", i, kubeResult.RenderTable())
 		}
 
 		if len(stepResult.KubePolicies) > 0 {
@@ -136,8 +133,9 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 			fmt.Println("no network policies")
 		}
 
-		fmt.Printf("\nActual vs expected (last round):\n")
-		fmt.Println(comparison.Table())
+		fmt.Printf("\nActual vs expected (last round):\n%s\n", comparison.RenderTable())
+	} else {
+		fmt.Printf("%s\n", lastKubeProbe.RenderTable())
 	}
 }
 

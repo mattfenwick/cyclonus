@@ -3,9 +3,10 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/mattfenwick/cyclonus/pkg/connectivity/types"
+	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"io/ioutil"
 
-	"github.com/mattfenwick/cyclonus/pkg/connectivity/synthetic"
 	"github.com/mattfenwick/cyclonus/pkg/explainer"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/kube/netpol"
@@ -17,7 +18,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 type AnalyzeArgs struct {
@@ -163,11 +163,8 @@ func QueryTraffic(explainedPolicies *matcher.Policy, trafficPath string) {
 }
 
 type SyntheticProbeConnectivityConfig struct {
-	Resources *synthetic.Resources
-	Probes    []*struct {
-		Protocol v1.Protocol
-		Port     intstr.IntOrString
-	}
+	Resources *types.Resources
+	Probes    []*generator.PortProtocol
 }
 
 func ProbeSyntheticConnectivity(explainedPolicies *matcher.Policy, modelPath string) {
@@ -179,23 +176,16 @@ func ProbeSyntheticConnectivity(explainedPolicies *matcher.Policy, modelPath str
 
 	// run probes
 	for _, probe := range config.Probes {
-		result := synthetic.RunSyntheticProbe(&synthetic.Request{
-			Protocol:  probe.Protocol,
-			Port:      probe.Port,
-			Policies:  explainedPolicies,
-			Resources: config.Resources,
-		})
+		probeResult := types.
+			NewSimulatedProbeRunner(explainedPolicies).
+			RunProbeFixedPortProtocol(config.Resources, probe.Port, probe.Protocol)
 
-		logrus.Infof("probe on port %s, protocol %s", result.Request.Port.String(), result.Request.Protocol)
+		logrus.Infof("probe on port %s, protocol %s", probe.Port.String(), probe.Protocol)
 
-		// 5. print out a result matrix
-		fmt.Println("Ingress:")
-		fmt.Println(result.Ingress.Table())
+		fmt.Printf("Ingress:\n%s\n", probeResult.Ingress.RenderTable())
 
-		fmt.Println("Egress:")
-		fmt.Println(result.Egress.Table())
+		fmt.Printf("Egress:\n%s\n", probeResult.Egress.RenderTable())
 
-		fmt.Println("Combined:")
-		fmt.Println(result.Combined.Table())
+		fmt.Printf("Combined:\n%s\n", probeResult.Combined.RenderTable())
 	}
 }
