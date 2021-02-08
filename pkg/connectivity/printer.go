@@ -112,7 +112,7 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 	if counts[DifferentComparison] > 0 {
 		fmt.Printf("Discrepancy found:")
 	}
-	fmt.Printf("%d wrong, %d ignore, %d correct\n", counts[DifferentComparison], counts[IgnoredComparison], counts[SameComparison])
+	fmt.Printf("%d wrong, %d ignored, %d correct\n", counts[DifferentComparison], counts[IgnoredComparison], counts[SameComparison])
 
 	if counts[DifferentComparison] > 0 || t.Noisy {
 		fmt.Printf("Expected ingress:\n%s\n", stepResult.SimulatedProbe.Ingress.RenderTable())
