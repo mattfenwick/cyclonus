@@ -7,9 +7,7 @@ policies that suit your needs!
 
 Grab the [latest release](https://github.com/mattfenwick/cyclonus/releases) to get started using Cyclonus!
 
-## Examples
-
-### Probe
+## Probe
 
 Run a connectivity probe against a Kubernetes cluster.
 
@@ -39,7 +37,7 @@ Kube results for:
 0 wrong, 81 no value, 0 correct, 0 ignored out of 81 total
 ```
 
-### Generator
+## Policy generator
 
 Generate network policies, install the policies one at a time in kubernetes, and compare actual measured connectivity
 to expected connectivity using a truth table.
@@ -67,33 +65,9 @@ Synthetic vs combined:
 ... 
 ```
 
-### Synthetic Probe
+## Policy analysis
 
-Using hypothetical "traffic", generate a table of presumed connectivity by evaluating network
-policies.  Note: this does not use a kubernetes cluster.
-
-```
-$ go run cmd/cyclonus/main.go analyze \
-  --probe-path examples/synthetic-probe-example.json \
-  --policy-source examples
-  
-Combined:
-+-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
-|     -     | DEFAULT/A | DEFAULT/B | DEFAULT/C | X/A | X/B | X/C | Y/A | Y/B | Y/C |
-+-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
-| default/a | X         | X         | X         | X   | X   | X   | X   | X   | X   |
-| default/b | X         | X         | X         | X   | X   | X   | X   | X   | X   |
-| default/c | X         | X         | X         | X   | X   | X   | X   | X   | X   |
-| x/a       | X         | X         | X         | .   | .   | .   | .   | .   | .   |
-| x/b       | X         | X         | X         | .   | .   | .   | .   | .   | .   |
-| x/c       | X         | X         | X         | .   | .   | .   | .   | .   | .   |
-| y/a       | X         | X         | X         | .   | .   | .   | .   | .   | .   |
-| y/b       | X         | X         | X         | .   | .   | .   | .   | .   | .   |
-| y/c       | X         | X         | X         | .   | .   | .   | .   | .   | .   |
-+-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
-```
-
-## Explain
+### Explain policies
 
 Groups policies by target, divides rules into egress and ingress, and gives a basic explanation of the combined
 policies.  This clarifies the interactions between "denies" and "allows" from multiple policies.
@@ -134,89 +108,102 @@ $ go run cmd/cyclonus/main.go analyze \
 +---------+---------------+------------------------+---------------------+--------------------------+
 ```
 
-## traffic
+### Which policy rules apply to a pod?
+
+This takes the previous command a step further: it combines the rules from all the targets that apply
+to a pod. 
+
+```
+$ go run ./cmd/cyclonus/main.go analyze \
+  --explain=false \
+  --policy-path ./networkpolicies/simple-example/ \
+  --target-pod-path ./examples/targets.json
+
+Combined rules for pod {Namespace:y Labels:map[pod:a]}:
++---------+---------------+-----------------------------+---------------------+--------------------------+
+|  TYPE   |    TARGET     |        SOURCE RULES         |        PEER         |      PORT/PROTOCOL       |
++---------+---------------+-----------------------------+---------------------+--------------------------+
+| Ingress | namespace: y  | y/allow-label-to-label      | no ips              | no ports, no protocols   |
+|         | Match labels: | y/deny-all-for-label        |                     |                          |
+|         |   pod: a      | y/deny-all                  |                     |                          |
++         +               +                             +---------------------+--------------------------+
+|         |               |                             | namespace: y        | all ports, all protocols |
+|         |               |                             | pods: Match labels: |                          |
+|         |               |                             |   pod: c            |                          |
++---------+---------------+-----------------------------+---------------------+--------------------------+
+|         |               |                             |                     |                          |
++---------+---------------+-----------------------------+---------------------+--------------------------+
+| Egress  | namespace: y  | y/deny-all-egress           | all pods, all ips   | all ports, all protocols |
+|         | Match labels: | y/allow-all-egress-by-label |                     |                          |
+|         |   pod: a      |                             |                     |                          |
++---------+---------------+-----------------------------+---------------------+--------------------------+
+```
+
+
+### Will policies allow or block traffic?
 
 Given arbitrary traffic examples (from a source to a destination, including labels, over a port and protocol),
 this command parses network policies and determines if the traffic is allowed or not.
 
 ```
-$ go run cmd/cyclonus/main.go analyze \
-  --policy-source examples \
-  --traffic-path ./examples/traffic-example.json
+go run ./cmd/cyclonus/main.go analyze \
+  --explain=false \
+  --policy-path ./networkpolicies/simple-example/ \
+  --traffic-path ./examples/traffic.json
 
 Traffic:
-{
-  "Source": {
-    "Internal": {
-      "PodLabels": {
-        "pod": "a"
-      },
-      "NamespaceLabels": {
-        "ns": "z"
-      },
-      "Namespace": "z"
-    },
-    "IP": "192.168.1.13"
-  },
-  "Destination": {
-    "Internal": {
-      "PodLabels": {
-        "pod": "b"
-      },
-      "NamespaceLabels": {
-        "ns": "x"
-      },
-      "Namespace": "x"
-    },
-    "IP": "192.168.1.14"
-  },
-  "PortProtocol": {
-    "Protocol": "TCP",
-    "Port": 80
-  }
-}
++--------------------------+-------------+---------------+-----------+-----------+------------+
+|      PORT/PROTOCOL       | SOURCE/DEST |    POD IP     | NAMESPACE | NS LABELS | POD LABELS |
++--------------------------+-------------+---------------+-----------+-----------+------------+
+| 80 (serve-80-tcp) on TCP | source      | 192.168.1.99  | y         | ns: y     | app: c     |
++                          +-------------+---------------+           +           +------------+
+|                          | destination | 192.168.1.100 |           |           | pod: b     |
++--------------------------+-------------+---------------+-----------+-----------+------------+
 
-Is allowed: true
+Is traffic allowed?
++-------------+--------+---------------+
+|    TYPE     | ACTION |    TARGET     |
++-------------+--------+---------------+
+| Ingress     | Allow  | namespace: y  |
+|             |        | Match labels: |
+|             |        |   pod: b      |
++             +--------+---------------+
+|             | Deny   | namespace: y  |
+|             |        | all pods      |
++-------------+--------+---------------+
+|             |        |               |
++-------------+--------+---------------+
+| Egress      | Deny   | namespace: y  |
+|             |        | all pods      |
++-------------+--------+---------------+
+| IS ALLOWED? | FALSE  |                
++-------------+--------+---------------+
 ```
 
-## targets
+### Simulated probe
 
-Given a set of pods, this command determines which network policies affect those pods.
+Runs a simulated connectivity probe against a set of network policies, without using a kubernetes cluster.
 
 ```
-➜  cyclonus git:(master) ✗ go run ./cmd/cyclonus/main.go analyze \
+$ go run ./cmd/cyclonus/main.go analyze \
   --explain=false \
-  --policy-path ./networkpolicies/simple-example \
-  --target-pod-path ./examples/targets-example.json
+  --policy-path ./networkpolicies/simple-example/ \
+  --probe-path ./examples/probe.json
 
 Combined:
-+---------+---------------+-----------------------+-------------------+-------------------------+
-|  TYPE   |    TARGET     |     SOURCE RULES      |       PEER        |      PORT/PROTOCOL      |
-+---------+---------------+-----------------------+-------------------+-------------------------+
-| Ingress | namespace: y  | y/allow-all-for-label | ports for all IPs | port 53 on protocol TCP |
-|         | Match labels: | y/deny-all            |                   |                         |
-|         |   pod: b      |                       |                   |                         |
-+         +               +                       +-------------------+                         +
-|         |               |                       | namespace: all    |                         |
-|         |               |                       | pods: all         |                         |
-|         |               |                       |                   |                         |
-+---------+---------------+-----------------------+-------------------+-------------------------+
-
-Matching targets:
-+---------+---------------+-----------------------+-------------------+-------------------------+
-|  TYPE   |    TARGET     |     SOURCE RULES      |       PEER        |      PORT/PROTOCOL      |
-+---------+---------------+-----------------------+-------------------+-------------------------+
-| Ingress | namespace: y  | y/allow-all-for-label | ports for all IPs | port 53 on protocol TCP |
-|         | Match labels: |                       |                   |                         |
-|         |   pod: b      |                       |                   |                         |
-+         +               +                       +-------------------+                         +
-|         |               |                       | namespace: all    |                         |
-|         |               |                       | pods: all         |                         |
-|         |               |                       |                   |                         |
-+         +---------------+-----------------------+-------------------+-------------------------+
-|         | namespace: y  | y/deny-all            | no pods, no ips   | no ports, no protocols  |
-|         | all pods      |                       |                   |                         |
-+---------+---------------+-----------------------+-------------------+-------------------------+
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+|     | X/A | X/B | X/C | Y/A | Y/B | Y/C | Z/A | Z/B | Z/C |
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+| x/a | .   | .   | .   | X   | .   | X   | .   | .   | .   |
+| x/b | .   | .   | .   | X   | .   | X   | .   | .   | .   |
+| x/c | .   | .   | .   | X   | .   | X   | .   | .   | .   |
+| y/a | .   | .   | .   | X   | .   | X   | .   | .   | .   |
+| y/b | .   | .   | .   | X   | .   | X   | .   | .   | .   |
+| y/c | X   | X   | X   | X   | X   | X   | X   | X   | X   |
+| z/a | .   | .   | .   | X   | .   | X   | .   | .   | .   |
+| z/b | .   | .   | .   | X   | .   | X   | .   | .   | .   |
+| z/c | .   | .   | .   | X   | .   | X   | .   | .   | .   |
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
 ```
 
 
