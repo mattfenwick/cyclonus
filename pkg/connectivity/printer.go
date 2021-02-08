@@ -54,7 +54,7 @@ func (t *Printer) PrintSummary() {
 				table.Append([]string{
 					"",
 					"",
-					fmt.Sprintf("Step %d, try %d", stepNumber + 1, tryNumber + 1),
+					fmt.Sprintf("Step %d, try %d", stepNumber+1, tryNumber+1),
 					intToString(counts[DifferentComparison]),
 					intToString(counts[SameComparison]),
 					intToString(counts[IgnoredComparison])})
