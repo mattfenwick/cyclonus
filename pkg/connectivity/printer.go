@@ -25,7 +25,7 @@ func (t *Printer) PrintSummary() {
 	table := tablewriter.NewWriter(tableString)
 	table.SetRowLine(true)
 
-	table.SetHeader([]string{"Test", "Result", "Step", "Try", "Wrong", "Right"})
+	table.SetHeader([]string{"Test", "Result", "Step/Try", "Wrong", "Right", "Ignored"})
 
 	for testNumber, result := range t.Results {
 		// preprocess to figure out whether it passed or failed
@@ -51,7 +51,13 @@ func (t *Printer) PrintSummary() {
 			for tryNumber, kubeProbe := range step.KubeProbes {
 				comparison := NewComparisonTableFrom(kubeProbe, step.SimulatedProbe.Combined)
 				counts := comparison.ValueCounts(t.IgnoreLoopback)
-				table.Append([]string{"", "", intToString(stepNumber + 1), intToString(tryNumber + 1), intToString(counts[DifferentComparison]), intToString(counts[SameComparison])})
+				table.Append([]string{
+					"",
+					"",
+					fmt.Sprintf("Step %d, try %d", stepNumber + 1, tryNumber + 1),
+					intToString(counts[DifferentComparison]),
+					intToString(counts[SameComparison]),
+					intToString(counts[IgnoredComparison])})
 			}
 		}
 	}

@@ -94,7 +94,7 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 			}
 		}
 
-		logrus.Infof("waiting %f seconds for perturbation to take effect", t.perturbationWaitDuration.Seconds())
+		logrus.Infof("step %d: waiting %f seconds for perturbation to take effect", stepIndex + 1, t.perturbationWaitDuration.Seconds())
 		time.Sleep(t.perturbationWaitDuration)
 
 		result.Steps = append(result.Steps, t.runProbe(testCaseState, step.Probe))
@@ -119,7 +119,7 @@ func (t *Interpreter) runProbe(testCaseState *TestCaseState, probe *generator.Pr
 	}
 
 	for i := 0; i <= t.kubeProbeRetries; i++ {
-		logrus.Infof("running kube probe on try %d", i)
+		logrus.Infof("running kube probe on try %d", i + 1)
 		kubeProbe := kubeRunner.RunProbeForConfig(probe, testCaseState.Resources)
 		resultTable := NewComparisonTableFrom(kubeProbe.Combined, stepResult.SimulatedProbe.Combined)
 		stepResult.KubeProbes = append(stepResult.KubeProbes, kubeProbe.Combined)
