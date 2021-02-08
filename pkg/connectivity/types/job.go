@@ -20,10 +20,6 @@ type JobResult struct {
 	Combined Connectivity
 }
 
-//func (j *JobResult) Connectivity() Connectivity {
-//	return CombineIngressEgressConnectivity(j.Ingress, j.Egress)
-//}
-
 type Job struct {
 	FromKey             string
 	FromNamespace       string
@@ -73,11 +69,6 @@ func (j *Job) KubeExecCommand() []string {
 	},
 		j.ClientCommand()...)
 }
-
-// TODO why is this here?
-//func (j *Job) ToURL() string {
-//	return fmt.Sprintf("http://%s:%d", j.ToAddress(), j.Port)
-//}
 
 func (j *Job) Traffic() *matcher.Traffic {
 	return &matcher.Traffic{

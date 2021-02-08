@@ -40,21 +40,3 @@ func (p Connectivity) ShortString() string {
 		panic(errors.Errorf("invalid Connectivity value: %+v", p))
 	}
 }
-
-func CombineIngressEgressConnectivity(ingress Connectivity, egress Connectivity) Connectivity {
-	switch egress {
-	case ConnectivityBlocked:
-		return ConnectivityBlocked
-	case ConnectivityAllowed:
-		return ingress
-	case ConnectivityUnknown:
-		switch ingress {
-		case ConnectivityAllowed:
-			return ConnectivityUnknown
-		default:
-			return ingress
-		}
-	default:
-		panic(errors.Errorf("invalid egress Connectivity value %+v", egress))
-	}
-}
