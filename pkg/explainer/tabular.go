@@ -29,6 +29,7 @@ func TableExplainer(policies *matcher.Policy) string {
 	builder := &SliceBuilder{}
 	ingresses, egresses := policies.SortedTargets()
 	TargetsTableLines(builder, ingresses, true)
+	builder.Elements = append(builder.Elements, []string{"", "", "", "", ""})
 	TargetsTableLines(builder, egresses, false)
 
 	table.AppendBulk(builder.Elements)
