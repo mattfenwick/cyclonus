@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/types"
+	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"io/ioutil"
 
 	"github.com/mattfenwick/cyclonus/pkg/explainer"
@@ -163,7 +164,7 @@ func QueryTraffic(explainedPolicies *matcher.Policy, trafficPath string) {
 
 type SyntheticProbeConnectivityConfig struct {
 	Resources *types.Resources
-	Probes    []*matcher.PortProtocol
+	Probes    []*generator.PortProtocol
 }
 
 func ProbeSyntheticConnectivity(explainedPolicies *matcher.Policy, modelPath string) {

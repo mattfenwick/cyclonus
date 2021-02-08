@@ -1,15 +1,14 @@
 package generator
 
 import (
-	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	. "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 var (
-	portServe80TCP = &ProbeConfig{PortProtocol: &matcher.PortProtocol{Port: intstr.FromString("serve-80-tcp"), Protocol: tcp}}
-	portServe81TCP = &ProbeConfig{PortProtocol: &matcher.PortProtocol{Port: intstr.FromString("serve-81-tcp"), Protocol: tcp}}
+	portServe80TCP = &ProbeConfig{PortProtocol: &PortProtocol{Port: intstr.FromString("serve-80-tcp"), Protocol: tcp}}
+	portServe81TCP = &ProbeConfig{PortProtocol: &PortProtocol{Port: intstr.FromString("serve-81-tcp"), Protocol: tcp}}
 )
 
 type ExampleGenerator struct{}

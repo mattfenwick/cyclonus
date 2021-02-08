@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/olekukonko/tablewriter"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"strings"
 )
 
@@ -54,11 +53,6 @@ func labelsToString(labels map[string]string) string {
 		kvs = append(kvs, fmt.Sprintf("%s: %s", k, v))
 	}
 	return strings.Join(kvs, "\n")
-}
-
-type PortProtocol struct {
-	Protocol v1.Protocol
-	Port     intstr.IntOrString
 }
 
 type TrafficPeer struct {

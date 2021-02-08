@@ -1,7 +1,6 @@
 package generator
 
 import (
-	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
@@ -76,7 +75,7 @@ type Action struct {
 //   models a discriminated union (sum type).
 type ProbeConfig struct {
 	AllAvailable bool
-	PortProtocol *matcher.PortProtocol
+	PortProtocol *PortProtocol
 }
 
 type TestStep struct {

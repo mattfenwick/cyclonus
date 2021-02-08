@@ -1,7 +1,6 @@
 package generator
 
 import (
-	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	v1 "k8s.io/api/core/v1"
 	. "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,8 +11,8 @@ var (
 	port81 = intstr.FromInt(81)
 
 	allAvailable = &ProbeConfig{AllAvailable: true}
-	port80TCP    = &ProbeConfig{PortProtocol: &matcher.PortProtocol{Port: port80, Protocol: v1.ProtocolTCP}}
-	port81TCP    = &ProbeConfig{PortProtocol: &matcher.PortProtocol{Port: port81, Protocol: v1.ProtocolTCP}}
+	port80TCP    = &ProbeConfig{PortProtocol: &PortProtocol{Port: port80, Protocol: v1.ProtocolTCP}}
+	port81TCP    = &ProbeConfig{PortProtocol: &PortProtocol{Port: port81, Protocol: v1.ProtocolTCP}}
 )
 
 type UpstreamE2EGenerator struct{}

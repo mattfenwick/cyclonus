@@ -5,7 +5,6 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/types"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
-	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -107,7 +106,7 @@ func RunProbeCommand(args *ProbeArgs) {
 		for _, port := range args.Ports {
 			for _, protocol := range protocols {
 				parsedPort := intstr.Parse(port)
-				pp := &matcher.PortProtocol{
+				pp := &generator.PortProtocol{
 					Protocol: protocol,
 					Port:     parsedPort,
 				}
