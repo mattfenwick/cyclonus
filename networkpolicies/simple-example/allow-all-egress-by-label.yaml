@@ -1,0 +1,15 @@
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: allow-all-egress-by-label
+  namespace: "y"
+spec:
+  policyTypes:
+    - Egress
+  podSelector:
+    matchExpressions:
+      - key: pod
+        operator: In
+        values: [a, b]
+  egress:
+  - {}

@@ -1,18 +1,13 @@
 [
   {
     "Source": {
-      "Internal": {
-        "PodLabels": {},
-        "NamespaceLabels": {},
-        "Namespace": "default"
-      },
-      "IP": "192.168.1.10"
+      "IP": "8.8.8.8"
     },
     "Destination": {
       "Internal": {
-        "PodLabels": {},
-        "NamespaceLabels": {},
-        "Namespace": "default"
+        "PodLabels": {"pod": "a"},
+        "NamespaceLabels": {"ns":  "y"},
+        "Namespace": "y"
       },
       "IP": "192.168.1.10"
     },
@@ -22,18 +17,33 @@
   },
   {
     "Source": {
+      "IP": "8.8.8.8",
+      "Internal": {
+        "PodLabels": {"pod": "b"},
+        "NamespaceLabels": {"ns":  "y"},
+        "Namespace": "y"
+      }
+    },
+    "Destination": {
+      "IP": "192.168.1.10"
+    },
+    "Protocol": "TCP",
+    "ResolvedPort": 80
+  },
+  {
+    "Source": {
       "Internal": {
         "PodLabels": {"pod": "a"},
-        "NamespaceLabels": {"ns": "z"},
-        "Namespace": "z"
+        "NamespaceLabels": {"ns": "y"},
+        "Namespace": "y"
       },
       "IP": "192.168.1.13"
     },
     "Destination": {
       "Internal": {
         "PodLabels": {"pod": "b"},
-        "NamespaceLabels": {"ns": "x"},
-        "Namespace": "x"
+        "NamespaceLabels": {"ns": "y"},
+        "Namespace": "y"
       },
       "IP": "192.168.1.14"
     },
@@ -44,17 +54,17 @@
   {
     "Source": {
       "Internal": {
-        "PodLabels": {"app": "foo"},
-        "NamespaceLabels": {"ns": "default"},
-        "Namespace": "default"
+        "PodLabels": {"app": "c"},
+        "NamespaceLabels": {"ns": "y"},
+        "Namespace": "y"
       },
       "IP": "192.168.1.99"
     },
     "Destination": {
       "Internal": {
-        "PodLabels": {"app": "web"},
-        "NamespaceLabels": {"ns": "default"},
-        "Namespace": "default"
+        "PodLabels": {"pod": "b"},
+        "NamespaceLabels": {"ns": "y"},
+        "Namespace": "y"
       },
       "IP": "192.168.1.100"
     },

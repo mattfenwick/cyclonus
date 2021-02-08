@@ -1,0 +1,88 @@
+{
+  "Probes": [
+    {
+      "Protocol": "TCP",
+      "Port": 80
+    },
+    {
+      "Protocol": "TCP",
+      "Port": 81
+    },
+    {
+      "Protocol": "TCP",
+      "Port": 82
+    }
+  ],
+  "Resources": {
+    "Namespaces": {
+      "x": {"ns": "x"},
+      "y": {"ns": "y"},
+      "z": {"ns": "z"}
+    },
+    "Pods": [
+      {
+        "Namespace": "x",
+        "Name": "a",
+        "Labels": {"pod": "a"},
+        "IP": "192.168.1.8",
+        "Containers": [{"Name": "cont-1", "Port": 80, "PortName": "serve-80-tcp","Protocol": "tcp"}, {"Name": "cont-2", "Port": 81, "PortName": "serve-81-tcp","Protocol": "tcp"}]
+      },
+      {
+        "Namespace": "x",
+        "Name": "b",
+        "Labels": {"pod": "b"},
+        "IP": "192.168.1.9",
+        "Containers": [{"Name": "cont-1", "Port": 80, "PortName": "serve-80-tcp","Protocol": "tcp"}, {"Name": "cont-2", "Port": 81, "PortName": "serve-81-tcp","Protocol": "tcp"}]
+      },
+      {
+        "Namespace": "x",
+        "Name": "c",
+        "Labels": {"pod": "c"},
+        "IP": "192.168.1.10",
+        "Containers": [{"Name": "cont-1", "Port": 80, "PortName": "serve-80-tcp","Protocol": "tcp"}, {"Name": "cont-2", "Port": 81, "PortName": "serve-81-tcp","Protocol": "tcp"}]
+      },
+      {
+        "Namespace": "y",
+        "Name": "a",
+        "Labels": {"pod": "a"},
+        "IP": "192.168.1.11",
+        "Containers": [{"Name": "cont-1", "Port": 80, "PortName": "serve-80-tcp","Protocol": "tcp"}, {"Name": "cont-2", "Port": 81, "PortName": "serve-81-tcp","Protocol": "tcp"}]
+      },
+      {
+        "Namespace": "y",
+        "Name": "b",
+        "Labels": {"pod": "b"},
+        "IP": "192.168.1.12",
+        "Containers": [{"Name": "cont-1", "Port": 80, "PortName": "serve-80-tcp","Protocol": "tcp"}, {"Name": "cont-2", "Port": 81, "PortName": "serve-81-tcp","Protocol": "tcp"}]
+      },
+      {
+        "Namespace": "y",
+        "Name": "c",
+        "Labels": {"pod": "c"},
+        "IP": "192.168.1.13",
+        "Containers": [{"Name": "cont-1", "Port": 80, "PortName": "serve-80-tcp","Protocol": "tcp"}, {"Name": "cont-2", "Port": 81, "PortName": "serve-81-tcp","Protocol": "tcp"}]
+      },
+      {
+        "Namespace": "z",
+        "Name": "a",
+        "Labels": {"pod": "a"},
+        "IP": "192.168.1.11",
+        "Containers": [{"Name": "cont-1", "Port": 80, "PortName": "serve-80-tcp","Protocol": "tcp"}, {"Name": "cont-2", "Port": 81, "PortName": "serve-81-tcp","Protocol": "tcp"}]
+      },
+      {
+        "Namespace": "z",
+        "Name": "b",
+        "Labels": {"pod": "b"},
+        "IP": "192.168.1.12",
+        "Containers": [{"Name": "cont-1", "Port": 80, "PortName": "serve-80-tcp","Protocol": "tcp"}, {"Name": "cont-2", "Port": 81, "PortName": "serve-81-tcp","Protocol": "tcp"}]
+      },
+      {
+        "Namespace": "z",
+        "Name": "c",
+        "Labels": {"pod": "c"},
+        "IP": "192.168.1.13",
+        "Containers": [{"Name": "cont-1", "Port": 80, "PortName": "serve-80-tcp","Protocol": "tcp"}, {"Name": "cont-2", "Port": 81, "PortName": "serve-81-tcp","Protocol": "tcp"}]
+      }
+    ]
+  }
+}

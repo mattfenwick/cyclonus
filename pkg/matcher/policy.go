@@ -104,6 +104,7 @@ func (ar *AllowedResult) Table() string {
 
 	addTargetsToTable(table, "Ingress", "Allow", ar.Ingress.AllowingTargets)
 	addTargetsToTable(table, "Ingress", "Deny", ar.Ingress.DenyingTargets)
+	table.Append([]string{"", "", ""})
 	addTargetsToTable(table, "Egress", "Allow", ar.Egress.AllowingTargets)
 	addTargetsToTable(table, "Egress", "Deny", ar.Egress.DenyingTargets)
 	table.SetFooter([]string{"Is allowed?", fmt.Sprintf("%t", ar.IsAllowed()), ""})

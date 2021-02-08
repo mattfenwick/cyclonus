@@ -113,6 +113,8 @@ func ExplainPolicies(explainedPolicies *matcher.Policy) {
 	fmt.Printf("%s\n", explainer.TableExplainer(explainedPolicies))
 }
 
+// QueryTargetPod matches targets; targets exist in only a single namespace and can't be matched by namespace
+//   label, therefore we match by exact namespace and by pod labels.
 type QueryTargetPod struct {
 	Namespace string
 	Labels    map[string]string
@@ -126,7 +128,7 @@ func QueryTargets(explainedPolicies *matcher.Policy, podPath string) {
 	utils.DoOrDie(err)
 
 	for _, pod := range pods {
-		logrus.Debugf("pod %+v:\n\n", pod)
+		fmt.Printf("pod %+v:\n\n", pod)
 
 		ingressTargets := explainedPolicies.TargetsApplyingToPod(true, pod.Namespace, pod.Labels)
 		combinedIngressTarget := matcher.CombineTargetsIgnoringPrimaryKey(pod.Namespace, metav1.LabelSelector{MatchLabels: pod.Labels}, ingressTargets)
@@ -143,8 +145,8 @@ func QueryTargets(explainedPolicies *matcher.Policy, podPath string) {
 			combinedEgresses = []*matcher.Target{combinedEgressTarget}
 		}
 
-		fmt.Printf("Combined:\n%s\n", explainer.TableExplainer(matcher.NewPolicyWithTargets(combinedIngresses, combinedEgresses)))
 		fmt.Printf("Matching targets:\n%s\n", explainer.TableExplainer(matcher.NewPolicyWithTargets(ingressTargets, egressTargets)))
+		fmt.Printf("Combined rules for pod %+v:\n%s\n\n\n", pod, explainer.TableExplainer(matcher.NewPolicyWithTargets(combinedIngresses, combinedEgresses)))
 	}
 }
 
@@ -158,7 +160,7 @@ func QueryTraffic(explainedPolicies *matcher.Policy, trafficPath string) {
 		fmt.Printf("Traffic:\n%s\n", traffic.Table())
 
 		result := explainedPolicies.IsTrafficAllowed(traffic)
-		fmt.Printf("Traffic is allowed:\n%s\n", result.Table())
+		fmt.Printf("Is traffic allowed?\n%s\n\n\n", result.Table())
 	}
 }
 
@@ -186,6 +188,6 @@ func ProbeSyntheticConnectivity(explainedPolicies *matcher.Policy, modelPath str
 
 		fmt.Printf("Egress:\n%s\n", probeResult.Egress.RenderTable())
 
-		fmt.Printf("Combined:\n%s\n", probeResult.Combined.RenderTable())
+		fmt.Printf("Combined:\n%s\n\n\n", probeResult.Combined.RenderTable())
 	}
 }

@@ -1,0 +1,26 @@
+[
+  {
+    "Namespace": "y",
+    "Labels": {
+      "pod": "a"
+    }
+  },
+  {
+    "Namespace": "y",
+    "Labels": {
+      "pod": "b"
+    }
+  },
+  {
+    "Namespace": "y",
+    "Labels": {
+      "pod": "c"
+    }
+  },
+  {
+    "Namespace": "y",
+    "Labels": {
+      "pod": "d"
+    }
+  }
+]

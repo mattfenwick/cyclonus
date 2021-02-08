@@ -17,17 +17,17 @@ go run ../cmd/cyclonus/main.go analyze \
 # run just the targets
 go run ../cmd/cyclonus/main.go analyze \
   --explain=false \
-  --use-example-policies \
-  --target-pod-path ./targets-example.json
+  --policy-path ../networkpolicies/simple-example/ \
+  --target-pod-path ./targets.json
 
 # run just the traffic
 go run ../cmd/cyclonus/main.go analyze \
   --explain=false \
-  --use-example-policies \
-  --traffic-path ./traffic-example.json
+  --policy-path ../networkpolicies/simple-example/ \
+  --traffic-path ./traffic.json
 
 # run just the probe
 go run ../cmd/cyclonus/main.go analyze \
   --explain=false \
-  --use-example-policies \
-  --probe-path ./synthetic-probe-example.json
+  --policy-path ../networkpolicies/simple-example/ \
+  --probe-path ./probe.json
