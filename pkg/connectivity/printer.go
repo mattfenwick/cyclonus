@@ -32,7 +32,7 @@ func (t *Printer) PrintSummary() {
 		passed := true
 		for _, step := range result.Steps {
 			lastKubeResult := step.LastKubeProbe()
-			comparison := NewResultTableFrom(lastKubeResult, step.SimulatedProbe.Combined)
+			comparison := NewComparisonTableFrom(lastKubeResult, step.SimulatedProbe.Combined)
 			if comparison.ValueCounts(t.IgnoreLoopback)[DifferentComparison] > 0 {
 				passed = false
 			}
@@ -49,7 +49,7 @@ func (t *Printer) PrintSummary() {
 
 		for stepNumber, step := range result.Steps {
 			for tryNumber, kubeProbe := range step.KubeProbes {
-				comparison := NewResultTableFrom(kubeProbe, step.SimulatedProbe.Combined)
+				comparison := NewComparisonTableFrom(kubeProbe, step.SimulatedProbe.Combined)
 				counts := comparison.ValueCounts(t.IgnoreLoopback)
 				table.Append([]string{"", "", intToString(stepNumber + 1), intToString(tryNumber + 1), intToString(counts[DifferentComparison]), intToString(counts[SameComparison])})
 			}
@@ -107,7 +107,7 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 
 	lastKubeProbe := stepResult.LastKubeProbe()
 
-	comparison := NewResultTableFrom(lastKubeProbe, stepResult.SimulatedProbe.Combined)
+	comparison := NewComparisonTableFrom(lastKubeProbe, stepResult.SimulatedProbe.Combined)
 	counts := comparison.ValueCounts(t.IgnoreLoopback)
 	if counts[DifferentComparison] > 0 {
 		fmt.Printf("Discrepancy found:")

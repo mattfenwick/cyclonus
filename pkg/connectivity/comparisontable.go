@@ -6,15 +6,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-type ResultTable struct {
+type ComparisonTable struct {
 	Wrapped *utils.TruthTable
 }
 
-func NewResultTable(items []string) *ResultTable {
-	return &ResultTable{Wrapped: utils.NewTruthTableFromItems(items, nil)}
+func NewComparisonTable(items []string) *ComparisonTable {
+	return &ComparisonTable{Wrapped: utils.NewTruthTableFromItems(items, nil)}
 }
 
-func NewResultTableFrom(kubeProbe *types.Table, simulatedProbe *types.Table) *ResultTable {
+func NewComparisonTableFrom(kubeProbe *types.Table, simulatedProbe *types.Table) *ComparisonTable {
 	if len(kubeProbe.Wrapped.Froms) != len(simulatedProbe.Wrapped.Froms) || len(kubeProbe.Wrapped.Tos) != len(simulatedProbe.Wrapped.Tos) {
 		panic(errors.Errorf("cannot compare tables of different dimensions"))
 	}
@@ -29,7 +29,7 @@ func NewResultTableFrom(kubeProbe *types.Table, simulatedProbe *types.Table) *Re
 		}
 	}
 
-	table := NewResultTable(kubeProbe.Wrapped.Froms)
+	table := NewComparisonTable(kubeProbe.Wrapped.Froms)
 	for _, key := range kubeProbe.Wrapped.Keys() {
 		table.Set(key.From, key.To, equalsDict(kubeProbe.Get(key.From, key.To), simulatedProbe.Get(key.From, key.To)))
 	}
@@ -49,21 +49,21 @@ func equalsDict(l map[string]types.Connectivity, r map[string]types.Connectivity
 	return true
 }
 
-func (r *ResultTable) Set(from string, to string, value bool) {
-	r.Wrapped.Set(from, to, value)
+func (c *ComparisonTable) Set(from string, to string, value bool) {
+	c.Wrapped.Set(from, to, value)
 }
 
-func (r *ResultTable) Get(from string, to string) bool {
-	return r.Wrapped.Get(from, to).(bool)
+func (c *ComparisonTable) Get(from string, to string) bool {
+	return c.Wrapped.Get(from, to).(bool)
 }
 
-func (r *ResultTable) ValueCounts(ignoreLoopback bool) map[Comparison]int {
+func (c *ComparisonTable) ValueCounts(ignoreLoopback bool) map[Comparison]int {
 	counts := map[Comparison]int{}
-	for _, key := range r.Wrapped.Keys() {
+	for _, key := range c.Wrapped.Keys() {
 		if ignoreLoopback && key.From == key.To {
 			counts[IgnoredComparison] += 1
 		} else {
-			if r.Get(key.From, key.To) {
+			if c.Get(key.From, key.To) {
 				counts[SameComparison] += 1
 			} else {
 				counts[DifferentComparison] += 1
@@ -73,8 +73,8 @@ func (r *ResultTable) ValueCounts(ignoreLoopback bool) map[Comparison]int {
 	return counts
 }
 
-func (r *ResultTable) RenderTable() string {
-	return r.Wrapped.Table("", false, func(i interface{}) string {
+func (c *ComparisonTable) RenderTable() string {
+	return c.Wrapped.Table("", false, func(i interface{}) string {
 		if i.(bool) {
 			return "."
 		} else {
