@@ -97,13 +97,13 @@ func RunGenerateCommand(args *GenerateArgs) {
 	testCases := testCaseGenerator.GenerateTestCases()
 	fmt.Printf("testing %d cases\n\n", len(testCases))
 	for i, testCase := range testCases {
-		logrus.Infof("starting test case #%d", i)
+		logrus.Infof("starting test case #%d", i+1)
 
 		result := interpreter.ExecuteTestCase(testCase)
 		utils.DoOrDie(result.Err)
 
 		printer.PrintTestCaseResult(result)
-		logrus.Infof("finished policy #%d", i)
+		logrus.Infof("finished policy #%d", i+1)
 	}
 
 	printer.PrintSummary()
