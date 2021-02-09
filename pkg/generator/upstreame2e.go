@@ -10,9 +10,9 @@ import (
 var (
 	port81 = intstr.FromInt(81)
 
-	allAvailable = &ProbeConfig{AllAvailable: true}
-	port80TCP    = &ProbeConfig{PortProtocol: &PortProtocol{Port: port80, Protocol: v1.ProtocolTCP}}
-	port81TCP    = &ProbeConfig{PortProtocol: &PortProtocol{Port: port81, Protocol: v1.ProtocolTCP}}
+	allAvailable   = &ProbeConfig{AllAvailable: true}
+	probePort80TCP = &ProbeConfig{PortProtocol: &PortProtocol{Port: port80, Protocol: v1.ProtocolTCP}}
+	probePort81TCP = &ProbeConfig{PortProtocol: &PortProtocol{Port: port81, Protocol: v1.ProtocolTCP}}
 )
 
 type UpstreamE2EGenerator struct{}
@@ -135,7 +135,7 @@ func (u *UpstreamE2EGenerator) GenerateTestCases() []*TestCase {
 			NewTestStep(allAvailable)),
 
 		NewTestCase("should allow ingress access on one named port",
-			NewTestStep(portServe81TCP, CreatePolicy(
+			NewTestStep(probePortServe81TCP, CreatePolicy(
 				&NetworkPolicy{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "allow-all",

@@ -90,8 +90,6 @@ func passFailTable(passFailCounts map[bool]map[Feature]int) string {
 	passFailString := &strings.Builder{}
 	passFailTable := tablewriter.NewWriter(passFailString)
 	passFailString.WriteString("Pass/Fail counts:\n")
-	passFailTable.SetRowLine(true)
-	passFailTable.SetAutoMergeCells(true)
 
 	passFailTable.SetHeader([]string{"Feature", "Passed", "Failed", "Failed %"})
 
@@ -118,6 +116,9 @@ func passFailTable(passFailCounts map[bool]map[Feature]int) string {
 }
 
 func percentage(i int, total int) float64 {
+	if i+total == 0 {
+		return 0
+	}
 	return math.Round(100 * float64(i) / float64(total))
 }
 

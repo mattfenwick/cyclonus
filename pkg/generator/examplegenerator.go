@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	portServe80TCP = &ProbeConfig{PortProtocol: &PortProtocol{Port: intstr.FromString("serve-80-tcp"), Protocol: tcp}}
-	portServe81TCP = &ProbeConfig{PortProtocol: &PortProtocol{Port: intstr.FromString("serve-81-tcp"), Protocol: tcp}}
+	probePortServe80TCP = &ProbeConfig{PortProtocol: &PortProtocol{Port: intstr.FromString("serve-80-tcp"), Protocol: tcp}}
+	probePortServe81TCP = &ProbeConfig{PortProtocol: &PortProtocol{Port: intstr.FromString("serve-81-tcp"), Protocol: tcp}}
 )
 
 type ExampleGenerator struct{}
@@ -36,9 +36,9 @@ func (e *ExampleGenerator) GenerateTestCases() []*TestCase {
 						PolicyTypes: []PolicyType{PolicyTypeIngress},
 					},
 				})),
-			NewTestStep(port80TCP),
-			NewTestStep(port81TCP),
-			NewTestStep(portServe80TCP),
-			NewTestStep(portServe81TCP)),
+			NewTestStep(probePort80TCP),
+			NewTestStep(probePort81TCP),
+			NewTestStep(probePortServe80TCP),
+			NewTestStep(probePortServe81TCP)),
 	}
 }

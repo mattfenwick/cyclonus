@@ -85,6 +85,8 @@ func RunGenerateCommand(args *GenerateArgs) {
 		testCaseGenerator = &generator.UpstreamE2EGenerator{}
 	case "simple-fragments":
 		testCaseGenerator = generator.NewDefaultFragmentGenerator(args.AllowDNS, args.Namespaces, zcPod.IP)
+	case "discrete":
+		testCaseGenerator = generator.NewDefaultDiscreteGenerator(args.AllowDNS, zcPod.IP)
 	case "conflicts":
 		testCaseGenerator = &generator.ConflictGenerator{
 			AllowDNS:    args.AllowDNS,

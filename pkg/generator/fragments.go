@@ -50,8 +50,9 @@ var (
 	tcp  = v1.ProtocolTCP
 	udp  = v1.ProtocolUDP
 
-	port53 = intstr.FromInt(53)
-	port80 = intstr.FromInt(80)
+	port53         = intstr.FromInt(53)
+	port80         = intstr.FromInt(80)
+	portServe81TCP = intstr.FromString("serve-81-tcp")
 )
 
 var (
@@ -94,6 +95,10 @@ var (
 		Protocol: &udp,
 		Port:     &port80,
 	}
+	namedPort81TPCP = NetworkPolicyPort{
+		Protocol: &tcp,
+		Port:     &portServe81TCP,
+	}
 )
 
 var (
@@ -110,18 +115,47 @@ func DefaultPorts() []NetworkPolicyPort {
 }
 
 var (
-	nilPodSelector         *metav1.LabelSelector
-	emptyPodSelector       = &metav1.LabelSelector{}
-	matchLabelsPodSelector = &metav1.LabelSelector{
-		MatchLabels:      map[string]string{"pod": "a"},
-		MatchExpressions: nil,
+	nilSelector                   *metav1.LabelSelector
+	emptySelector                 = &metav1.LabelSelector{}
+	podAMatchLabelsSelector       = &metav1.LabelSelector{MatchLabels: map[string]string{"pod": "a"}}
+	podCMatchLabelsSelector       = &metav1.LabelSelector{MatchLabels: map[string]string{"pod": "c"}}
+	podABMatchExpressionsSelector = &metav1.LabelSelector{
+		MatchExpressions: []metav1.LabelSelectorRequirement{
+			{
+				Key:      "pod",
+				Operator: metav1.LabelSelectorOpIn,
+				Values:   []string{"a", "b"},
+			},
+		},
+	}
+	podBCMatchExpressionsSelector = &metav1.LabelSelector{
+		MatchExpressions: []metav1.LabelSelectorRequirement{
+			{
+				Key:      "pod",
+				Operator: metav1.LabelSelectorOpIn,
+				Values:   []string{"b", "c"},
+			},
+		},
 	}
 
-	nilNSSelector   *metav1.LabelSelector
-	emptyNSSelector = &metav1.LabelSelector{}
-	matchNSSelector = &metav1.LabelSelector{
-		MatchLabels:      map[string]string{"ns": "x"},
-		MatchExpressions: nil,
+	nsXMatchLabelsSelector       = &metav1.LabelSelector{MatchLabels: map[string]string{"ns": "x"}}
+	nsXYMatchExpressionsSelector = &metav1.LabelSelector{
+		MatchExpressions: []metav1.LabelSelectorRequirement{
+			{
+				Key:      "ns",
+				Operator: metav1.LabelSelectorOpIn,
+				Values:   []string{"x", "y"},
+			},
+		},
+	}
+	nsYZMatchExpressionsSelector = &metav1.LabelSelector{
+		MatchExpressions: []metav1.LabelSelectorRequirement{
+			{
+				Key:      "ns",
+				Operator: metav1.LabelSelectorOpIn,
+				Values:   []string{"y", "z"},
+			},
+		},
 	}
 )
 
@@ -148,8 +182,8 @@ func DefaultIPBlockPeers(podIP string) []NetworkPolicyPeer {
 
 func DefaultPodPeers(podIP string) []NetworkPolicyPeer {
 	var peers []NetworkPolicyPeer
-	for _, nsSel := range []*metav1.LabelSelector{nilNSSelector, emptyNSSelector, matchNSSelector} {
-		for _, podSel := range []*metav1.LabelSelector{nilPodSelector, emptyPodSelector, matchLabelsPodSelector} {
+	for _, nsSel := range []*metav1.LabelSelector{nilSelector, emptySelector, nsXMatchLabelsSelector} {
+		for _, podSel := range []*metav1.LabelSelector{nilSelector, emptySelector, podAMatchLabelsSelector} {
 			if nsSel == nil && podSel == nil {
 				// skip this case -- this is where IPBlock needs to be non-nil
 			} else {
@@ -174,19 +208,9 @@ var (
 
 func DefaultTargets() []metav1.LabelSelector {
 	return []metav1.LabelSelector{
-		metav1.LabelSelector{},
-		metav1.LabelSelector{
-			MatchLabels: map[string]string{"pod": "a"},
-		},
-		metav1.LabelSelector{
-			MatchExpressions: []metav1.LabelSelectorRequirement{
-				{
-					Key:      "pod",
-					Operator: metav1.LabelSelectorOpIn,
-					Values:   []string{"a", "b"},
-				},
-			},
-		},
+		*emptySelector,
+		*podAMatchLabelsSelector,
+		*podABMatchExpressionsSelector,
 	}
 }
 
