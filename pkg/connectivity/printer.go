@@ -9,7 +9,9 @@ import (
 	"github.com/pkg/errors"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"math"
 	"sigs.k8s.io/yaml"
+	"sort"
 	"strings"
 )
 
@@ -27,6 +29,8 @@ func (t *Printer) PrintSummary() {
 
 	table.SetHeader([]string{"Test", "Result", "Step/Try", "Wrong", "Right", "Ignored"})
 
+	passFailCounts := map[bool]map[Feature]int{false: {}, true: {}}
+
 	for testNumber, result := range t.Results {
 		// preprocess to figure out whether it passed or failed
 		passed := true
@@ -36,6 +40,10 @@ func (t *Printer) PrintSummary() {
 			if comparison.ValueCounts(t.IgnoreLoopback)[DifferentComparison] > 0 {
 				passed = false
 			}
+		}
+
+		for f := range result.Features() {
+			passFailCounts[passed][f]++
 		}
 
 		testResult := "success"
@@ -64,6 +72,53 @@ func (t *Printer) PrintSummary() {
 
 	table.Render()
 	fmt.Println(tableString.String())
+
+	fmt.Println(passFailTable(passFailCounts))
+}
+
+type passFailRow struct {
+	Feature Feature
+	Passed  int
+	Failed  int
+}
+
+func (p *passFailRow) FailedPercentage() float64 {
+	return percentage(p.Failed, p.Passed+p.Failed)
+}
+
+func passFailTable(passFailCounts map[bool]map[Feature]int) string {
+	passFailString := &strings.Builder{}
+	passFailTable := tablewriter.NewWriter(passFailString)
+	passFailString.WriteString("Pass/Fail counts:\n")
+	passFailTable.SetRowLine(true)
+	passFailTable.SetAutoMergeCells(true)
+
+	passFailTable.SetHeader([]string{"Feature", "Passed", "Failed", "Failed %"})
+
+	var rows []*passFailRow
+	for _, feature := range AllFeatures {
+		passed := passFailCounts[true][feature]
+		failed := passFailCounts[false][feature]
+		rows = append(rows, &passFailRow{
+			Feature: feature,
+			Passed:  passed,
+			Failed:  failed,
+		})
+	}
+	sort.Slice(rows, func(i, j int) bool {
+		return rows[i].FailedPercentage() < rows[j].FailedPercentage()
+	})
+
+	for _, row := range rows {
+		passFailTable.Append([]string{string(row.Feature), intToString(row.Passed), intToString(row.Failed), fmt.Sprintf("%.0f", row.FailedPercentage())})
+	}
+
+	passFailTable.Render()
+	return passFailString.String()
+}
+
+func percentage(i int, total int) float64 {
+	return math.Round(100 * float64(i) / float64(total))
 }
 
 func intToString(i int) string {
@@ -87,6 +142,10 @@ func (t *Printer) PrintTestCaseResult(result *Result) {
 
 	for i := range result.Steps {
 		t.PrintStep(i+1, result.TestCase.Steps[i], result.Steps[i])
+	}
+	fmt.Println("features:")
+	for _, feature := range result.SortedFeatures() {
+		fmt.Printf(" - %s\n", feature)
 	}
 
 	fmt.Printf("\n\n")
