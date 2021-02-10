@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	agnhostImage = "k8s.gcr.io/e2e-test-images/agnhost:2.21"
+	agnhostImage = "k8s.gcr.io/e2e-test-images/agnhost:2.26"
 )
 
 func NewPod(ns string, name string, labels map[string]string, ip string, containers []*Container) *Pod {
@@ -158,6 +158,7 @@ func (c *Container) KubeServicePort() v1.ServicePort {
 
 func (c *Container) KubeContainer() v1.Container {
 	var cmd []string
+	var env []v1.EnvVar
 
 	switch c.Protocol {
 	case v1.ProtocolTCP:
@@ -165,7 +166,12 @@ func (c *Container) KubeContainer() v1.Container {
 	case v1.ProtocolUDP:
 		cmd = []string{"/agnhost", "serve-hostname", "--udp", "--http=false", "--port", fmt.Sprintf("%d", c.Port)}
 	case v1.ProtocolSCTP:
-		cmd = []string{"/agnhost", "netexec", "--sctp-port", fmt.Sprintf("%d", c.Port)}
+		//cmd = []string{"/agnhost", "netexec", "--sctp-port", fmt.Sprintf("%d", c.Port)}
+		env = append(env, v1.EnvVar{
+			Name:  fmt.Sprintf("SERVE_SCTP_PORT_%d", c.Port),
+			Value: "foo",
+		})
+		cmd = []string{"/agnhost", "porter"}
 	default:
 		panic(errors.Errorf("invalid protocol %s", c.Protocol))
 	}
@@ -174,6 +180,7 @@ func (c *Container) KubeContainer() v1.Container {
 		ImagePullPolicy: v1.PullIfNotPresent,
 		Image:           agnhostImage,
 		Command:         cmd,
+		Env:             env,
 		SecurityContext: &v1.SecurityContext{},
 		Ports: []v1.ContainerPort{
 			{
