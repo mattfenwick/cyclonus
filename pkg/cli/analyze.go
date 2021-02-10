@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/types"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
+	"github.com/mattfenwick/cyclonus/pkg/linter"
 	"io/ioutil"
 
 	"github.com/mattfenwick/cyclonus/pkg/explainer"
@@ -29,6 +30,9 @@ type AnalyzeArgs struct {
 
 	// explain
 	Explain bool
+
+	// lint
+	Lint bool
 
 	// traffic
 	TrafficPath string
@@ -59,6 +63,7 @@ func SetupAnalyzeCommand() *cobra.Command {
 	command.Flags().StringVar(&args.Context, "context", "", "only set if policy-source = kube; selects kube context to read policies from")
 
 	command.Flags().BoolVar(&args.Explain, "explain", true, "if true, print explanation of network policies")
+	command.Flags().BoolVar(&args.Lint, "lint", false, "if true, check policies for common problems")
 	command.Flags().StringVar(&args.TargetPodPath, "target-pod-path", "", "path to json target pod file -- json array of dicts; if empty, this step will be skipped")
 	command.Flags().StringVar(&args.TrafficPath, "traffic-path", "", "path to json traffic file, containing of a list of traffic objects; if empty, this step will be skipped")
 	command.Flags().StringVar(&args.ProbePath, "probe-path", "", "path to json model file for synthetic probe; if empty, this step will be skipped")
@@ -96,6 +101,10 @@ func RunAnalyzeCommand(args *AnalyzeArgs) {
 		ExplainPolicies(explainedPolicies)
 	}
 
+	if args.Lint {
+		Lint(kubePolicies)
+	}
+
 	if args.TargetPodPath != "" {
 		QueryTargets(explainedPolicies, args.TargetPodPath)
 	}
@@ -111,6 +120,11 @@ func RunAnalyzeCommand(args *AnalyzeArgs) {
 
 func ExplainPolicies(explainedPolicies *matcher.Policy) {
 	fmt.Printf("%s\n", explainer.TableExplainer(explainedPolicies))
+}
+
+func Lint(kubePolicies []*networkingv1.NetworkPolicy) {
+	warnings := linter.Lint(kubePolicies, map[linter.Check]bool{})
+	fmt.Println(linter.WarningsTable(warnings))
 }
 
 // QueryTargetPod matches targets; targets exist in only a single namespace and can't be matched by namespace

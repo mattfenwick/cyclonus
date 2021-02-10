@@ -3,9 +3,10 @@
 set -euo pipefail
 set -xv
 
-# run all 4
+# run all 5
 go run ../cmd/cyclonus/main.go analyze \
   --use-example-policies \
+  --lint=true \
   --target-pod-path ./targets-example.json \
   --traffic-path ./traffic-example.json \
   --probe-path ./probe-example.json
@@ -31,3 +32,9 @@ go run ../cmd/cyclonus/main.go analyze \
   --explain=false \
   --policy-path ../networkpolicies/simple-example/ \
   --probe-path ./probe.json
+
+# run just the linter
+go run ../cmd/cyclonus/main.go analyze \
+  --explain=false \
+  --lint=true \
+  --policy-path ../networkpolicies/simple-example

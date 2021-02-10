@@ -206,6 +206,44 @@ Combined:
 +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
 ```
 
+### Linter
+
+Checks network policies for common problems.
+
+```
+go run ./cmd/cyclonus/main.go analyze \
+  --explain=false \
+  --lint=true \
+  --policy-path ./networkpolicies/simple-example
+
++-----------------+------------------------------+-------------------+-----------------------------+
+| SOURCE/RESOLVED |             TYPE             |      TARGET       |       SOURCE POLICIES       |
++-----------------+------------------------------+-------------------+-----------------------------+
+| Resolved        | CheckTargetAllEgressAllowed  | namespace: y      | y/allow-all-egress-by-label |
+|                 |                              |                   |                             |
+|                 |                              | pod selector:     |                             |
+|                 |                              | matchExpressions: |                             |
+|                 |                              | - key: pod        |                             |
+|                 |                              |   operator: In    |                             |
+|                 |                              |   values:         |                             |
+|                 |                              |   - a             |                             |
+|                 |                              |   - b             |                             |
+|                 |                              |                   |                             |
++-----------------+------------------------------+-------------------+-----------------------------+
+| Resolved        | CheckDNSBlockedOnTCP         | namespace: y      | y/deny-all-egress           |
+|                 |                              |                   |                             |
+|                 |                              | pod selector:     |                             |
+|                 |                              | {}                |                             |
+|                 |                              |                   |                             |
++-----------------+------------------------------+-------------------+-----------------------------+
+| Resolved        | CheckDNSBlockedOnUDP         | namespace: y      | y/deny-all-egress           |
+|                 |                              |                   |                             |
+|                 |                              | pod selector:     |                             |
+|                 |                              | {}                |                             |
+|                 |                              |                   |                             |
++-----------------+------------------------------+-------------------+-----------------------------+
+```
+
 
 ## How to Release Binaries
 
