@@ -36,6 +36,7 @@ func (e *ExampleGenerator) GenerateTestCases() []*TestCase {
 						PolicyTypes: []PolicyType{PolicyTypeIngress},
 					},
 				})),
+			NewTestStep(allAvailable),
 			NewTestStep(probePort80TCP),
 			NewTestStep(probePort81TCP),
 			NewTestStep(probePortServe80TCP),

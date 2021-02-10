@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	v1 "k8s.io/api/core/v1"
 )
 
 type GenerateArgs struct {
@@ -21,8 +20,10 @@ type GenerateArgs struct {
 	PerturbationWaitSeconds   int
 	PodCreationTimeoutSeconds int
 	Context                   string
-	Namespaces                []string
-	Pods                      []string
+	ServerPorts               []int
+	ServerProtocols           []string
+	ServerNamespaces          []string
+	ServerPods                []string
 	CleanupNamespaces         bool
 }
 
@@ -42,8 +43,11 @@ func SetupGenerateCommand() *cobra.Command {
 	command.Flags().StringVar(&args.Mode, "mode", "", "mode used to generate network policies")
 	utils.DoOrDie(command.MarkFlagRequired("mode"))
 
-	command.Flags().StringSliceVar(&args.Namespaces, "namespaces", []string{"x", "y", "z"}, "namespaces to create/use pods in")
-	command.Flags().StringSliceVar(&args.Pods, "pods", []string{"a", "b", "c"}, "pods to create in namespaces")
+	// TODO add UDP to defaults once support has been added
+	command.Flags().StringSliceVar(&args.ServerProtocols, "server-protocol", []string{"tcp", "sctp"}, "protocols to run server on")
+	command.Flags().IntSliceVar(&args.ServerPorts, "server-port", []int{80, 81}, "ports to run server on")
+	command.Flags().StringSliceVar(&args.ServerNamespaces, "namespace", []string{"x", "y", "z"}, "namespaces to create/use pods in")
+	command.Flags().StringSliceVar(&args.ServerPods, "pod", []string{"a", "b", "c"}, "pods to create in namespaces")
 
 	command.Flags().BoolVar(&args.AllowDNS, "allow-dns", true, "if using egress, allow udp over port 53 for DNS resolution")
 	command.Flags().BoolVar(&args.Noisy, "noisy", false, "if true, print all results")
@@ -57,15 +61,14 @@ func SetupGenerateCommand() *cobra.Command {
 }
 
 func RunGenerateCommand(args *GenerateArgs) {
-	// TODO add UDP to defaults once support has been added
-	serverProtocols := []v1.Protocol{v1.ProtocolTCP}
-	serverPorts := []int{80, 81}
 	externalIPs := []string{} // "http://www.google.com"} // TODO make these be IPs?  or not?
 
 	kubernetes, err := kube.NewKubernetesForContext(args.Context)
 	utils.DoOrDie(err)
 
-	resources, err := probe.NewDefaultResources(kubernetes, args.Namespaces, args.Pods, serverPorts, serverProtocols, externalIPs, args.PodCreationTimeoutSeconds)
+	serverProtocols := parseProtocols(args.ServerProtocols)
+
+	resources, err := probe.NewDefaultResources(kubernetes, args.ServerNamespaces, args.ServerPods, args.ServerPorts, serverProtocols, externalIPs, args.PodCreationTimeoutSeconds)
 	utils.DoOrDie(err)
 	interpreter, err := connectivity.NewInterpreter(kubernetes, resources, true, 1, args.PerturbationWaitSeconds, true)
 	utils.DoOrDie(err)
@@ -84,7 +87,7 @@ func RunGenerateCommand(args *GenerateArgs) {
 	case "upstream":
 		testCaseGenerator = &generator.UpstreamE2EGenerator{}
 	case "simple-fragments":
-		testCaseGenerator = generator.NewDefaultFragmentGenerator(args.AllowDNS, args.Namespaces, zcPod.IP)
+		testCaseGenerator = generator.NewDefaultFragmentGenerator(args.AllowDNS, args.ServerNamespaces, zcPod.IP)
 	case "discrete":
 		testCaseGenerator = generator.NewDefaultDiscreteGenerator(args.AllowDNS, zcPod.IP)
 	case "conflicts":
@@ -111,7 +114,7 @@ func RunGenerateCommand(args *GenerateArgs) {
 	printer.PrintSummary()
 
 	if args.CleanupNamespaces {
-		for _, ns := range args.Namespaces {
+		for _, ns := range args.ServerNamespaces {
 			logrus.Infof("cleaning up namespace %s", ns)
 			err = kubernetes.DeleteNamespace(ns)
 			if err != nil {
