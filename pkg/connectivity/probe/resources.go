@@ -1,8 +1,7 @@
-package types
+package probe
 
 import (
 	"github.com/mattfenwick/cyclonus/pkg/kube"
-	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -166,7 +165,7 @@ func (r *Resources) VerifyClusterState(kubernetes *kube.Kubernetes) error {
 	// 1. pods: labels, ips, containers, ports
 	actualPods := map[string]v1.Pod{}
 	for _, kubePod := range kubePods {
-		actualPods[utils.NewPodString(kubePod.Namespace, kubePod.Name).String()] = kubePod
+		actualPods[NewPodString(kubePod.Namespace, kubePod.Name).String()] = kubePod
 	}
 	// are we missing any pods?
 	for _, pod := range r.Pods {

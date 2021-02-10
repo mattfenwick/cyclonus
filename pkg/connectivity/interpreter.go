@@ -2,7 +2,7 @@ package connectivity
 
 import (
 	"fmt"
-	"github.com/mattfenwick/cyclonus/pkg/connectivity/types"
+	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
@@ -18,14 +18,14 @@ const (
 
 type Interpreter struct {
 	kubernetes                       *kube.Kubernetes
-	resources                        *types.Resources
+	resources                        *probe.Resources
 	kubeProbeRetries                 int
 	perturbationWaitDuration         time.Duration
 	resetClusterBeforeTestCase       bool
 	verifyClusterStateBeforeTestCase bool
 }
 
-func NewInterpreter(kubernetes *kube.Kubernetes, resources *types.Resources, resetClusterBeforeTestCase bool, kubeProbeRetries int, perturbationWaitSeconds int, verifyClusterStateBeforeTestCase bool) (*Interpreter, error) {
+func NewInterpreter(kubernetes *kube.Kubernetes, resources *probe.Resources, resetClusterBeforeTestCase bool, kubeProbeRetries int, perturbationWaitSeconds int, verifyClusterStateBeforeTestCase bool) (*Interpreter, error) {
 	fmt.Printf("resources:\n%s\n", resources.RenderTable())
 
 	return &Interpreter{
@@ -103,24 +103,24 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 	return result
 }
 
-func (t *Interpreter) runProbe(testCaseState *TestCaseState, probe *generator.ProbeConfig) *StepResult {
+func (t *Interpreter) runProbe(testCaseState *TestCaseState, probeConfig *generator.ProbeConfig) *StepResult {
 	parsedPolicy := matcher.BuildNetworkPolicies(testCaseState.Policies)
 
-	logrus.Infof("running probe %+v", probe)
+	logrus.Infof("running probe %+v", probeConfig)
 
-	kubeRunner := types.NewKubeProbeRunner(t.kubernetes, defaultWorkersCount)
+	kubeRunner := probe.NewKubeProbeRunner(t.kubernetes, defaultWorkersCount)
 
-	simRunner := types.NewSimulatedProbeRunner(parsedPolicy)
+	simRunner := probe.NewSimulatedProbeRunner(parsedPolicy)
 
 	stepResult := &StepResult{
-		SimulatedProbe: simRunner.RunProbeForConfig(probe, testCaseState.Resources),
+		SimulatedProbe: simRunner.RunProbeForConfig(probeConfig, testCaseState.Resources),
 		Policy:         parsedPolicy,
 		KubePolicies:   append([]*networkingv1.NetworkPolicy{}, testCaseState.Policies...), // this looks weird, but just making a new copy to avoid accidentally mutating it elsewhere
 	}
 
 	for i := 0; i <= t.kubeProbeRetries; i++ {
 		logrus.Infof("running kube probe on try %d", i+1)
-		kubeProbe := kubeRunner.RunProbeForConfig(probe, testCaseState.Resources)
+		kubeProbe := kubeRunner.RunProbeForConfig(probeConfig, testCaseState.Resources)
 		resultTable := NewComparisonTableFrom(kubeProbe.Combined, stepResult.SimulatedProbe.Combined)
 		stepResult.KubeProbes = append(stepResult.KubeProbes, kubeProbe.Combined)
 		// no differences between synthetic and kube probes?  then we can stop

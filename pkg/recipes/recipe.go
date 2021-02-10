@@ -2,7 +2,7 @@ package recipes
 
 import (
 	"fmt"
-	"github.com/mattfenwick/cyclonus/pkg/connectivity/types"
+	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	"github.com/mattfenwick/cyclonus/pkg/explainer"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
@@ -14,7 +14,7 @@ import (
 
 type Recipe struct {
 	PolicyYamls []string
-	Resources   *types.Resources
+	Resources   *probe.Resources
 	Protocol    v1.Protocol
 	Port        int
 }
@@ -30,8 +30,8 @@ func (r *Recipe) Policies() []*networkingv1.NetworkPolicy {
 	return policies
 }
 
-func (r *Recipe) RunProbe() *types.Probe {
-	runner := types.NewSimulatedProbeRunner(matcher.BuildNetworkPolicies(r.Policies()))
+func (r *Recipe) RunProbe() *probe.Probe {
+	runner := probe.NewSimulatedProbeRunner(matcher.BuildNetworkPolicies(r.Policies()))
 	return runner.RunProbeFixedPortProtocol(r.Resources, intstr.FromInt(r.Port), r.Protocol)
 }
 

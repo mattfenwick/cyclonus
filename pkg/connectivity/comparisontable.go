@@ -1,20 +1,19 @@
 package connectivity
 
 import (
-	"github.com/mattfenwick/cyclonus/pkg/connectivity/types"
-	"github.com/mattfenwick/cyclonus/pkg/utils"
+	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	"github.com/pkg/errors"
 )
 
 type ComparisonTable struct {
-	Wrapped *utils.TruthTable
+	Wrapped *probe.TruthTable
 }
 
 func NewComparisonTable(items []string) *ComparisonTable {
-	return &ComparisonTable{Wrapped: utils.NewTruthTableFromItems(items, nil)}
+	return &ComparisonTable{Wrapped: probe.NewTruthTableFromItems(items, nil)}
 }
 
-func NewComparisonTableFrom(kubeProbe *types.Table, simulatedProbe *types.Table) *ComparisonTable {
+func NewComparisonTableFrom(kubeProbe *probe.Table, simulatedProbe *probe.Table) *ComparisonTable {
 	if len(kubeProbe.Wrapped.Froms) != len(simulatedProbe.Wrapped.Froms) || len(kubeProbe.Wrapped.Tos) != len(simulatedProbe.Wrapped.Tos) {
 		panic(errors.Errorf("cannot compare tables of different dimensions"))
 	}
@@ -37,7 +36,7 @@ func NewComparisonTableFrom(kubeProbe *types.Table, simulatedProbe *types.Table)
 	return table
 }
 
-func equalsDict(l map[string]types.Connectivity, r map[string]types.Connectivity) bool {
+func equalsDict(l map[string]probe.Connectivity, r map[string]probe.Connectivity) bool {
 	if len(l) != len(r) {
 		return false
 	}

@@ -3,7 +3,7 @@ package cli
 import (
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity"
-	"github.com/mattfenwick/cyclonus/pkg/connectivity/types"
+	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
@@ -65,7 +65,7 @@ func RunGenerateCommand(args *GenerateArgs) {
 	kubernetes, err := kube.NewKubernetesForContext(args.Context)
 	utils.DoOrDie(err)
 
-	resources, err := types.NewDefaultResources(kubernetes, args.Namespaces, args.Pods, serverPorts, serverProtocols, externalIPs, args.PodCreationTimeoutSeconds)
+	resources, err := probe.NewDefaultResources(kubernetes, args.Namespaces, args.Pods, serverPorts, serverProtocols, externalIPs, args.PodCreationTimeoutSeconds)
 	utils.DoOrDie(err)
 	interpreter, err := connectivity.NewInterpreter(kubernetes, resources, true, 1, args.PerturbationWaitSeconds, true)
 	utils.DoOrDie(err)

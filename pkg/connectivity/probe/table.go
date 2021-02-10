@@ -1,17 +1,16 @@
-package types
+package probe
 
 import (
-	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"sort"
 	"strings"
 )
 
 type Table struct {
-	Wrapped *utils.TruthTable
+	Wrapped *TruthTable
 }
 
 func NewTable(items []string) *Table {
-	return &Table{Wrapped: utils.NewTruthTableFromItems(items, func() interface{} {
+	return &Table{Wrapped: NewTruthTableFromItems(items, func() interface{} {
 		return map[string]Connectivity{}
 	})}
 }

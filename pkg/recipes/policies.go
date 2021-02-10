@@ -1,7 +1,7 @@
 package recipes
 
 import (
-	. "github.com/mattfenwick/cyclonus/pkg/connectivity/types"
+	. "github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	v1 "k8s.io/api/core/v1"
 )
 

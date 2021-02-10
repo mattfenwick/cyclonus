@@ -3,7 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/mattfenwick/cyclonus/pkg/connectivity/types"
+	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/linter"
 	"io/ioutil"
@@ -179,7 +179,7 @@ func QueryTraffic(explainedPolicies *matcher.Policy, trafficPath string) {
 }
 
 type SyntheticProbeConnectivityConfig struct {
-	Resources *types.Resources
+	Resources *probe.Resources
 	Probes    []*generator.PortProtocol
 }
 
@@ -191,12 +191,12 @@ func ProbeSyntheticConnectivity(explainedPolicies *matcher.Policy, modelPath str
 	utils.DoOrDie(errors.Wrapf(err, "unable to unmarshal json"))
 
 	// run probes
-	for _, probe := range config.Probes {
-		probeResult := types.
+	for _, probeConfig := range config.Probes {
+		probeResult := probe.
 			NewSimulatedProbeRunner(explainedPolicies).
-			RunProbeFixedPortProtocol(config.Resources, probe.Port, probe.Protocol)
+			RunProbeFixedPortProtocol(config.Resources, probeConfig.Port, probeConfig.Protocol)
 
-		logrus.Infof("probe on port %s, protocol %s", probe.Port.String(), probe.Protocol)
+		logrus.Infof("probe on port %s, protocol %s", probeConfig.Port.String(), probeConfig.Protocol)
 
 		fmt.Printf("Ingress:\n%s\n", probeResult.Ingress.RenderTable())
 

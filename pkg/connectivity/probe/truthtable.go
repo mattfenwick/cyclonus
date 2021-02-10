@@ -1,4 +1,4 @@
-package utils
+package probe
 
 import (
 	"github.com/olekukonko/tablewriter"

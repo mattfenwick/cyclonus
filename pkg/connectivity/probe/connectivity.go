@@ -1,4 +1,4 @@
-package types
+package probe
 
 import "github.com/pkg/errors"
 

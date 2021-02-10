@@ -1,8 +1,7 @@
-package types
+package probe
 
 import (
 	"fmt"
-	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -129,8 +128,8 @@ func (p *Pod) SetLabels(labels map[string]string) *Pod {
 	}
 }
 
-func (p *Pod) PodString() utils.PodString {
-	return utils.NewPodString(p.Namespace, p.Name)
+func (p *Pod) PodString() PodString {
+	return NewPodString(p.Namespace, p.Name)
 }
 
 type Container struct {
