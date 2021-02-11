@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"fmt"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -264,7 +265,7 @@ func (c *ConflictGenerator) NetworkPolicies(source *NetpolTarget, dest *NetpolTa
 	}
 
 	var testCases []*TestCase
-	for _, slice := range policySlices {
+	for testCaseIndex, slice := range policySlices {
 		actions := make([]*Action, len(slice))
 		hasEgress := false
 		for i, pol := range slice {
@@ -276,7 +277,7 @@ func (c *ConflictGenerator) NetworkPolicies(source *NetpolTarget, dest *NetpolTa
 		if hasEgress && c.AllowDNS {
 			actions = append(actions, CreatePolicy(AllowDNSPolicy(source).NetworkPolicy()))
 		}
-		testCases = append(testCases, NewSingleStepTestCase("TODO", allAvailable, actions...))
+		testCases = append(testCases, NewSingleStepTestCase(fmt.Sprintf("allow/deny conflict %d", testCaseIndex+1), allAvailable, actions...))
 	}
 
 	return testCases
