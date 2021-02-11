@@ -29,7 +29,8 @@ func (t *Printer) PrintSummary() {
 
 	table.SetHeader([]string{"Test", "Result", "Step/Try", "Wrong", "Right", "Ignored"})
 
-	passFailCounts := map[bool]map[Feature]int{false: {}, true: {}}
+	passedTotal, failedTotal := 0, 0
+	passFailCounts := map[bool]map[string]int{false: {}, true: {}}
 
 	for testNumber, result := range t.Results {
 		// preprocess to figure out whether it passed or failed
@@ -42,14 +43,19 @@ func (t *Printer) PrintSummary() {
 			}
 		}
 
-		for f := range result.Features() {
-			passFailCounts[passed][f]++
+		for _, feature := range result.TestCase.GetFeatures().Strings() {
+			passFailCounts[passed][feature]++
 		}
 
-		testResult := "success"
-		if !passed {
-			testResult = "failure"
+		var testResult string
+		if passed {
+			testResult = "passed"
+			passedTotal++
+		} else {
+			testResult = "failed"
+			failedTotal++
 		}
+
 		table.Append([]string{
 			fmt.Sprintf("%d: %s", testNumber+1, result.TestCase.Description),
 			testResult, "", "", "", "",
@@ -73,11 +79,11 @@ func (t *Printer) PrintSummary() {
 	table.Render()
 	fmt.Println(tableString.String())
 
-	fmt.Println(passFailTable(passFailCounts))
+	fmt.Println(passFailTable(passFailCounts, passedTotal, failedTotal))
 }
 
 type passFailRow struct {
-	Feature Feature
+	Feature string
 	Passed  int
 	Failed  int
 }
@@ -86,29 +92,35 @@ func (p *passFailRow) FailedPercentage() float64 {
 	return percentage(p.Failed, p.Passed+p.Failed)
 }
 
-func passFailTable(passFailCounts map[bool]map[Feature]int) string {
+func passFailTable(passFailCounts map[bool]map[string]int, passedTotal int, failedTotal int) string {
 	passFailString := &strings.Builder{}
 	passFailTable := tablewriter.NewWriter(passFailString)
 	passFailString.WriteString("Pass/Fail counts:\n")
 
 	passFailTable.SetHeader([]string{"Feature", "Passed", "Failed", "Failed %"})
 
+	allFeatures := map[string]bool{}
+	for _, t := range []bool{false, true} {
+		for f := range passFailCounts[t] {
+			allFeatures[f] = true
+		}
+	}
+
 	var rows []*passFailRow
-	for _, feature := range AllFeatures {
-		passed := passFailCounts[true][feature]
-		failed := passFailCounts[false][feature]
+	for feature := range allFeatures {
 		rows = append(rows, &passFailRow{
 			Feature: feature,
-			Passed:  passed,
-			Failed:  failed,
+			Passed:  passFailCounts[true][feature],
+			Failed:  passFailCounts[false][feature],
 		})
 	}
 	sort.Slice(rows, func(i, j int) bool {
 		return rows[i].FailedPercentage() < rows[j].FailedPercentage()
 	})
+	rows = append(rows, &passFailRow{Feature: "Total", Passed: passedTotal, Failed: failedTotal})
 
 	for _, row := range rows {
-		passFailTable.Append([]string{string(row.Feature), intToString(row.Passed), intToString(row.Failed), fmt.Sprintf("%.0f", row.FailedPercentage())})
+		passFailTable.Append([]string{row.Feature, intToString(row.Passed), intToString(row.Failed), fmt.Sprintf("%.0f", row.FailedPercentage())})
 	}
 
 	passFailTable.Render()
@@ -145,7 +157,7 @@ func (t *Printer) PrintTestCaseResult(result *Result) {
 		t.PrintStep(i+1, result.TestCase.Steps[i], result.Steps[i])
 	}
 	fmt.Println("features:")
-	for _, feature := range result.SortedFeatures() {
+	for _, feature := range result.TestCase.GetFeatures().Strings() {
 		fmt.Printf(" - %s\n", feature)
 	}
 

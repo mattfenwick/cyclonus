@@ -10,7 +10,7 @@ func NewDefaultFragmentGenerator(allowDNS bool, namespaces []string, podIP strin
 	return &FragmentGenerator{
 		AllowDNS:         allowDNS,
 		Ports:            DefaultPorts(),
-		PodPeers:         DefaultPodPeers(podIP),
+		PodPeers:         DefaultPeers(podIP),
 		Targets:          DefaultTargets(),
 		Namespaces:       namespaces,
 		TypicalPorts:     TypicalPorts,
@@ -87,14 +87,14 @@ func (g *FragmentGenerator) RuleSlices() [][]*Rule {
 	// 0 length
 	slices := [][]*Rule{nil, emptySliceOfRules}
 	// 1 length
-	for _, ingress := range g.Rules() {
-		slices = append(slices, []*Rule{ingress})
+	for _, rule := range g.Rules() {
+		slices = append(slices, []*Rule{rule})
 	}
 	// 2 length
-	for i, ing1 := range g.Rules() {
-		for j, ing2 := range g.Rules() {
+	for i, rule1 := range g.Rules() {
+		for j, rule2 := range g.Rules() {
 			if i < j {
-				slices = append(slices, []*Rule{ing1, ing2})
+				slices = append(slices, []*Rule{rule1, rule2})
 			}
 		}
 	}

@@ -2,10 +2,8 @@ package generator
 
 import (
 	"fmt"
-	v1 "k8s.io/api/core/v1"
 	. "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 /*
@@ -44,16 +42,6 @@ Test cases:
 2 policies with both ingress and egress
 ```
 */
-
-var (
-	sctp = v1.ProtocolSCTP
-	tcp  = v1.ProtocolTCP
-	udp  = v1.ProtocolUDP
-
-	port53         = intstr.FromInt(53)
-	port80         = intstr.FromInt(80)
-	portServe81TCP = intstr.FromString("serve-81-tcp")
-)
 
 var (
 	AllowDNSRule = &Rule{
@@ -180,7 +168,7 @@ func DefaultIPBlockPeers(podIP string) []NetworkPolicyPeer {
 	}
 }
 
-func DefaultPodPeers(podIP string) []NetworkPolicyPeer {
+func DefaultPodPeers() []NetworkPolicyPeer {
 	var peers []NetworkPolicyPeer
 	for _, nsSel := range []*metav1.LabelSelector{nilSelector, emptySelector, nsXMatchLabelsSelector} {
 		for _, podSel := range []*metav1.LabelSelector{nilSelector, emptySelector, podAMatchLabelsSelector} {
@@ -195,7 +183,11 @@ func DefaultPodPeers(podIP string) []NetworkPolicyPeer {
 			}
 		}
 	}
-	return append(peers, DefaultIPBlockPeers(podIP)...)
+	return peers
+}
+
+func DefaultPeers(podIP string) []NetworkPolicyPeer {
+	return append(DefaultPodPeers(), DefaultIPBlockPeers(podIP)...)
 }
 
 var (

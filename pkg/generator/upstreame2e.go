@@ -1,18 +1,9 @@
 package generator
 
 import (
-	v1 "k8s.io/api/core/v1"
 	. "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-)
-
-var (
-	port81 = intstr.FromInt(81)
-
-	allAvailable   = &ProbeConfig{AllAvailable: true}
-	probePort80TCP = &ProbeConfig{PortProtocol: &PortProtocol{Port: port80, Protocol: v1.ProtocolTCP}}
-	probePort81TCP = &ProbeConfig{PortProtocol: &PortProtocol{Port: port81, Protocol: v1.ProtocolTCP}}
 )
 
 type UpstreamE2EGenerator struct{}

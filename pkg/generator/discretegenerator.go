@@ -10,7 +10,7 @@ func NewDefaultDiscreteGenerator(allowDNS bool, podIP string) *DiscreteGenerator
 	return &DiscreteGenerator{
 		AllowDNS:   allowDNS,
 		Ports:      []NetworkPolicyPort{emptyPort, sctpOnAnyPort, implicitTCPOnPort80, explicitUDPOnPort80, namedPort81TPCP},
-		PodPeers:   DefaultPodPeers(podIP),
+		PodPeers:   DefaultPeers(podIP),
 		Targets:    DefaultTargets(),
 		Namespaces: DefaultNamespaces(),
 		// ingress

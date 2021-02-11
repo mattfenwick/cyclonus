@@ -6,11 +6,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-var (
-	probePortServe80TCP = &ProbeConfig{PortProtocol: &PortProtocol{Port: intstr.FromString("serve-80-tcp"), Protocol: tcp}}
-	probePortServe81TCP = &ProbeConfig{PortProtocol: &PortProtocol{Port: intstr.FromString("serve-81-tcp"), Protocol: tcp}}
-)
-
 type ExampleGenerator struct{}
 
 func (e *ExampleGenerator) GenerateTestCases() []*TestCase {
