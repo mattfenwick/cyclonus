@@ -81,7 +81,7 @@ func RunAnalyzeCommand(args *AnalyzeArgs) {
 	if len(namespaces) > 0 {
 		kubeClient, err := kube.NewKubernetesForContext(args.Context)
 		utils.DoOrDie(err)
-		kubePolicies, err = readPoliciesFromKube(kubeClient, args.Namespaces)
+		kubePolicies, err = readPoliciesFromKube(kubeClient, namespaces)
 	}
 	// 2. read policies from file
 	if args.PolicyPath != "" {
