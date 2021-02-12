@@ -7,62 +7,57 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-type ActionFeature string
-
 const (
-	ActionFeatureCreatePolicy       ActionFeature = "ActionCreatePolicy"
-	ActionFeatureDeletePolicy       ActionFeature = "ActionDeletePolicy"
-	ActionFeatureReadPolicies       ActionFeature = "ActionReadPolicies"
-	ActionFeatureSetPodLabels       ActionFeature = "ActionSetPodLabels"
-	ActionFeatureSetNamespaceLabels ActionFeature = "ActionSetNamespaceLabels"
-	ActionFeatureUpdatePolicy       ActionFeature = "ActionUpdatePolicy"
+	ActionFeatureCreatePolicy       = "action: create policy"
+	ActionFeatureDeletePolicy       = "action: delete policy"
+	ActionFeatureReadPolicies       = "action: read policies"
+	ActionFeatureSetPodLabels       = "action: set pod labels"
+	ActionFeatureSetNamespaceLabels = "action: set namespace labels"
+	ActionFeatureUpdatePolicy       = "action: update policy"
 )
 
-type PeerFeature string
-
 const (
-	PeerFeatureEmptyRuleSlice PeerFeature = "PeerEmptyRuleSlice"
+	RuleFeatureSliceEmpty     = "0 rules"
+	RuleFeatureSliceSize1     = "1 rule"
+	RuleFeatureSliceSize2Plus = "2+ rules"
 
-	PeerFeaturePortSliceEmpty     PeerFeature = "PeerPortSliceEmpty"
-	PeerFeaturePortSliceSize1     PeerFeature = "PeerPortSliceSize1"
-	PeerFeaturePortSliceSize2Plus PeerFeature = "PeerPortSliceSize2Plus"
-	PeerFeatureNumberedPort       PeerFeature = "PeerNumberedPort"
-	PeerFeatureNamedPort          PeerFeature = "PeerNamedPort"
-	PeerFeatureNilPort            PeerFeature = "PeerNilPort"
-	PeerFeatureNilProtocol        PeerFeature = "PeerNilProtocol"
-	PeerFeatureTCPProtocol        PeerFeature = "PeerTCPProtocol"
-	PeerFeatureUDPProtocol        PeerFeature = "PeerUDPProtocol"
-	PeerFeatureSCTPProtocol       PeerFeature = "PeerSCTPProtocol"
+	PeerFeaturePortSliceEmpty     = "0 port/protocols"
+	PeerFeaturePortSliceSize1     = "1 port/protocol"
+	PeerFeaturePortSliceSize2Plus = "2+ port/protocols"
+	PeerFeatureNumberedPort       = "numbered port"
+	PeerFeatureNamedPort          = "named port"
+	PeerFeatureNilPort            = "nil port"
+	PeerFeatureNilProtocol        = "nil protocol"
+	PeerFeatureTCPProtocol        = "TCP"
+	PeerFeatureUDPProtocol        = "UDP"
+	PeerFeatureSCTPProtocol       = "SCTP"
 
-	PeerFeatureEmptyPeerSlice                    PeerFeature = "PeerEmptyPeerSlice"
-	PeerFeatureIPBlock                           PeerFeature = "PeerIPBlock"
-	PeerFeatureIPBlockEmptyExcept                PeerFeature = "PeerIPBlockEmptyExcept"
-	PeerFeatureIPBlockNonemptyExcept             PeerFeature = "PeerIPBlockNonemptyExcept"
-	PeerFeaturePodSelectorEmpty                  PeerFeature = "PeerPodSelectorEmpty"
-	PeerFeaturePodSelectorMatchLabels            PeerFeature = "PeerPodSelectorMatchLabels"
-	PeerFeaturePodSelectorMatchExpressions       PeerFeature = "PeerPodSelectorMatchExpressions"
-	PeerFeaturePodSelectorNil                    PeerFeature = "PeerPodSelectorNil"
-	PeerFeatureNamespaceSelectorEmpty            PeerFeature = "PeerNamespaceSelectorEmpty"
-	PeerFeatureNamespaceSelectorMatchLabels      PeerFeature = "PeerNamespaceSelectorMatchLabels"
-	PeerFeatureNamespaceSelectorMatchExpressions PeerFeature = "PeerNamespaceSelectorMatchExpressions"
-	PeerFeatureNamespaceSelectorNil              PeerFeature = "PeerNamespaceSelectorNil"
+	PeerFeaturePeerSliceEmpty                    = "0 peers"
+	PeerFeaturePeerSliceSize1                    = "1 peer"
+	PeerFeaturePeerSliceSize2Plus                = "2+ peers"
+	PeerFeatureIPBlockEmptyExcept                = "IPBlock (no except)"
+	PeerFeatureIPBlockNonemptyExcept             = "IPBlock with except"
+	PeerFeaturePodSelectorNil                    = "peer pod selector nil"
+	PeerFeaturePodSelectorEmpty                  = "peer pod selector empty"
+	PeerFeaturePodSelectorMatchLabels            = "peer pod selector match labels"
+	PeerFeaturePodSelectorMatchExpressions       = "peer pod selector match expression"
+	PeerFeatureNamespaceSelectorNil              = "peer namespace selector nil"
+	PeerFeatureNamespaceSelectorEmpty            = "peer namespace selector empty"
+	PeerFeatureNamespaceSelectorMatchLabels      = "peer namespace selector match labels"
+	PeerFeatureNamespaceSelectorMatchExpressions = "peer namespace selector match expression"
 )
 
-type TargetFeature string
-
 const (
-	TargetFeatureNamespaceEmpty              TargetFeature = "TargetNamespaceEmpty"
-	TargetFeaturePodSelectorEmpty            TargetFeature = "TargetPodSelectorEmpty"
-	TargetFeaturePodSelectorMatchLabels      TargetFeature = "TargetPodSelectorMatchLabels"
-	TargetFeaturePodSelectorMatchExpressions TargetFeature = "TargetPodSelectorMatchExpressions"
+	TargetFeatureNamespaceEmpty              = "target: empty namespace"
+	TargetFeaturePodSelectorEmpty            = "target: empty pod selector"
+	TargetFeaturePodSelectorMatchLabels      = "target: pod selector match labels"
+	TargetFeaturePodSelectorMatchExpressions = "target: pod selector match expression"
 )
 
-type PolicyFeature string
-
 const (
-	PolicyFeatureIngress          PolicyFeature = "PolicyIngress"
-	PolicyFeatureEgress           PolicyFeature = "PolicyEgress"
-	PolicyFeatureIngressAndEgress PolicyFeature = "PolicyIngressAndEgress"
+	PolicyFeatureIngress          = "policy with ingress"
+	PolicyFeatureEgress           = "policy with egress"
+	PolicyFeatureIngressAndEgress = "policy with both ingress and egress"
 )
 
 /*
@@ -81,40 +76,33 @@ const (
 */
 
 type Features struct {
-	Policy  map[PolicyFeature]bool
-	Target  map[TargetFeature]bool
-	Action  map[ActionFeature]bool
-	Ingress map[PeerFeature]bool
-	Egress  map[PeerFeature]bool
+	General map[string]bool
+	Ingress map[string]bool
+	Egress  map[string]bool
 }
 
 func (f *Features) Strings() []string {
 	var strs []string
-	for feature := range f.Policy {
-		strs = append(strs, string(feature))
-	}
-	for feature := range f.Target {
-		strs = append(strs, string(feature))
-	}
-	for feature := range f.Action {
-		strs = append(strs, string(feature))
+	for feature := range f.General {
+		strs = append(strs, feature)
 	}
 	for feature := range f.Ingress {
-		strs = append(strs, "Ingress"+string(feature))
+		strs = append(strs, "Ingress: "+feature)
 	}
 	for feature := range f.Egress {
-		strs = append(strs, "Egress"+string(feature))
+		strs = append(strs, "Egress: "+feature)
 	}
 	return strs
 }
 
 func (f *Features) Combine(other *Features) *Features {
+	if other == nil {
+		return f
+	}
 	return &Features{
-		Policy:  mergePolicyFeatureSets(f.Policy, other.Policy),
-		Target:  mergeTargetFeatureSets(f.Target, other.Target),
-		Action:  mergeActionFeatureSets(f.Action, other.Action),
-		Ingress: mergePeerFeatureSets(f.Ingress, other.Ingress),
-		Egress:  mergePeerFeatureSets(f.Egress, other.Egress),
+		General: mergeSets(f.General, other.General),
+		Ingress: mergeSets(f.Ingress, other.Ingress),
+		Egress:  mergeSets(f.Egress, other.Egress),
 	}
 }
 
@@ -161,118 +149,126 @@ var AllFeatures = []string{
 
 func GetFeaturesForPolicy(policy *networkingv1.NetworkPolicy) *Features {
 	spec := policy.Spec
-	targetFeatures := targetPodSelectorFeatures(spec.PodSelector)
+	general := targetPodSelectorFeatures(spec.PodSelector)
 	if policy.Namespace == "" {
-		targetFeatures[TargetFeatureNamespaceEmpty] = true
+		general[TargetFeatureNamespaceEmpty] = true
 	}
 
-	ingress := map[PeerFeature]bool{}
-	egress := map[PeerFeature]bool{}
+	ingress := map[string]bool{}
+	egress := map[string]bool{}
 	hasIngress, hasEegress := false, false
 	for _, policyType := range spec.PolicyTypes {
 		if policyType == networkingv1.PolicyTypeIngress {
 			hasIngress = true
-			ingress = mergePeerFeatureSets(ingress, ingressFeatures(spec.Ingress))
+			ingress = mergeSets(ingress, ingressFeatures(spec.Ingress))
 		} else if policyType == networkingv1.PolicyTypeEgress {
 			hasEegress = true
-			egress = mergePeerFeatureSets(egress, egressFeatures(spec.Egress))
+			egress = mergeSets(egress, egressFeatures(spec.Egress))
 		}
 	}
-	policyFeatures := map[PolicyFeature]bool{}
 	if hasIngress {
-		policyFeatures[PolicyFeatureIngress] = true
+		general[PolicyFeatureIngress] = true
 	}
 	if hasEegress {
-		policyFeatures[PolicyFeatureEgress] = true
+		general[PolicyFeatureEgress] = true
 	}
 	if hasIngress && hasEegress {
-		policyFeatures[PolicyFeatureIngressAndEgress] = true
+		general[PolicyFeatureIngressAndEgress] = true
 	}
 	return &Features{
-		Policy:  policyFeatures,
-		Target:  targetFeatures,
-		Action:  nil,
+		General: general,
 		Ingress: ingress,
 		Egress:  egress,
 	}
 }
 
-func ingressFeatures(rules []networkingv1.NetworkPolicyIngressRule) map[PeerFeature]bool {
-	features := map[PeerFeature]bool{}
-	if len(rules) == 0 {
-		features[PeerFeatureEmptyRuleSlice] = true
-	} else {
-		for _, rule := range rules {
-			features = mergePeerFeatureSets(features, peerFeatures(rule.From))
-			features = mergePeerFeatureSets(features, portFeatures(rule.Ports))
-		}
+func ingressFeatures(rules []networkingv1.NetworkPolicyIngressRule) map[string]bool {
+	features := map[string]bool{}
+	switch len(rules) {
+	case 0:
+		features[RuleFeatureSliceEmpty] = true
+	case 1:
+		features[RuleFeatureSliceSize1] = true
+	default:
+		features[RuleFeatureSliceSize2Plus] = true
+	}
+	for _, rule := range rules {
+		features = mergeSets(features, peerFeatures(rule.From))
+		features = mergeSets(features, portFeatures(rule.Ports))
 	}
 	return features
 }
 
-func egressFeatures(rules []networkingv1.NetworkPolicyEgressRule) map[PeerFeature]bool {
-	features := map[PeerFeature]bool{}
-	if len(rules) == 0 {
-		features[PeerFeatureEmptyRuleSlice] = true
-	} else {
-		for _, rule := range rules {
-			features = mergePeerFeatureSets(features, peerFeatures(rule.To))
-			features = mergePeerFeatureSets(features, portFeatures(rule.Ports))
-		}
+func egressFeatures(rules []networkingv1.NetworkPolicyEgressRule) map[string]bool {
+	features := map[string]bool{}
+	switch len(rules) {
+	case 0:
+		features[RuleFeatureSliceEmpty] = true
+	case 1:
+		features[RuleFeatureSliceSize1] = true
+	default:
+		features[RuleFeatureSliceSize2Plus] = true
+	}
+	for _, rule := range rules {
+		features = mergeSets(features, peerFeatures(rule.To))
+		features = mergeSets(features, portFeatures(rule.Ports))
 	}
 	return features
 }
 
-func peerFeatures(peers []networkingv1.NetworkPolicyPeer) map[PeerFeature]bool {
-	features := map[PeerFeature]bool{}
-	if len(peers) == 0 {
-		features[PeerFeatureEmptyPeerSlice] = true
-	} else {
-		for _, peer := range peers {
-			if peer.IPBlock != nil {
-				features[PeerFeatureIPBlock] = true
-				if len(peer.IPBlock.Except) == 0 {
-					features[PeerFeatureIPBlockEmptyExcept] = true
-				} else {
-					features[PeerFeatureIPBlockNonemptyExcept] = true
+func peerFeatures(peers []networkingv1.NetworkPolicyPeer) map[string]bool {
+	features := map[string]bool{}
+	switch len(peers) {
+	case 0:
+		features[PeerFeaturePeerSliceEmpty] = true
+	case 1:
+		features[PeerFeaturePeerSliceSize1] = true
+	default:
+		features[PeerFeaturePeerSliceSize2Plus] = true
+	}
+	for _, peer := range peers {
+		if peer.IPBlock != nil {
+			if len(peer.IPBlock.Except) == 0 {
+				features[PeerFeatureIPBlockEmptyExcept] = true
+			} else {
+				features[PeerFeatureIPBlockNonemptyExcept] = true
+			}
+		} else {
+			if peer.PodSelector != nil {
+				sel := *peer.PodSelector
+				if len(sel.MatchLabels) == 0 && len(sel.MatchExpressions) == 0 {
+					features[PeerFeaturePodSelectorEmpty] = true
+				}
+				if len(sel.MatchLabels) > 0 {
+					features[PeerFeaturePodSelectorMatchLabels] = true
+				}
+				if len(sel.MatchExpressions) > 0 {
+					features[PeerFeaturePodSelectorMatchExpressions] = true
 				}
 			} else {
-				if peer.PodSelector != nil {
-					sel := *peer.PodSelector
-					if len(sel.MatchLabels) == 0 && len(sel.MatchExpressions) == 0 {
-						features[PeerFeaturePodSelectorEmpty] = true
-					}
-					if len(sel.MatchLabels) > 0 {
-						features[PeerFeaturePodSelectorMatchLabels] = true
-					}
-					if len(sel.MatchExpressions) > 0 {
-						features[PeerFeaturePodSelectorMatchExpressions] = true
-					}
-				} else {
-					features[PeerFeaturePodSelectorNil] = true
+				features[PeerFeaturePodSelectorNil] = true
+			}
+			if peer.NamespaceSelector != nil {
+				sel := peer.NamespaceSelector
+				if len(sel.MatchLabels) == 0 && len(sel.MatchExpressions) == 0 {
+					features[PeerFeatureNamespaceSelectorEmpty] = true
 				}
-				if peer.NamespaceSelector != nil {
-					sel := peer.NamespaceSelector
-					if len(sel.MatchLabels) == 0 && len(sel.MatchExpressions) == 0 {
-						features[PeerFeatureNamespaceSelectorEmpty] = true
-					}
-					if len(sel.MatchLabels) > 0 {
-						features[PeerFeatureNamespaceSelectorMatchLabels] = true
-					}
-					if len(sel.MatchExpressions) > 0 {
-						features[PeerFeatureNamespaceSelectorMatchExpressions] = true
-					}
-				} else {
-					features[PeerFeatureNamespaceSelectorNil] = true
+				if len(sel.MatchLabels) > 0 {
+					features[PeerFeatureNamespaceSelectorMatchLabels] = true
 				}
+				if len(sel.MatchExpressions) > 0 {
+					features[PeerFeatureNamespaceSelectorMatchExpressions] = true
+				}
+			} else {
+				features[PeerFeatureNamespaceSelectorNil] = true
 			}
 		}
 	}
 	return features
 }
 
-func portFeatures(npPorts []networkingv1.NetworkPolicyPort) map[PeerFeature]bool {
-	features := map[PeerFeature]bool{}
+func portFeatures(npPorts []networkingv1.NetworkPolicyPort) map[string]bool {
+	features := map[string]bool{}
 	switch len(npPorts) {
 	case 0:
 		features[PeerFeaturePortSliceEmpty] = true
@@ -310,8 +306,8 @@ func portFeatures(npPorts []networkingv1.NetworkPolicyPort) map[PeerFeature]bool
 	return features
 }
 
-func targetPodSelectorFeatures(sel metav1.LabelSelector) map[TargetFeature]bool {
-	features := map[TargetFeature]bool{}
+func targetPodSelectorFeatures(sel metav1.LabelSelector) map[string]bool {
+	features := map[string]bool{}
 	if len(sel.MatchLabels) == 0 && len(sel.MatchExpressions) == 0 {
 		features[TargetFeaturePodSelectorEmpty] = true
 	}
@@ -324,43 +320,8 @@ func targetPodSelectorFeatures(sel metav1.LabelSelector) map[TargetFeature]bool 
 	return features
 }
 
-// oh, the copy/paste!
-
-func mergeTargetFeatureSets(l, r map[TargetFeature]bool) map[TargetFeature]bool {
-	merged := map[TargetFeature]bool{}
-	for k := range l {
-		merged[k] = true
-	}
-	for k := range r {
-		merged[k] = true
-	}
-	return merged
-}
-
-func mergePeerFeatureSets(l, r map[PeerFeature]bool) map[PeerFeature]bool {
-	merged := map[PeerFeature]bool{}
-	for k := range l {
-		merged[k] = true
-	}
-	for k := range r {
-		merged[k] = true
-	}
-	return merged
-}
-
-func mergePolicyFeatureSets(l, r map[PolicyFeature]bool) map[PolicyFeature]bool {
-	merged := map[PolicyFeature]bool{}
-	for k := range l {
-		merged[k] = true
-	}
-	for k := range r {
-		merged[k] = true
-	}
-	return merged
-}
-
-func mergeActionFeatureSets(l, r map[ActionFeature]bool) map[ActionFeature]bool {
-	merged := map[ActionFeature]bool{}
+func mergeSets(l, r map[string]bool) map[string]bool {
+	merged := map[string]bool{}
 	for k := range l {
 		merged[k] = true
 	}

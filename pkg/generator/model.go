@@ -9,10 +9,11 @@ import (
 // Netpol helps us to avoid the To/From Ingress/Egress dance.  By splitting a NetworkPolicy into
 // Target and Peers, it makes them easier to manipulate.
 type Netpol struct {
-	Name    string
-	Target  *NetpolTarget
-	Ingress *NetpolPeers
-	Egress  *NetpolPeers
+	Name        string
+	Description string
+	Target      *NetpolTarget
+	Ingress     *NetpolPeers
+	Egress      *NetpolPeers
 }
 
 func (n *Netpol) NetworkPolicy() *NetworkPolicy {

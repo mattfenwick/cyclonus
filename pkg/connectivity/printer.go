@@ -93,11 +93,12 @@ func (p *passFailRow) FailedPercentage() float64 {
 }
 
 func passFailTable(passFailCounts map[bool]map[string]int, passedTotal int, failedTotal int) string {
-	passFailString := &strings.Builder{}
-	passFailTable := tablewriter.NewWriter(passFailString)
-	passFailString.WriteString("Pass/Fail counts:\n")
+	str := &strings.Builder{}
+	table := tablewriter.NewWriter(str)
+	table.SetAutoWrapText(false)
+	str.WriteString("Pass/Fail counts:\n")
 
-	passFailTable.SetHeader([]string{"Feature", "Passed", "Failed", "Failed %"})
+	table.SetHeader([]string{"Feature", "Passed", "Failed", "Failed %"})
 
 	allFeatures := map[string]bool{}
 	for _, t := range []bool{false, true} {
@@ -120,11 +121,11 @@ func passFailTable(passFailCounts map[bool]map[string]int, passedTotal int, fail
 	rows = append(rows, &passFailRow{Feature: "Total", Passed: passedTotal, Failed: failedTotal})
 
 	for _, row := range rows {
-		passFailTable.Append([]string{row.Feature, intToString(row.Passed), intToString(row.Failed), fmt.Sprintf("%.0f", row.FailedPercentage())})
+		table.Append([]string{row.Feature, intToString(row.Passed), intToString(row.Failed), fmt.Sprintf("%.0f", row.FailedPercentage())})
 	}
 
-	passFailTable.Render()
-	return passFailString.String()
+	table.Render()
+	return str.String()
 }
 
 func percentage(i int, total int) float64 {

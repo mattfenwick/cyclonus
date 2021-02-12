@@ -112,13 +112,8 @@ func NewTestCase(description string, steps ...*TestStep) *TestCase {
 }
 
 func (t *TestCase) GetFeatures() *Features {
-	derived := t.DerivedFeatures()
-	if t.Features != nil {
-		features := t.Features
-		features.Action = mergeActionFeatureSets(features.Action, derived.Action)
-		return features
-	}
-	return derived
+	derived := t.DerivedFeatures(t.Features == nil)
+	return derived.Combine(t.Features)
 }
 
 //func (t *TestCase) SortedFeatures() []Feature {
@@ -133,12 +128,12 @@ func (t *TestCase) GetFeatures() *Features {
 //	return slice
 //}
 
-func (t *TestCase) DerivedFeatures() *Features {
+func (t *TestCase) DerivedFeatures(includePolicyFeatures bool) *Features {
 	features := &Features{}
 	for _, step := range t.Steps {
 		for _, action := range step.Actions {
 			var policy *networkingv1.NetworkPolicy
-			actionFeatures := map[ActionFeature]bool{}
+			actionFeatures := map[string]bool{}
 			if action.DeletePolicy != nil {
 				actionFeatures[ActionFeatureDeletePolicy] = true
 			} else if action.ReadNetworkPolicies != nil {
@@ -157,8 +152,8 @@ func (t *TestCase) DerivedFeatures() *Features {
 			} else {
 				panic("invalid Action")
 			}
-			newFeatures := &Features{Action: actionFeatures}
-			if policy != nil {
+			newFeatures := &Features{General: actionFeatures}
+			if includePolicyFeatures && policy != nil {
 				newFeatures = newFeatures.Combine(GetFeaturesForPolicy(policy))
 			}
 			features = features.Combine(newFeatures)

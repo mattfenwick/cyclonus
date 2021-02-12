@@ -21,7 +21,20 @@ var basePolicy = &Netpol{
 			NamespaceSelector: nsXYMatchExpressionsSelector},
 		}},
 	}},
-	Egress: nil,
+	Egress: &NetpolPeers{Rules: []*Rule{
+		{
+			Ports: []NetworkPolicyPort{{
+				Port:     &port80,
+				Protocol: &tcp,
+			}},
+			Peers: []NetworkPolicyPeer{{
+				PodSelector:       podABMatchExpressionsSelector,
+				NamespaceSelector: nsYZMatchExpressionsSelector},
+			},
+		},
+		AllowDNSRule,
+	},
+	},
 }
 
 type Piece func(policy *Netpol) *Features
@@ -60,25 +73,16 @@ func SetNamespace(ns string) Piece {
 	return func(policy *Netpol) *Features {
 		policy.Target.Namespace = ns
 		if ns == "" {
-			return &Features{Target: map[TargetFeature]bool{TargetFeatureNamespaceEmpty: true}}
+			return &Features{General: map[string]bool{TargetFeatureNamespaceEmpty: true}}
 		}
 		return &Features{}
 	}
 }
 
-//func SetIngress() Piece {
-//	return func(policy *Netpol) {
-//		policy.Ingress.Rules = append(policy.Ingress.Rules, &Rule{
-//			Ports: []NetworkPolicyPort{{}},
-//			Peers: []NetworkPolicyPeer{{}},
-//		})
-//	}
-//}
-
 func SetPodSelector(sel metav1.LabelSelector) Piece {
 	return func(policy *Netpol) *Features {
 		policy.Target.PodSelector = sel
-		return &Features{Target: targetPodSelectorFeatures(sel)}
+		return &Features{General: targetPodSelectorFeatures(sel)}
 	}
 }
 
@@ -88,24 +92,47 @@ func SetPodSelector(sel metav1.LabelSelector) Piece {
 //	}
 //}
 
-//func SetIngressRules(rules []*Rule) Piece {
-//	return func(policy *Netpol) *Features {
-//		policy.Ingress.Rules = rules
-//		return &Features{Ingress: ruleFeatures(ports)}
-//	}
-//}
-
-func SetIngressPorts(ports []NetworkPolicyPort) Piece {
+func SetRules(isIngress bool, rules []*Rule) Piece {
 	return func(policy *Netpol) *Features {
-		policy.Ingress.Rules[0].Ports = ports
-		return &Features{Ingress: portFeatures(ports)}
+		if isIngress {
+			policy.Ingress.Rules = rules
+			var kubeRules []NetworkPolicyIngressRule
+			for _, rule := range rules {
+				kubeRules = append(kubeRules, rule.Ingress())
+			}
+			return &Features{Ingress: ingressFeatures(kubeRules)}
+		} else {
+			policy.Egress.Rules = rules
+			var kubeRules []NetworkPolicyEgressRule
+			for _, rule := range rules {
+				kubeRules = append(kubeRules, rule.Egress())
+			}
+			return &Features{Ingress: egressFeatures(kubeRules)}
+		}
 	}
 }
 
-func SetIngressPeers(peers []NetworkPolicyPeer) Piece {
+func SetPorts(isIngress bool, ports []NetworkPolicyPort) Piece {
 	return func(policy *Netpol) *Features {
-		policy.Ingress.Rules[0].Peers = peers
-		return &Features{Ingress: peerFeatures(peers)}
+		if isIngress {
+			policy.Ingress.Rules[0].Ports = ports
+			return &Features{Ingress: portFeatures(ports)}
+		} else {
+			policy.Egress.Rules[0].Ports = ports
+			return &Features{Egress: portFeatures(ports)}
+		}
+	}
+}
+
+func SetPeers(isIngress bool, peers []NetworkPolicyPeer) Piece {
+	return func(policy *Netpol) *Features {
+		if isIngress {
+			policy.Ingress.Rules[0].Peers = peers
+			return &Features{Ingress: peerFeatures(peers)}
+		} else {
+			policy.Egress.Rules[0].Peers = peers
+			return &Features{Egress: peerFeatures(peers)}
+		}
 	}
 }
 
@@ -176,44 +203,49 @@ func (e *ExperimentalGenerator) Policies() []*FeaturePolicy {
 	// base policy
 	policies = append(policies, BuildPolicy())
 
+	// target
 	// namespace
 	for _, ns := range DefaultNamespaces() {
 		policies = append(policies, BuildPolicy(SetNamespace(ns)))
 	}
-
 	// pod selector
 	for _, sel := range DefaultTargets() {
 		policies = append(policies, BuildPolicy(SetPodSelector(sel)))
 	}
 
-	// port
-	policies = append(policies, BuildPolicy(SetIngressPorts(emptySliceOfPorts)))
-	// different protocol
-	policies = append(policies, BuildPolicy(SetIngressPorts([]NetworkPolicyPort{{Protocol: &udp, Port: &port80}})))
-	policies = append(policies, BuildPolicy(SetIngressPorts([]NetworkPolicyPort{{Protocol: &sctp, Port: &port80}})))
-	// different numbered port
-	policies = append(policies, BuildPolicy(SetIngressPorts([]NetworkPolicyPort{{Protocol: &tcp, Port: &port79}})))
-	policies = append(policies, BuildPolicy(SetIngressPorts([]NetworkPolicyPort{{Protocol: &tcp, Port: &port81}})))
-	// different named port
-	policies = append(policies, BuildPolicy(SetIngressPorts([]NetworkPolicyPort{{Protocol: &tcp, Port: &portServe79TCP}})))
-	policies = append(policies, BuildPolicy(SetIngressPorts([]NetworkPolicyPort{{Protocol: &tcp, Port: &portServe80TCP}})))
-	// wrong protocol for port
-	policies = append(policies, BuildPolicy(SetIngressPorts([]NetworkPolicyPort{{Protocol: &udp, Port: &portServe80TCP}})))
-	policies = append(policies, BuildPolicy(SetIngressPorts([]NetworkPolicyPort{{Protocol: &sctp, Port: &portServe80TCP}})))
-	// pairs of ports
-	for i, ports1 := range experimentalPorts() {
-		policies = append(policies, BuildPolicy(SetIngressPorts([]NetworkPolicyPort{ports1})))
-		for j, ports2 := range experimentalPorts() {
-			if i < j {
-				policies = append(policies, BuildPolicy(SetIngressPorts([]NetworkPolicyPort{ports1, ports2})))
+	for _, isIngress := range []bool{true, false} {
+		// empty rules
+		policies = append(policies, BuildPolicy(SetRules(isIngress, []*Rule{})))
+
+		// port/protocol
+		policies = append(policies, BuildPolicy(SetPorts(isIngress, emptySliceOfPorts)))
+		// different protocol
+		policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &udp, Port: &port80}})))
+		policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &sctp, Port: &port80}})))
+		// different numbered port
+		policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &tcp, Port: &port79}})))
+		policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &tcp, Port: &port81}})))
+		// different named port
+		policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &tcp, Port: &portServe79TCP}})))
+		policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &tcp, Port: &portServe80TCP}})))
+		// wrong protocol for port
+		policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &udp, Port: &portServe80TCP}})))
+		policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &sctp, Port: &portServe80TCP}})))
+		// pairs of ports
+		for i, ports1 := range experimentalPorts() {
+			policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{ports1})))
+			for j, ports2 := range experimentalPorts() {
+				if i < j {
+					policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{ports1, ports2})))
+				}
 			}
 		}
-	}
 
-	// ns/pod peer, ipblock peer
-	policies = append(policies, BuildPolicy(SetIngressPeers(emptySliceOfPeers)))
-	for _, peers := range DefaultPeers(e.PodIP) {
-		policies = append(policies, BuildPolicy(SetIngressPeers([]NetworkPolicyPeer{peers})))
+		// ns/pod peer, ipblock peer
+		policies = append(policies, BuildPolicy(SetPeers(isIngress, emptySliceOfPeers)))
+		for _, peers := range DefaultPeers(e.PodIP) {
+			policies = append(policies, BuildPolicy(SetPeers(isIngress, []NetworkPolicyPeer{peers})))
+		}
 	}
 
 	// ingress/egress
