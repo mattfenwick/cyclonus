@@ -60,7 +60,7 @@ func SetupAnalyzeCommand() *cobra.Command {
 	command.Flags().BoolVarP(&args.AllNamespaces, "all-namespaces", "A", true, "similar to kubectl's '--all-namespaces'/'-A' flag: if true, read policies from all-namespaces")
 	command.Flags().StringSliceVarP(&args.Namespaces, "namespace", "n", []string{}, "similar to kubectl's '--namespace'/'-n' flag, except that multiple namespaces may be passed in; policies will be read from these namespaces")
 	command.Flags().StringVar(&args.PolicyPath, "policy-path", "", "may be a file or a directory; if set, will attempt to read policies from the path")
-	command.Flags().StringVar(&args.Context, "context", "", "only set if policy-source = kube; selects kube context to read policies from")
+	command.Flags().StringVar(&args.Context, "context", "", "selects kube context to read policies from; only reads from kube if one or more namespaces or all namespaces are specified")
 
 	command.Flags().BoolVar(&args.Explain, "explain", true, "if true, print explanation of network policies")
 	command.Flags().BoolVar(&args.Lint, "lint", false, "if true, check policies for common problems")
