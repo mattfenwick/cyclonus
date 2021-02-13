@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	agnhostImage = "k8s.gcr.io/e2e-test-images/agnhost:2.26"
+	agnhostImage = "k8s.gcr.io/e2e-test-images/agnhost:2.28"
 )
 
 func NewPod(ns string, name string, labels map[string]string, ip string, containers []*Container) *Pod {
