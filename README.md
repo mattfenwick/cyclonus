@@ -244,6 +244,26 @@ go run ./cmd/cyclonus/main.go analyze \
 +-----------------+------------------------------+-------------------+-----------------------------+
 ```
 
+## Developer guide
+
+### Setup
+
+ - [Get set up with golang 1.15](https://golang.org/dl/)
+ - clone this repo
+
+        git clone git@github.com:mattfenwick/cyclonus.git
+        cd cyclonus
+
+ - set up a KinD cluster with a CNI that supports network policies
+
+        pushd kind/calico
+        ./setup.sh
+        popd
+
+ - run cyclonus
+
+        go run cmd/cyclonus/main.go generate --mode=example
+
 
 ## How to Release Binaries
 
