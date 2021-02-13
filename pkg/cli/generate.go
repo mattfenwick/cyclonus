@@ -43,8 +43,7 @@ func SetupGenerateCommand() *cobra.Command {
 	command.Flags().StringVar(&args.Mode, "mode", "", "mode used to generate network policies")
 	utils.DoOrDie(command.MarkFlagRequired("mode"))
 
-	// TODO add UDP to defaults once support has been added
-	command.Flags().StringSliceVar(&args.ServerProtocols, "server-protocol", []string{"tcp", "sctp"}, "protocols to run server on")
+	command.Flags().StringSliceVar(&args.ServerProtocols, "server-protocol", []string{"tcp", "udp", "sctp"}, "protocols to run server on")
 	command.Flags().IntSliceVar(&args.ServerPorts, "server-port", []int{80, 81}, "ports to run server on")
 	command.Flags().StringSliceVar(&args.ServerNamespaces, "namespace", []string{"x", "y", "z"}, "namespaces to create/use pods in")
 	command.Flags().StringSliceVar(&args.ServerPods, "pod", []string{"a", "b", "c"}, "pods to create in namespaces")

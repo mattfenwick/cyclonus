@@ -54,7 +54,6 @@ func (j *Job) ClientCommand() []string {
 		return []string{"/agnhost", "connect", j.ToAddress(), "--timeout=1s", "--protocol=tcp"}
 	case v1.ProtocolUDP:
 		return []string{"/agnhost", "connect", j.ToAddress(), "--timeout=1s", "--protocol=udp"}
-		//return []string{"nc", "-v", "-z", "-w", "1", "-u", j.ToHost, fmt.Sprintf("%d", j.ResolvedPort)}
 	default:
 		panic(errors.Errorf("protocol %s not supported", j.Protocol))
 	}
