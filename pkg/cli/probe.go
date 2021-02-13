@@ -50,8 +50,7 @@ func SetupProbeCommand() *cobra.Command {
 	command.Flags().StringSliceVarP(&args.ServerNamespaces, "server-namespace", "n", []string{"x", "y", "z"}, "namespaces to create/use pods in")
 	command.Flags().StringSliceVar(&args.ServerPods, "server-pod", []string{"a", "b", "c"}, "pods to create in namespaces")
 	command.Flags().IntSliceVar(&args.ServerPorts, "server-port", []int{80, 81}, "ports to run server on")
-	// TODO add UDP to defaults once support has been added
-	command.Flags().StringSliceVar(&args.ServerProtocols, "server-protocol", []string{"tcp", "sctp"}, "protocols to run server on")
+	command.Flags().StringSliceVar(&args.ServerProtocols, "server-protocol", []string{"tcp", "udp", "sctp"}, "protocols to run server on")
 
 	command.Flags().BoolVar(&args.ProbeAllAvailable, "all-available", false, "if true, probe all available ports and protocols on each pod")
 	command.Flags().StringSliceVar(&args.Ports, "port", []string{"80"}, "ports to run probes on; may be named port or numbered port")
