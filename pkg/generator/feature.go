@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,9 +29,9 @@ const (
 	PeerFeatureNamedPort          = "named port"
 	PeerFeatureNilPort            = "nil port"
 	PeerFeatureNilProtocol        = "nil protocol"
-	PeerFeatureTCPProtocol        = "TCP"
-	PeerFeatureUDPProtocol        = "UDP"
-	PeerFeatureSCTPProtocol       = "SCTP"
+	PeerFeatureTCPProtocol        = "policy on TCP"
+	PeerFeatureUDPProtocol        = "policy on UDP"
+	PeerFeatureSCTPProtocol       = "policy on SCTP"
 
 	PeerFeaturePeerSliceEmpty                    = "0 peers"
 	PeerFeaturePeerSliceSize1                    = "1 peer"
@@ -60,20 +61,29 @@ const (
 	PolicyFeatureIngressAndEgress = "policy with both ingress and egress"
 )
 
-/*
-type ProbeFeature string
-
-// TODO goal: track what's used in probes.  Problem: AllAvailable could include SCTP/UDP/TCP etc., which
-//    this package doesn't know about.
+// Goal: track what's used in probes.  Problem: AllAvailable could include SCTP/UDP/TCP etc., which
+//    depend on the resources and which this package doesn't know about.
 const (
-	ProbeFeatureAllAvailable ProbeFeature = "AllAvailable"
-	ProbeFeatureNumberedPort ProbeFeature = "NumberedPort"
-	ProbeFeatureNamedPort ProbeFeature = "NamedPort"
-	ProbeFeatureTCP ProbeFeature = "TCP"
-	ProbeFeatureUDP ProbeFeature = "UDP"
-	ProbeFeatureSCTP ProbeFeature = "SCTP"
+	//ProbeFeatureAllAvailable  = "AllAvailable"
+	ProbeFeatureNumberedPort = "probe on numbered port"
+	ProbeFeatureNamedPort    = "probe on named port"
+	ProbeFeatureTCP          = "probe on TCP"
+	ProbeFeatureUDP          = "probe on UDP"
+	ProbeFeatureSCTP         = "probe on SCTP"
 )
-*/
+
+func ProtocolToFeature(protocol v1.Protocol) string {
+	switch protocol {
+	case v1.ProtocolSCTP:
+		return ProbeFeatureSCTP
+	case v1.ProtocolUDP:
+		return ProbeFeatureUDP
+	case v1.ProtocolTCP:
+		return ProbeFeatureTCP
+	default:
+		panic(errors.Errorf("invalid protocol %+v", protocol))
+	}
+}
 
 type Features struct {
 	General map[string]bool

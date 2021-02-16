@@ -39,7 +39,7 @@ func NewInterpreter(kubernetes *kube.Kubernetes, resources *probe.Resources, res
 }
 
 func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
-	result := &Result{TestCase: testCase}
+	result := &Result{InitialResources: t.resources, TestCase: testCase}
 	var err error
 
 	if t.resetClusterBeforeTestCase {

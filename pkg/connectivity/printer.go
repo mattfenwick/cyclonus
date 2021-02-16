@@ -43,7 +43,7 @@ func (t *Printer) PrintSummary() {
 			}
 		}
 
-		for _, feature := range result.TestCase.GetFeatures().Strings() {
+		for _, feature := range result.Features() {
 			passFailCounts[passed][feature]++
 		}
 

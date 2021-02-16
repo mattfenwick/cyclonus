@@ -376,3 +376,13 @@ func (r *Resources) GetJobsAllAvailableServers() *Jobs {
 	}
 	return &Jobs{Valid: jobs}
 }
+
+func (r *Resources) AllProtocolsServed() map[v1.Protocol]bool {
+	protocols := map[v1.Protocol]bool{}
+	for _, pod := range r.Pods {
+		for _, cont := range pod.Containers {
+			protocols[cont.Protocol] = true
+		}
+	}
+	return protocols
+}
