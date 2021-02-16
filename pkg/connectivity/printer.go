@@ -175,7 +175,7 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 
 	fmt.Printf("Policy explanation:\n%s\n", explainer.TableExplainer(policy))
 
-	fmt.Printf("\n\nKube results for network policies:\n")
+	fmt.Printf("\n\nResults for network policies:\n")
 	for _, netpol := range stepResult.KubePolicies {
 		fmt.Printf(" - %s/%s:\n", netpol.Namespace, netpol.Name)
 	}

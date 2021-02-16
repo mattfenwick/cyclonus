@@ -1,9 +1,17 @@
 package probe
 
 import (
+	v1 "k8s.io/api/core/v1"
 	"sort"
 	"strings"
 )
+
+type TableValue struct {
+	Simulated []*JobResult
+	// TODO kube probes -- does this supersede what's in connectivity.TestCaseResult ?
+	Protocol v1.Protocol
+	Port     int
+}
 
 type Table struct {
 	Wrapped *TruthTable

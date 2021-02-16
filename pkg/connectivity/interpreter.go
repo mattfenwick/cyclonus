@@ -108,9 +108,9 @@ func (t *Interpreter) runProbe(testCaseState *TestCaseState, probeConfig *genera
 
 	logrus.Infof("running probe %+v", probeConfig)
 
-	kubeRunner := probe.NewKubeProbeRunner(t.kubernetes, defaultWorkersCount)
+	kubeRunner := probe.NewKubeRunner(t.kubernetes, defaultWorkersCount)
 
-	simRunner := probe.NewSimulatedProbeRunner(parsedPolicy)
+	simRunner := probe.NewSimulatedRunner(parsedPolicy)
 
 	stepResult := &StepResult{
 		SimulatedProbe: simRunner.RunProbeForConfig(probeConfig, testCaseState.Resources),
