@@ -28,9 +28,9 @@ const (
 	PeerFeatureNamedPort          = "named port"
 	PeerFeatureNilPort            = "nil port"
 	PeerFeatureNilProtocol        = "nil protocol"
-	PeerFeatureTCPProtocol        = "TCP"
-	PeerFeatureUDPProtocol        = "UDP"
-	PeerFeatureSCTPProtocol       = "SCTP"
+	PeerFeatureTCPProtocol        = "policy on TCP"
+	PeerFeatureUDPProtocol        = "policy on UDP"
+	PeerFeatureSCTPProtocol       = "policy on SCTP"
 
 	PeerFeaturePeerSliceEmpty                    = "0 peers"
 	PeerFeaturePeerSliceSize1                    = "1 peer"
@@ -59,21 +59,6 @@ const (
 	PolicyFeatureEgress           = "policy with egress"
 	PolicyFeatureIngressAndEgress = "policy with both ingress and egress"
 )
-
-/*
-type ProbeFeature string
-
-// TODO goal: track what's used in probes.  Problem: AllAvailable could include SCTP/UDP/TCP etc., which
-//    this package doesn't know about.
-const (
-	ProbeFeatureAllAvailable ProbeFeature = "AllAvailable"
-	ProbeFeatureNumberedPort ProbeFeature = "NumberedPort"
-	ProbeFeatureNamedPort ProbeFeature = "NamedPort"
-	ProbeFeatureTCP ProbeFeature = "TCP"
-	ProbeFeatureUDP ProbeFeature = "UDP"
-	ProbeFeatureSCTP ProbeFeature = "SCTP"
-)
-*/
 
 type Features struct {
 	General map[string]bool

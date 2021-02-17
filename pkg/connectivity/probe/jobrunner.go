@@ -1,7 +1,6 @@
 package probe
 
 import (
-	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
@@ -13,26 +12,20 @@ import (
 	"strings"
 )
 
-type Probe struct {
-	Ingress  *Table
-	Egress   *Table
-	Combined *Table
-}
-
-type ProbeRunner struct {
-	JobRunner ProbeJobRunner
+type Runner struct {
+	JobRunner JobRunner
 	Workers   int
 }
 
-func NewSimulatedProbeRunner(policies *matcher.Policy) *ProbeRunner {
-	return &ProbeRunner{JobRunner: &SimulatedProbeJobRunner{Policies: policies}, Workers: 1}
+func NewSimulatedRunner(policies *matcher.Policy) *Runner {
+	return &Runner{JobRunner: &SimulatedJobRunner{Policies: policies}, Workers: 1}
 }
 
-func NewKubeProbeRunner(kubernetes *kube.Kubernetes, workers int) *ProbeRunner {
-	return &ProbeRunner{JobRunner: &KubeProbeJobRunner{Kubernetes: kubernetes}, Workers: workers}
+func NewKubeRunner(kubernetes *kube.Kubernetes, workers int) *Runner {
+	return &Runner{JobRunner: &KubeJobRunner{Kubernetes: kubernetes}, Workers: workers}
 }
 
-func (p *ProbeRunner) RunProbeForConfig(probeConfig *generator.ProbeConfig, resources *Resources) *Probe {
+func (p *Runner) RunProbeForConfig(probeConfig *generator.ProbeConfig, resources *Resources) *Table {
 	if probeConfig.AllAvailable {
 		return p.RunAllAvailablePortsProbe(resources)
 	} else if probeConfig.PortProtocol != nil {
@@ -42,41 +35,15 @@ func (p *ProbeRunner) RunProbeForConfig(probeConfig *generator.ProbeConfig, reso
 	}
 }
 
-func (p *ProbeRunner) RunAllAvailablePortsProbe(resources *Resources) *Probe {
-	probe := &Probe{Ingress: resources.NewTable(), Egress: resources.NewTable(), Combined: resources.NewTable()}
-	for _, result := range p.runProbe(resources.GetJobsAllAvailableServers()) {
-		fr := result.Job.FromKey
-		to := result.Job.ToKey
-		key := fmt.Sprintf("%s/%d", result.Job.Protocol, result.Job.ResolvedPort)
-		if result.Ingress != nil {
-			probe.Ingress.Set(fr, to, key, *result.Ingress)
-		}
-		if result.Egress != nil {
-			probe.Egress.Set(fr, to, key, *result.Egress)
-		}
-		probe.Combined.Set(fr, to, key, result.Combined)
-	}
-	return probe
+func (p *Runner) RunAllAvailablePortsProbe(resources *Resources) *Table {
+	return NewTableFromJobResults(resources, p.runProbe(resources.GetJobsAllAvailableServers()))
 }
 
-func (p *ProbeRunner) RunProbeFixedPortProtocol(resources *Resources, port intstr.IntOrString, protocol v1.Protocol) *Probe {
-	jobs := resources.GetJobsForNamedPortProtocol(port, protocol)
-	probe := &Probe{Ingress: resources.NewTable(), Egress: resources.NewTable(), Combined: resources.NewTable()}
-	for _, result := range p.runProbe(jobs) {
-		fr := result.Job.FromKey
-		to := result.Job.ToKey
-		if result.Ingress != nil {
-			probe.Ingress.Set(fr, to, "", *result.Ingress)
-		}
-		if result.Egress != nil {
-			probe.Egress.Set(fr, to, "", *result.Egress)
-		}
-		probe.Combined.Set(fr, to, "", result.Combined)
-	}
-	return probe
+func (p *Runner) RunProbeFixedPortProtocol(resources *Resources, port intstr.IntOrString, protocol v1.Protocol) *Table {
+	return NewTableFromJobResults(resources, p.runProbe(resources.GetJobsForNamedPortProtocol(port, protocol)))
 }
 
-func (p *ProbeRunner) runProbe(jobs *Jobs) []*JobResult {
+func (p *Runner) runProbe(jobs *Jobs) []*JobResult {
 	size := len(jobs.Valid)
 	jobsChan := make(chan *Job, size)
 	resultsChan := make(chan *JobResult, size)
@@ -116,21 +83,21 @@ func (p *ProbeRunner) runProbe(jobs *Jobs) []*JobResult {
 
 // probeWorker continues polling a pod connectivity status, until the incoming "jobs" channel is closed, and writes results back out to the "results" channel.
 // it only writes pass/fail status to a channel and has no failure side effects, this is by design since we do not want to fail inside a goroutine.
-func (p *ProbeRunner) worker(jobs <-chan *Job, results chan<- *JobResult) {
+func (p *Runner) worker(jobs <-chan *Job, results chan<- *JobResult) {
 	for job := range jobs {
 		results <- p.JobRunner.RunJob(job)
 	}
 }
 
-type ProbeJobRunner interface {
+type JobRunner interface {
 	RunJob(job *Job) *JobResult
 }
 
-type SimulatedProbeJobRunner struct {
+type SimulatedJobRunner struct {
 	Policies *matcher.Policy
 }
 
-func (s *SimulatedProbeJobRunner) RunJob(job *Job) *JobResult {
+func (s *SimulatedJobRunner) RunJob(job *Job) *JobResult {
 	allowed := s.Policies.IsTrafficAllowed(job.Traffic())
 	// TODO could also keep the whole `allowed` struct somewhere
 
@@ -150,11 +117,11 @@ func (s *SimulatedProbeJobRunner) RunJob(job *Job) *JobResult {
 	return &JobResult{Job: job, Ingress: &ingress, Egress: &egress, Combined: combined}
 }
 
-type KubeProbeJobRunner struct {
+type KubeJobRunner struct {
 	Kubernetes *kube.Kubernetes
 }
 
-func (k *KubeProbeJobRunner) RunJob(job *Job) *JobResult {
+func (k *KubeJobRunner) RunJob(job *Job) *JobResult {
 	connectivity, _, _ := probeConnectivity(k.Kubernetes, job)
 	return &JobResult{Job: job, Ingress: nil, Egress: nil, Combined: connectivity}
 }

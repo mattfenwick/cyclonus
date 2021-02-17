@@ -7,6 +7,7 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"math"
@@ -27,23 +28,22 @@ func (t *Printer) PrintSummary() {
 	table := tablewriter.NewWriter(tableString)
 	table.SetRowLine(true)
 
-	table.SetHeader([]string{"Test", "Result", "Step/Try", "Wrong", "Right", "Ignored"})
+	table.SetHeader([]string{"Test", "Result", "Step/Try", "Wrong", "Right", "Ignored", "TCP", "SCTP", "UDP"})
 
 	passedTotal, failedTotal := 0, 0
 	passFailCounts := map[bool]map[string]int{false: {}, true: {}}
+	protocolCounts := map[v1.Protocol]map[Comparison]int{v1.ProtocolTCP: {}, v1.ProtocolSCTP: {}, v1.ProtocolUDP: {}}
 
 	for testNumber, result := range t.Results {
 		// preprocess to figure out whether it passed or failed
 		passed := true
 		for _, step := range result.Steps {
-			lastKubeResult := step.LastKubeProbe()
-			comparison := NewComparisonTableFrom(lastKubeResult, step.SimulatedProbe.Combined)
-			if comparison.ValueCounts(t.IgnoreLoopback)[DifferentComparison] > 0 {
+			if step.LastComparison().ValueCounts(t.IgnoreLoopback)[DifferentComparison] > 0 {
 				passed = false
 			}
 		}
 
-		for _, feature := range result.TestCase.GetFeatures().Strings() {
+		for _, feature := range result.Features() {
 			passFailCounts[passed][feature]++
 		}
 
@@ -59,19 +59,34 @@ func (t *Printer) PrintSummary() {
 		table.Append([]string{
 			fmt.Sprintf("%d: %s", testNumber+1, result.TestCase.Description),
 			testResult, "", "", "", "",
+			"", "", "",
 		})
 
 		for stepNumber, step := range result.Steps {
-			for tryNumber, kubeProbe := range step.KubeProbes {
-				comparison := NewComparisonTableFrom(kubeProbe, step.SimulatedProbe.Combined)
-				counts := comparison.ValueCounts(t.IgnoreLoopback)
+			for tryNumber := range step.KubeProbes {
+				counts := step.Comparison(tryNumber).ValueCounts(t.IgnoreLoopback)
+				tryProtocolCounts := step.Comparison(tryNumber).ValueCountsByProtocol(t.IgnoreLoopback)
+				tcp := tryProtocolCounts[v1.ProtocolTCP]
+				sctp := tryProtocolCounts[v1.ProtocolSCTP]
+				udp := tryProtocolCounts[v1.ProtocolUDP]
 				table.Append([]string{
 					"",
 					"",
 					fmt.Sprintf("Step %d, try %d", stepNumber+1, tryNumber+1),
 					intToString(counts[DifferentComparison]),
 					intToString(counts[SameComparison]),
-					intToString(counts[IgnoredComparison])})
+					intToString(counts[IgnoredComparison]),
+					protocolResult(tcp[SameComparison], tcp[DifferentComparison]),
+					protocolResult(sctp[SameComparison], sctp[DifferentComparison]),
+					protocolResult(udp[SameComparison], udp[DifferentComparison]),
+				})
+
+				protocolCounts[v1.ProtocolTCP][SameComparison] += tcp[SameComparison]
+				protocolCounts[v1.ProtocolTCP][DifferentComparison] += tcp[DifferentComparison]
+				protocolCounts[v1.ProtocolSCTP][SameComparison] += sctp[SameComparison]
+				protocolCounts[v1.ProtocolSCTP][DifferentComparison] += sctp[DifferentComparison]
+				protocolCounts[v1.ProtocolUDP][SameComparison] += udp[SameComparison]
+				protocolCounts[v1.ProtocolUDP][DifferentComparison] += udp[DifferentComparison]
 			}
 		}
 	}
@@ -79,7 +94,15 @@ func (t *Printer) PrintSummary() {
 	table.Render()
 	fmt.Println(tableString.String())
 
-	fmt.Println(passFailTable(passFailCounts, passedTotal, failedTotal))
+	fmt.Println(passFailTable(passFailCounts, passedTotal, failedTotal, protocolCounts))
+}
+
+func protocolResult(passed int, failed int) string {
+	total := passed + failed
+	if total == 0 {
+		return "-"
+	}
+	return fmt.Sprintf("%d / %d (%.0f%%)", passed, total, percentage(passed, total))
 }
 
 type passFailRow struct {
@@ -88,17 +111,17 @@ type passFailRow struct {
 	Failed  int
 }
 
-func (p *passFailRow) FailedPercentage() float64 {
-	return percentage(p.Failed, p.Passed+p.Failed)
+func (p *passFailRow) PassedPercentage() float64 {
+	return percentage(p.Passed, p.Passed+p.Failed)
 }
 
-func passFailTable(passFailCounts map[bool]map[string]int, passedTotal int, failedTotal int) string {
+func passFailTable(passFailCounts map[bool]map[string]int, passedTotal int, failedTotal int, protocolCounts map[v1.Protocol]map[Comparison]int) string {
 	str := &strings.Builder{}
 	table := tablewriter.NewWriter(str)
 	table.SetAutoWrapText(false)
 	str.WriteString("Pass/Fail counts:\n")
 
-	table.SetHeader([]string{"Feature", "Passed", "Failed", "Failed %"})
+	table.SetHeader([]string{"Feature", "Passed", "Failed", "Passed %"})
 
 	allFeatures := map[string]bool{}
 	for _, t := range []bool{false, true} {
@@ -115,13 +138,21 @@ func passFailTable(passFailCounts map[bool]map[string]int, passedTotal int, fail
 			Failed:  passFailCounts[false][feature],
 		})
 	}
+	for protocol, counts := range protocolCounts {
+		rows = append(rows, &passFailRow{
+			Feature: fmt.Sprintf("probe on %s", protocol),
+			Passed:  counts[SameComparison],
+			Failed:  counts[DifferentComparison],
+		})
+	}
+
 	sort.Slice(rows, func(i, j int) bool {
-		return rows[i].FailedPercentage() < rows[j].FailedPercentage()
+		return rows[i].PassedPercentage() < rows[j].PassedPercentage()
 	})
 	rows = append(rows, &passFailRow{Feature: "Total", Passed: passedTotal, Failed: failedTotal})
 
 	for _, row := range rows {
-		table.Append([]string{row.Feature, intToString(row.Passed), intToString(row.Failed), fmt.Sprintf("%.0f", row.FailedPercentage())})
+		table.Append([]string{row.Feature, intToString(row.Passed), intToString(row.Failed), fmt.Sprintf("%.0f", row.PassedPercentage())})
 	}
 
 	table.Render()
@@ -175,7 +206,7 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 
 	fmt.Printf("Policy explanation:\n%s\n", explainer.TableExplainer(policy))
 
-	fmt.Printf("\n\nKube results for network policies:\n")
+	fmt.Printf("\n\nResults for network policies:\n")
 	for _, netpol := range stepResult.KubePolicies {
 		fmt.Printf(" - %s/%s:\n", netpol.Namespace, netpol.Name)
 	}
@@ -184,9 +215,7 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 		panic(errors.Errorf("found 0 KubeResults for step, expected 1 or more"))
 	}
 
-	lastKubeProbe := stepResult.LastKubeProbe()
-
-	comparison := NewComparisonTableFrom(lastKubeProbe, stepResult.SimulatedProbe.Combined)
+	comparison := stepResult.LastComparison()
 	counts := comparison.ValueCounts(t.IgnoreLoopback)
 	if counts[DifferentComparison] > 0 {
 		fmt.Printf("Discrepancy found:")
@@ -194,11 +223,11 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 	fmt.Printf("%d wrong, %d ignored, %d correct\n", counts[DifferentComparison], counts[IgnoredComparison], counts[SameComparison])
 
 	if counts[DifferentComparison] > 0 || t.Noisy {
-		fmt.Printf("Expected ingress:\n%s\n", stepResult.SimulatedProbe.Ingress.RenderTable())
+		fmt.Printf("Expected ingress:\n%s\n", stepResult.SimulatedProbe.RenderIngress())
 
-		fmt.Printf("Expected egress:\n%s\n", stepResult.SimulatedProbe.Egress.RenderTable())
+		fmt.Printf("Expected egress:\n%s\n", stepResult.SimulatedProbe.RenderEgress())
 
-		fmt.Printf("Expected combined:\n%s\n", stepResult.SimulatedProbe.Combined.RenderTable())
+		fmt.Printf("Expected combined:\n%s\n", stepResult.SimulatedProbe.RenderTable())
 
 		for i, kubeResult := range stepResult.KubeProbes {
 			fmt.Printf("kube results, try %d:\n%s\n", i, kubeResult.RenderTable())
@@ -212,9 +241,9 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 			fmt.Println("no network policies")
 		}
 
-		fmt.Printf("\nActual vs expected (last round):\n%s\n", comparison.RenderTable())
+		fmt.Printf("\nActual vs expected (last round):\n%s\n", comparison.RenderSuccessTable())
 	} else {
-		fmt.Printf("%s\n", lastKubeProbe.RenderTable())
+		fmt.Printf("%s\n", stepResult.LastKubeProbe().RenderTable())
 	}
 }
 

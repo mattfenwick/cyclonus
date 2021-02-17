@@ -20,18 +20,18 @@ type TruthTable struct {
 }
 
 // NewTruthTableFromItems creates a new truth table with items
-func NewTruthTableFromItems(items []string, defaultValue func() interface{}) *TruthTable {
+func NewTruthTableFromItems(items []string, defaultValue func(fr, to string) interface{}) *TruthTable {
 	return NewTruthTable(items, items, defaultValue)
 }
 
 // NewTruthTable creates a new truth table with froms and tos
-func NewTruthTable(froms []string, tos []string, defaultValue func() interface{}) *TruthTable {
+func NewTruthTable(froms []string, tos []string, defaultValue func(fr, to string) interface{}) *TruthTable {
 	values := map[string]map[string]interface{}{}
 	for _, from := range froms {
 		values[from] = map[string]interface{}{}
 		for _, to := range tos {
 			if defaultValue != nil {
-				values[from][to] = defaultValue()
+				values[from][to] = defaultValue(from, to)
 			}
 		}
 	}
@@ -98,7 +98,7 @@ func (tt *TruthTable) Keys() []*TableKey {
 	return keys
 }
 
-func (tt *TruthTable) Table(schema string, rowLine bool, printElement func(interface{}) string) string {
+func (tt *TruthTable) Table(schema string, rowLine bool, printElement func(string, string, interface{}) string) string {
 	tableString := &strings.Builder{}
 	table := tablewriter.NewWriter(tableString)
 	table.SetHeader(append([]string{schema}, tt.Tos...))
@@ -107,7 +107,7 @@ func (tt *TruthTable) Table(schema string, rowLine bool, printElement func(inter
 	for _, from := range tt.Froms {
 		line := []string{from}
 		for _, to := range tt.Tos {
-			line = append(line, printElement(tt.Values[from][to]))
+			line = append(line, printElement(from, to, tt.Values[from][to]))
 		}
 		table.Append(line)
 	}

@@ -30,8 +30,8 @@ func (r *Recipe) Policies() []*networkingv1.NetworkPolicy {
 	return policies
 }
 
-func (r *Recipe) RunProbe() *probe.Probe {
-	runner := probe.NewSimulatedProbeRunner(matcher.BuildNetworkPolicies(r.Policies()))
+func (r *Recipe) RunProbe() *probe.Table {
+	runner := probe.NewSimulatedRunner(matcher.BuildNetworkPolicies(r.Policies()))
 	return runner.RunProbeFixedPortProtocol(r.Resources, intstr.FromInt(r.Port), r.Protocol)
 }
 
@@ -55,17 +55,17 @@ var AllRecipes = []*Recipe{
 
 func Run() {
 	for _, recipe := range AllRecipes {
-		probe := recipe.RunProbe()
+		table := recipe.RunProbe()
 
 		fmt.Printf("Policies:\n%s\n", explainer.TableExplainer(matcher.BuildNetworkPolicies(recipe.Policies())))
 
 		fmt.Printf("resources:\n%s\n", recipe.Resources.RenderTable())
 
-		fmt.Printf("Results:\n%s\n", probe.Combined.RenderTable())
+		fmt.Printf("Results:\n%s\n", table.RenderTable())
 
-		fmt.Printf("Ingress:\n%s\n", probe.Ingress.RenderTable())
+		fmt.Printf("Ingress:\n%s\n", table.RenderIngress())
 
-		fmt.Printf("Egress:\n%s\n", probe.Egress.RenderTable())
+		fmt.Printf("Egress:\n%s\n", table.RenderEgress())
 
 		fmt.Printf("\n\n\n")
 	}

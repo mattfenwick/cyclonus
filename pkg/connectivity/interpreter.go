@@ -39,7 +39,7 @@ func NewInterpreter(kubernetes *kube.Kubernetes, resources *probe.Resources, res
 }
 
 func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
-	result := &Result{TestCase: testCase}
+	result := &Result{InitialResources: t.resources, TestCase: testCase}
 	var err error
 
 	if t.resetClusterBeforeTestCase {
@@ -108,23 +108,20 @@ func (t *Interpreter) runProbe(testCaseState *TestCaseState, probeConfig *genera
 
 	logrus.Infof("running probe %+v", probeConfig)
 
-	kubeRunner := probe.NewKubeProbeRunner(t.kubernetes, defaultWorkersCount)
+	kubeRunner := probe.NewKubeRunner(t.kubernetes, defaultWorkersCount)
 
-	simRunner := probe.NewSimulatedProbeRunner(parsedPolicy)
+	simRunner := probe.NewSimulatedRunner(parsedPolicy)
 
-	stepResult := &StepResult{
-		SimulatedProbe: simRunner.RunProbeForConfig(probeConfig, testCaseState.Resources),
-		Policy:         parsedPolicy,
-		KubePolicies:   append([]*networkingv1.NetworkPolicy{}, testCaseState.Policies...), // this looks weird, but just making a new copy to avoid accidentally mutating it elsewhere
-	}
+	stepResult := NewStepResult(
+		simRunner.RunProbeForConfig(probeConfig, testCaseState.Resources),
+		parsedPolicy,
+		append([]*networkingv1.NetworkPolicy{}, testCaseState.Policies...)) // this looks weird, but just making a new copy to avoid accidentally mutating it elsewhere
 
 	for i := 0; i <= t.kubeProbeRetries; i++ {
 		logrus.Infof("running kube probe on try %d", i+1)
-		kubeProbe := kubeRunner.RunProbeForConfig(probeConfig, testCaseState.Resources)
-		resultTable := NewComparisonTableFrom(kubeProbe.Combined, stepResult.SimulatedProbe.Combined)
-		stepResult.KubeProbes = append(stepResult.KubeProbes, kubeProbe.Combined)
+		stepResult.AddKubeProbe(kubeRunner.RunProbeForConfig(probeConfig, testCaseState.Resources))
 		// no differences between synthetic and kube probes?  then we can stop
-		if resultTable.ValueCounts(false)[DifferentComparison] == 0 {
+		if stepResult.LastComparison().ValueCounts(false)[DifferentComparison] == 0 {
 			break
 		}
 	}

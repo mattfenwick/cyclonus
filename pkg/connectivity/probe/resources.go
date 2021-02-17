@@ -114,18 +114,13 @@ func (r *Resources) SetPodLabels(ns string, podName string, labels map[string]st
 	}, nil
 }
 
-func (r *Resources) sortedPodNames() []string {
+func (r *Resources) SortedPodNames() []string {
 	var podNames []string
 	for _, pod := range r.Pods {
 		podNames = append(podNames, pod.PodString().String())
 	}
 	sort.Strings(podNames)
 	return podNames
-}
-
-func (r *Resources) NewTable() *Table {
-	return NewTable(r.sortedPodNames())
-	//return NewTable(append(podNames, r.ExternalIPs...))
 }
 
 func (r *Resources) NamespacesSlice() []string {
