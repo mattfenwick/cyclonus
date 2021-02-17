@@ -112,19 +112,16 @@ func (t *Interpreter) runProbe(testCaseState *TestCaseState, probeConfig *genera
 
 	simRunner := probe.NewSimulatedRunner(parsedPolicy)
 
-	stepResult := &StepResult{
-		SimulatedProbe: simRunner.RunProbeForConfig(probeConfig, testCaseState.Resources),
-		Policy:         parsedPolicy,
-		KubePolicies:   append([]*networkingv1.NetworkPolicy{}, testCaseState.Policies...), // this looks weird, but just making a new copy to avoid accidentally mutating it elsewhere
-	}
+	stepResult := NewStepResult(
+		simRunner.RunProbeForConfig(probeConfig, testCaseState.Resources),
+		parsedPolicy,
+		append([]*networkingv1.NetworkPolicy{}, testCaseState.Policies...)) // this looks weird, but just making a new copy to avoid accidentally mutating it elsewhere
 
 	for i := 0; i <= t.kubeProbeRetries; i++ {
 		logrus.Infof("running kube probe on try %d", i+1)
-		kubeProbe := kubeRunner.RunProbeForConfig(probeConfig, testCaseState.Resources)
-		resultTable := NewComparisonTableFrom(kubeProbe, stepResult.SimulatedProbe)
-		stepResult.KubeProbes = append(stepResult.KubeProbes, kubeProbe)
+		stepResult.AddKubeProbe(kubeRunner.RunProbeForConfig(probeConfig, testCaseState.Resources))
 		// no differences between synthetic and kube probes?  then we can stop
-		if resultTable.ValueCounts(false)[DifferentComparison] == 0 {
+		if stepResult.LastComparison().ValueCounts(false)[DifferentComparison] == 0 {
 			break
 		}
 	}

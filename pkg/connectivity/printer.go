@@ -36,9 +36,7 @@ func (t *Printer) PrintSummary() {
 		// preprocess to figure out whether it passed or failed
 		passed := true
 		for _, step := range result.Steps {
-			lastKubeResult := step.LastKubeProbe()
-			comparison := NewComparisonTableFrom(lastKubeResult, step.SimulatedProbe)
-			if comparison.ValueCounts(t.IgnoreLoopback)[DifferentComparison] > 0 {
+			if step.LastComparison().ValueCounts(t.IgnoreLoopback)[DifferentComparison] > 0 {
 				passed = false
 			}
 		}
@@ -62,9 +60,8 @@ func (t *Printer) PrintSummary() {
 		})
 
 		for stepNumber, step := range result.Steps {
-			for tryNumber, kubeProbe := range step.KubeProbes {
-				comparison := NewComparisonTableFrom(kubeProbe, step.SimulatedProbe)
-				counts := comparison.ValueCounts(t.IgnoreLoopback)
+			for tryNumber := range step.KubeProbes {
+				counts := step.Comparison(tryNumber).ValueCounts(t.IgnoreLoopback)
 				table.Append([]string{
 					"",
 					"",
@@ -184,9 +181,7 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 		panic(errors.Errorf("found 0 KubeResults for step, expected 1 or more"))
 	}
 
-	lastKubeProbe := stepResult.LastKubeProbe()
-
-	comparison := NewComparisonTableFrom(lastKubeProbe, stepResult.SimulatedProbe)
+	comparison := stepResult.LastComparison()
 	counts := comparison.ValueCounts(t.IgnoreLoopback)
 	if counts[DifferentComparison] > 0 {
 		fmt.Printf("Discrepancy found:")
@@ -214,7 +209,7 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 
 		fmt.Printf("\nActual vs expected (last round):\n%s\n", comparison.RenderSuccessTable())
 	} else {
-		fmt.Printf("%s\n", lastKubeProbe.RenderTable())
+		fmt.Printf("%s\n", stepResult.LastKubeProbe().RenderTable())
 	}
 }
 

@@ -19,7 +19,7 @@ type Result struct {
 func (r *Result) ProbeFeatures() []string {
 	featureMap := map[v1.Protocol]bool{}
 	for _, step := range r.Steps {
-		for _, counts := range NewComparisonTableFrom(step.LastKubeProbe(), step.SimulatedProbe).ResultsByProtocol() {
+		for _, counts := range step.LastComparison().ResultsByProtocol() {
 			for protocol, count := range counts {
 				if count > 0 {
 					featureMap[protocol] = true
@@ -43,6 +43,31 @@ type StepResult struct {
 	KubeProbes     []*probe.Table
 	Policy         *matcher.Policy
 	KubePolicies   []*networkingv1.NetworkPolicy
+	comparisons    []*ComparisonTable
+}
+
+func NewStepResult(simulated *probe.Table, policy *matcher.Policy, kubePolicies []*networkingv1.NetworkPolicy) *StepResult {
+	return &StepResult{
+		SimulatedProbe: simulated,
+		Policy:         policy,
+		KubePolicies:   kubePolicies,
+	}
+}
+
+func (s *StepResult) AddKubeProbe(kubeProbe *probe.Table) {
+	s.KubeProbes = append(s.KubeProbes, kubeProbe)
+	s.comparisons = append(s.comparisons, nil)
+}
+
+func (s *StepResult) Comparison(i int) *ComparisonTable {
+	if s.comparisons[i] == nil {
+		s.comparisons[i] = NewComparisonTableFrom(s.KubeProbes[i], s.SimulatedProbe)
+	}
+	return s.comparisons[i]
+}
+
+func (s *StepResult) LastComparison() *ComparisonTable {
+	return s.Comparison(len(s.KubeProbes) - 1)
 }
 
 func (s *StepResult) LastKubeProbe() *probe.Table {
