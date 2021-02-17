@@ -80,16 +80,3 @@ func refNetpolList(refs []networkingv1.NetworkPolicy) []*networkingv1.NetworkPol
 	}
 	return policies
 }
-
-func SetUpLogger(logLevelStr string) error {
-	logLevel, err := log.ParseLevel(logLevelStr)
-	if err != nil {
-		return errors.Wrapf(err, "unable to parse the specified log level: '%s'", logLevel)
-	}
-	log.SetLevel(logLevel)
-	log.SetFormatter(&log.TextFormatter{
-		FullTimestamp: true,
-	})
-	log.Infof("log level set to '%s'", log.GetLevel())
-	return nil
-}
