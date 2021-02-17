@@ -1,16 +1,24 @@
 package probe
 
 import (
-	v1 "k8s.io/api/core/v1"
+	"github.com/mattfenwick/cyclonus/pkg/utils"
+	"github.com/pkg/errors"
 	"sort"
 	"strings"
 )
 
-type TableValue struct {
-	Simulated []*JobResult
-	// TODO kube probes -- does this supersede what's in connectivity.TestCaseResult ?
-	Protocol v1.Protocol
-	Port     int
+type Item struct {
+	From       string
+	To         string
+	JobResults map[string]*JobResult
+}
+
+func (p *Item) AddJobResult(jr *JobResult) error {
+	if _, ok := p.JobResults[jr.Key()]; ok {
+		return errors.Errorf("unable to add job result: duplicate key %s (job %+v)", jr.Key(), jr.Job)
+	}
+	p.JobResults[jr.Key()] = jr
+	return nil
 }
 
 type Table struct {
@@ -18,26 +26,53 @@ type Table struct {
 }
 
 func NewTable(items []string) *Table {
-	return &Table{Wrapped: NewTruthTableFromItems(items, func() interface{} {
-		return map[string]Connectivity{}
+	return &Table{Wrapped: NewTruthTableFromItems(items, func(fr, to string) interface{} {
+		return &Item{
+			From:       fr,
+			To:         to,
+			JobResults: map[string]*JobResult{},
+		}
 	})}
 }
 
-func (r *Table) Set(from string, to string, key string, value Connectivity) {
-	dict := r.Get(from, to)
-	dict[key] = value
+func NewTableFromJobResults(resources *Resources, jobResults []*JobResult) *Table {
+	table := NewTable(resources.SortedPodNames())
+	for _, result := range jobResults {
+		fr := result.Job.FromKey
+		to := result.Job.ToKey
+		pp := table.Get(fr, to)
+		// this really shouldn't happen, so let's not recover from it
+		utils.DoOrDie(pp.AddJobResult(result))
+	}
+	return table
 }
 
-func (r *Table) Get(from string, to string) map[string]Connectivity {
-	return r.Wrapped.Get(from, to).(map[string]Connectivity)
+func (t *Table) Set(from string, to string, value *Item) {
+	t.Wrapped.Set(from, to, value)
 }
 
-func (r *Table) RenderTable() string {
+func (t *Table) Get(from string, to string) *Item {
+	return t.Wrapped.Get(from, to).(*Item)
+}
+
+func (t *Table) RenderIngress() string {
+	return t.renderTableHelper(getIngress)
+}
+
+func (t *Table) RenderEgress() string {
+	return t.renderTableHelper(getEgress)
+}
+
+func (t *Table) RenderTable() string {
+	return t.renderTableHelper(getCombined)
+}
+
+func (t *Table) renderTableHelper(render func(*JobResult) string) string {
 	isSchemaUniform, isSingleElement := true, true
 	schema := map[string]bool{}
 
-	for _, key := range r.Wrapped.Keys() {
-		dict := r.Get(key.From, key.To)
+	for _, key := range t.Wrapped.Keys() {
+		dict := t.Get(key.From, key.To).JobResults
 		if len(dict) != 1 {
 			isSingleElement = false
 			break
@@ -54,48 +89,59 @@ func (r *Table) RenderTable() string {
 		}
 	}
 	if isSchemaUniform && isSingleElement {
-		return r.renderSimpleTable()
+		return t.renderSimpleTable(render)
 	} else if isSchemaUniform {
-		return r.renderUniformMultiTable()
+		return t.renderUniformMultiTable(render)
 	} else {
-		return r.renderNonuniformTable()
+		return t.renderNonuniformTable(render)
 	}
 }
 
-func (r *Table) renderSimpleTable() string {
-	return r.Wrapped.Table("", false, func(i interface{}) string {
-		dict := i.(map[string]Connectivity)
-		var v Connectivity
-		for _, value := range dict {
+func getCombined(result *JobResult) string {
+	return result.Combined.ShortString()
+}
+
+func getIngress(result *JobResult) string {
+	return result.Ingress.ShortString()
+}
+
+func getEgress(result *JobResult) string {
+	return result.Egress.ShortString()
+}
+
+func (t *Table) renderSimpleTable(render func(*JobResult) string) string {
+	return t.Wrapped.Table("", false, func(fr, to string, i interface{}) string {
+		var v *JobResult
+		for _, value := range t.Get(fr, to).JobResults {
 			v = value
 			break
 		}
-		return v.ShortString()
+		return render(v)
 	})
 }
 
-func (r *Table) renderUniformMultiTable() string {
-	key := r.Wrapped.Keys()[0]
-	first := r.Get(key.From, key.To)
+func (t *Table) renderUniformMultiTable(render func(*JobResult) string) string {
+	key := t.Wrapped.Keys()[0]
+	first := t.Get(key.From, key.To)
 	var keys []string
-	for k := range first {
+	for k := range first.JobResults {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	schema := strings.Join(keys, "\n")
-	return r.Wrapped.Table(schema, true, func(i interface{}) string {
-		dict := i.(map[string]Connectivity)
+	return t.Wrapped.Table(schema, true, func(fr, to string, i interface{}) string {
+		dict := t.Get(fr, to).JobResults
 		var lines []string
 		for _, k := range keys {
-			lines = append(lines, dict[k].ShortString())
+			lines = append(lines, render(dict[k]))
 		}
 		return strings.Join(lines, "\n")
 	})
 }
 
-func (r *Table) renderNonuniformTable() string {
-	return r.Wrapped.Table("", true, func(i interface{}) string {
-		dict := i.(map[string]Connectivity)
+func (t *Table) renderNonuniformTable(render func(*JobResult) string) string {
+	return t.Wrapped.Table("", true, func(fr, to string, i interface{}) string {
+		dict := t.Get(fr, to).JobResults
 		var keys []string
 		for k := range dict {
 			keys = append(keys, k)
@@ -103,7 +149,7 @@ func (r *Table) renderNonuniformTable() string {
 		sort.Strings(keys)
 		var lines []string
 		for _, k := range keys {
-			lines = append(lines, k+": "+dict[k].ShortString())
+			lines = append(lines, k+": "+render(dict[k]))
 		}
 		return strings.Join(lines, "\n")
 	})

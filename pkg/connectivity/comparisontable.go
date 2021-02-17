@@ -3,7 +3,37 @@ package connectivity
 import (
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
 )
+
+type Item struct {
+	Kube      *probe.Item
+	Simulated *probe.Item
+}
+
+func (i *Item) ResultsByProtocol() map[bool]map[v1.Protocol]int {
+	counts := map[bool]map[v1.Protocol]int{true: {}, false: {}}
+	for key, kr := range i.Kube.JobResults {
+		counts[kr.Combined == i.Simulated.JobResults[key].Combined][kr.Job.Protocol]++
+	}
+	return counts
+}
+
+func (i *Item) IsSuccess() bool {
+	return equalsDict(i.Kube.JobResults, i.Simulated.JobResults)
+}
+
+func equalsDict(l map[string]*probe.JobResult, r map[string]*probe.JobResult) bool {
+	if len(l) != len(r) {
+		return false
+	}
+	for k, lv := range l {
+		if rv, ok := r[k]; !ok || rv.Combined != lv.Combined {
+			return false
+		}
+	}
+	return true
+}
 
 type ComparisonTable struct {
 	Wrapped *probe.TruthTable
@@ -30,30 +60,30 @@ func NewComparisonTableFrom(kubeProbe *probe.Table, simulatedProbe *probe.Table)
 
 	table := NewComparisonTable(kubeProbe.Wrapped.Froms)
 	for _, key := range kubeProbe.Wrapped.Keys() {
-		table.Set(key.From, key.To, equalsDict(kubeProbe.Get(key.From, key.To), simulatedProbe.Get(key.From, key.To)))
+		table.Set(key.From, key.To, &Item{Kube: kubeProbe.Get(key.From, key.To), Simulated: simulatedProbe.Get(key.From, key.To)})
 	}
 
 	return table
 }
 
-func equalsDict(l map[string]probe.Connectivity, r map[string]probe.Connectivity) bool {
-	if len(l) != len(r) {
-		return false
-	}
-	for k, lv := range l {
-		if rv, ok := r[k]; !ok || rv != lv {
-			return false
+func (c *ComparisonTable) ResultsByProtocol() map[bool]map[v1.Protocol]int {
+	counts := map[bool]map[v1.Protocol]int{true: {}, false: {}}
+	for _, key := range c.Wrapped.Keys() {
+		for isSuccess, protocolCounts := range c.Get(key.From, key.To).ResultsByProtocol() {
+			for protocol, count := range protocolCounts {
+				counts[isSuccess][protocol] += count
+			}
 		}
 	}
-	return true
+	return counts
 }
 
-func (c *ComparisonTable) Set(from string, to string, value bool) {
+func (c *ComparisonTable) Set(from string, to string, value *Item) {
 	c.Wrapped.Set(from, to, value)
 }
 
-func (c *ComparisonTable) Get(from string, to string) bool {
-	return c.Wrapped.Get(from, to).(bool)
+func (c *ComparisonTable) Get(from string, to string) *Item {
+	return c.Wrapped.Get(from, to).(*Item)
 }
 
 func (c *ComparisonTable) ValueCounts(ignoreLoopback bool) map[Comparison]int {
@@ -62,7 +92,7 @@ func (c *ComparisonTable) ValueCounts(ignoreLoopback bool) map[Comparison]int {
 		if ignoreLoopback && key.From == key.To {
 			counts[IgnoredComparison] += 1
 		} else {
-			if c.Get(key.From, key.To) {
+			if c.Get(key.From, key.To).IsSuccess() {
 				counts[SameComparison] += 1
 			} else {
 				counts[DifferentComparison] += 1
@@ -72,9 +102,10 @@ func (c *ComparisonTable) ValueCounts(ignoreLoopback bool) map[Comparison]int {
 	return counts
 }
 
-func (c *ComparisonTable) RenderTable() string {
-	return c.Wrapped.Table("", false, func(i interface{}) string {
-		if i.(bool) {
+func (c *ComparisonTable) RenderSuccessTable() string {
+	return c.Wrapped.Table("", false, func(fr, to string, i interface{}) string {
+		item := c.Get(fr, to)
+		if item.IsSuccess() {
 			return "."
 		} else {
 			return "X"

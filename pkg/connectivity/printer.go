@@ -37,7 +37,7 @@ func (t *Printer) PrintSummary() {
 		passed := true
 		for _, step := range result.Steps {
 			lastKubeResult := step.LastKubeProbe()
-			comparison := NewComparisonTableFrom(lastKubeResult, step.SimulatedProbe.Combined)
+			comparison := NewComparisonTableFrom(lastKubeResult, step.SimulatedProbe)
 			if comparison.ValueCounts(t.IgnoreLoopback)[DifferentComparison] > 0 {
 				passed = false
 			}
@@ -63,7 +63,7 @@ func (t *Printer) PrintSummary() {
 
 		for stepNumber, step := range result.Steps {
 			for tryNumber, kubeProbe := range step.KubeProbes {
-				comparison := NewComparisonTableFrom(kubeProbe, step.SimulatedProbe.Combined)
+				comparison := NewComparisonTableFrom(kubeProbe, step.SimulatedProbe)
 				counts := comparison.ValueCounts(t.IgnoreLoopback)
 				table.Append([]string{
 					"",
@@ -186,7 +186,7 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 
 	lastKubeProbe := stepResult.LastKubeProbe()
 
-	comparison := NewComparisonTableFrom(lastKubeProbe, stepResult.SimulatedProbe.Combined)
+	comparison := NewComparisonTableFrom(lastKubeProbe, stepResult.SimulatedProbe)
 	counts := comparison.ValueCounts(t.IgnoreLoopback)
 	if counts[DifferentComparison] > 0 {
 		fmt.Printf("Discrepancy found:")
@@ -194,11 +194,11 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 	fmt.Printf("%d wrong, %d ignored, %d correct\n", counts[DifferentComparison], counts[IgnoredComparison], counts[SameComparison])
 
 	if counts[DifferentComparison] > 0 || t.Noisy {
-		fmt.Printf("Expected ingress:\n%s\n", stepResult.SimulatedProbe.Ingress.RenderTable())
+		fmt.Printf("Expected ingress:\n%s\n", stepResult.SimulatedProbe.RenderIngress())
 
-		fmt.Printf("Expected egress:\n%s\n", stepResult.SimulatedProbe.Egress.RenderTable())
+		fmt.Printf("Expected egress:\n%s\n", stepResult.SimulatedProbe.RenderEgress())
 
-		fmt.Printf("Expected combined:\n%s\n", stepResult.SimulatedProbe.Combined.RenderTable())
+		fmt.Printf("Expected combined:\n%s\n", stepResult.SimulatedProbe.RenderTable())
 
 		for i, kubeResult := range stepResult.KubeProbes {
 			fmt.Printf("kube results, try %d:\n%s\n", i, kubeResult.RenderTable())
@@ -212,7 +212,7 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 			fmt.Println("no network policies")
 		}
 
-		fmt.Printf("\nActual vs expected (last round):\n%s\n", comparison.RenderTable())
+		fmt.Printf("\nActual vs expected (last round):\n%s\n", comparison.RenderSuccessTable())
 	} else {
 		fmt.Printf("%s\n", lastKubeProbe.RenderTable())
 	}

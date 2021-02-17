@@ -4,6 +4,7 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
+	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
@@ -16,30 +17,19 @@ type Result struct {
 }
 
 func (r *Result) ProbeFeatures() []string {
-	featureMap := map[string]bool{}
-	//for _, step := range r.TestCase.Steps {
-	//	if step.Probe.AllAvailable {
-	//		for protocol := range r.InitialResources.AllProtocolsServed() {
-	//			featureMap[generator.ProtocolToFeature(protocol)] = true
-	//		}
-	//	} else if step.Probe.PortProtocol != nil {
-	//		pp := step.Probe.PortProtocol
-	//		featureMap[generator.ProtocolToFeature(pp.Protocol)] = true
-	//		switch pp.Port.Type {
-	//		case intstr.Int:
-	//			featureMap[generator.ProbeFeatureNumberedPort] = true
-	//		case intstr.String:
-	//			featureMap[generator.ProbeFeatureNamedPort] = true
-	//		default:
-	//			panic(errors.Errorf("invalid intstr value %T", pp.Port))
-	//		}
-	//	} else {
-	//		panic(errors.Errorf("invalid ProbeConfig value %T", step.Probe))
-	//	}
-	//}
+	featureMap := map[v1.Protocol]bool{}
+	for _, step := range r.Steps {
+		for _, counts := range NewComparisonTableFrom(step.LastKubeProbe(), step.SimulatedProbe).ResultsByProtocol() {
+			for protocol, count := range counts {
+				if count > 0 {
+					featureMap[protocol] = true
+				}
+			}
+		}
+	}
 	var features []string
 	for feature := range featureMap {
-		features = append(features, feature)
+		features = append(features, probe.ProtocolToFeature(feature))
 	}
 	return features
 }
@@ -49,7 +39,7 @@ func (r *Result) Features() []string {
 }
 
 type StepResult struct {
-	SimulatedProbe *probe.Probe
+	SimulatedProbe *probe.Table
 	KubeProbes     []*probe.Table
 	Policy         *matcher.Policy
 	KubePolicies   []*networkingv1.NetworkPolicy

@@ -20,6 +20,10 @@ type JobResult struct {
 	Combined Connectivity
 }
 
+func (jr *JobResult) Key() string {
+	return fmt.Sprintf("%s/%d", jr.Job.Protocol, jr.Job.ResolvedPort)
+}
+
 type Job struct {
 	FromKey             string
 	FromNamespace       string

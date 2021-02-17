@@ -121,8 +121,8 @@ func (t *Interpreter) runProbe(testCaseState *TestCaseState, probeConfig *genera
 	for i := 0; i <= t.kubeProbeRetries; i++ {
 		logrus.Infof("running kube probe on try %d", i+1)
 		kubeProbe := kubeRunner.RunProbeForConfig(probeConfig, testCaseState.Resources)
-		resultTable := NewComparisonTableFrom(kubeProbe.Combined, stepResult.SimulatedProbe.Combined)
-		stepResult.KubeProbes = append(stepResult.KubeProbes, kubeProbe.Combined)
+		resultTable := NewComparisonTableFrom(kubeProbe, stepResult.SimulatedProbe)
+		stepResult.KubeProbes = append(stepResult.KubeProbes, kubeProbe)
 		// no differences between synthetic and kube probes?  then we can stop
 		if resultTable.ValueCounts(false)[DifferentComparison] == 0 {
 			break

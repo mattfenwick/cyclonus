@@ -25,7 +25,7 @@ func NewKubeRunner(kubernetes *kube.Kubernetes, workers int) *Runner {
 	return &Runner{JobRunner: &KubeJobRunner{Kubernetes: kubernetes}, Workers: workers}
 }
 
-func (p *Runner) RunProbeForConfig(probeConfig *generator.ProbeConfig, resources *Resources) *Probe {
+func (p *Runner) RunProbeForConfig(probeConfig *generator.ProbeConfig, resources *Resources) *Table {
 	if probeConfig.AllAvailable {
 		return p.RunAllAvailablePortsProbe(resources)
 	} else if probeConfig.PortProtocol != nil {
@@ -35,12 +35,12 @@ func (p *Runner) RunProbeForConfig(probeConfig *generator.ProbeConfig, resources
 	}
 }
 
-func (p *Runner) RunAllAvailablePortsProbe(resources *Resources) *Probe {
-	return NewProbeFromJobResults(resources, p.runProbe(resources.GetJobsAllAvailableServers()))
+func (p *Runner) RunAllAvailablePortsProbe(resources *Resources) *Table {
+	return NewTableFromJobResults(resources, p.runProbe(resources.GetJobsAllAvailableServers()))
 }
 
-func (p *Runner) RunProbeFixedPortProtocol(resources *Resources, port intstr.IntOrString, protocol v1.Protocol) *Probe {
-	return NewProbeFromJobResults(resources, p.runProbe(resources.GetJobsForNamedPortProtocol(port, protocol)))
+func (p *Runner) RunProbeFixedPortProtocol(resources *Resources, port intstr.IntOrString, protocol v1.Protocol) *Table {
+	return NewTableFromJobResults(resources, p.runProbe(resources.GetJobsForNamedPortProtocol(port, protocol)))
 }
 
 func (p *Runner) runProbe(jobs *Jobs) []*JobResult {
