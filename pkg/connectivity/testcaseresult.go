@@ -16,26 +16,20 @@ type Result struct {
 	Err              error
 }
 
-func (r *Result) ProbeFeatures() []string {
-	featureMap := map[v1.Protocol]bool{}
+func (r *Result) ResultsByProtocol() map[bool]map[v1.Protocol]int {
+	counts := map[bool]map[v1.Protocol]int{true: {}, false: {}}
 	for _, step := range r.Steps {
-		for _, counts := range step.LastComparison().ResultsByProtocol() {
-			for protocol, count := range counts {
-				if count > 0 {
-					featureMap[protocol] = true
-				}
+		for isSuccess, protocolCounts := range step.LastComparison().ResultsByProtocol() {
+			for protocol, count := range protocolCounts {
+				counts[isSuccess][protocol] += count
 			}
 		}
 	}
-	var features []string
-	for feature := range featureMap {
-		features = append(features, probe.ProtocolToFeature(feature))
-	}
-	return features
+	return counts
 }
 
 func (r *Result) Features() []string {
-	return append(r.TestCase.GetFeatures().Strings(), r.ProbeFeatures()...)
+	return r.TestCase.GetFeatures().Strings()
 }
 
 type StepResult struct {

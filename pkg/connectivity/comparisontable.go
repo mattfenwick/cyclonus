@@ -86,6 +86,26 @@ func (c *ComparisonTable) Get(from string, to string) *Item {
 	return c.Wrapped.Get(from, to).(*Item)
 }
 
+func (c *ComparisonTable) ValueCountsByProtocol(ignoreLoopback bool) map[v1.Protocol]map[Comparison]int {
+	counts := map[v1.Protocol]map[Comparison]int{v1.ProtocolTCP: {}, v1.ProtocolSCTP: {}, v1.ProtocolUDP: {}}
+	for _, key := range c.Wrapped.Keys() {
+		for isSuccess, protocolCounts := range c.Get(key.From, key.To).ResultsByProtocol() {
+			var c Comparison
+			if ignoreLoopback && key.From == key.To {
+				c = IgnoredComparison
+			} else if isSuccess {
+				c = SameComparison
+			} else {
+				c = DifferentComparison
+			}
+			for protocol, count := range protocolCounts {
+				counts[protocol][c] += count
+			}
+		}
+	}
+	return counts
+}
+
 func (c *ComparisonTable) ValueCounts(ignoreLoopback bool) map[Comparison]int {
 	counts := map[Comparison]int{}
 	for _, key := range c.Wrapped.Keys() {
