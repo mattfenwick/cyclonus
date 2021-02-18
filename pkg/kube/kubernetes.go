@@ -254,5 +254,5 @@ func (k *Kubernetes) ExecuteRemoteCommand(namespace string, pod string, containe
 	})
 
 	out, errOut := buf.String(), errBuf.String()
-	return out, errOut, err, nil
+	return out, errOut, errors.Wrapf(err, "unable to stream command"), nil
 }

@@ -14,6 +14,9 @@ import (
 
 const (
 	defaultWorkersCount = 15
+
+	// 9 = 3 namespaces x 3 pods
+	defaultBatchWorkersCount = 9
 )
 
 type Interpreter struct {
@@ -23,10 +26,18 @@ type Interpreter struct {
 	perturbationWaitDuration         time.Duration
 	resetClusterBeforeTestCase       bool
 	verifyClusterStateBeforeTestCase bool
+	kubeRunner                       *probe.Runner
 }
 
-func NewInterpreter(kubernetes *kube.Kubernetes, resources *probe.Resources, resetClusterBeforeTestCase bool, kubeProbeRetries int, perturbationWaitSeconds int, verifyClusterStateBeforeTestCase bool) (*Interpreter, error) {
+func NewInterpreter(kubernetes *kube.Kubernetes, resources *probe.Resources, resetClusterBeforeTestCase bool, kubeProbeRetries int, perturbationWaitSeconds int, verifyClusterStateBeforeTestCase bool, batchJobs bool) *Interpreter {
 	fmt.Printf("resources:\n%s\n", resources.RenderTable())
+
+	var kubeRunner *probe.Runner
+	if batchJobs {
+		kubeRunner = probe.NewKubeBatchRunner(kubernetes, defaultBatchWorkersCount)
+	} else {
+		kubeRunner = probe.NewKubeRunner(kubernetes, defaultWorkersCount)
+	}
 
 	return &Interpreter{
 		kubernetes:                       kubernetes,
@@ -35,7 +46,8 @@ func NewInterpreter(kubernetes *kube.Kubernetes, resources *probe.Resources, res
 		perturbationWaitDuration:         time.Duration(perturbationWaitSeconds) * time.Second,
 		resetClusterBeforeTestCase:       resetClusterBeforeTestCase,
 		verifyClusterStateBeforeTestCase: verifyClusterStateBeforeTestCase,
-	}, nil
+		kubeRunner:                       kubeRunner,
+	}
 }
 
 func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
@@ -108,8 +120,6 @@ func (t *Interpreter) runProbe(testCaseState *TestCaseState, probeConfig *genera
 
 	logrus.Infof("running probe %+v", probeConfig)
 
-	kubeRunner := probe.NewKubeRunner(t.kubernetes, defaultWorkersCount)
-
 	simRunner := probe.NewSimulatedRunner(parsedPolicy)
 
 	stepResult := NewStepResult(
@@ -119,7 +129,7 @@ func (t *Interpreter) runProbe(testCaseState *TestCaseState, probeConfig *genera
 
 	for i := 0; i <= t.kubeProbeRetries; i++ {
 		logrus.Infof("running kube probe on try %d", i+1)
-		stepResult.AddKubeProbe(kubeRunner.RunProbeForConfig(probeConfig, testCaseState.Resources))
+		stepResult.AddKubeProbe(t.kubeRunner.RunProbeForConfig(probeConfig, testCaseState.Resources))
 		// no differences between synthetic and kube probes?  then we can stop
 		if stepResult.LastComparison().ValueCounts(false)[DifferentComparison] == 0 {
 			break

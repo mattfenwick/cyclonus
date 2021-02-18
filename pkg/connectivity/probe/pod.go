@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	agnhostImage = "k8s.gcr.io/e2e-test-images/agnhost:2.28"
+	agnhostImage        = "k8s.gcr.io/e2e-test-images/agnhost:2.28"
+	cyclonusWorkerImage = "mfenwick100/cyclonus-worker:latest"
 )
 
 func NewPod(ns string, name string, labels map[string]string, ip string, containers []*Container) *Pod {
@@ -22,11 +23,11 @@ func NewPod(ns string, name string, labels map[string]string, ip string, contain
 	}
 }
 
-func NewDefaultPod(ns string, name string, labels map[string]string, ip string, ports []int, protocols []v1.Protocol) *Pod {
+func NewDefaultPod(ns string, name string, labels map[string]string, ip string, ports []int, protocols []v1.Protocol, batchJobs bool) *Pod {
 	var containers []*Container
 	for _, port := range ports {
 		for _, protocol := range protocols {
-			containers = append(containers, NewDefaultContainer(port, protocol))
+			containers = append(containers, NewDefaultContainer(port, protocol, batchJobs))
 		}
 	}
 	return &Pod{
@@ -133,18 +134,20 @@ func (p *Pod) PodString() PodString {
 }
 
 type Container struct {
-	Name     string
-	Port     int
-	Protocol v1.Protocol
-	PortName string
+	Name      string
+	Port      int
+	Protocol  v1.Protocol
+	PortName  string
+	BatchJobs bool
 }
 
-func NewDefaultContainer(port int, protocol v1.Protocol) *Container {
+func NewDefaultContainer(port int, protocol v1.Protocol, batchJobs bool) *Container {
 	return &Container{
-		Name:     fmt.Sprintf("cont-%d-%s", port, strings.ToLower(string(protocol))),
-		Port:     port,
-		Protocol: protocol,
-		PortName: fmt.Sprintf("serve-%d-%s", port, strings.ToLower(string(protocol))),
+		Name:      fmt.Sprintf("cont-%d-%s", port, strings.ToLower(string(protocol))),
+		Port:      port,
+		Protocol:  protocol,
+		PortName:  fmt.Sprintf("serve-%d-%s", port, strings.ToLower(string(protocol))),
+		BatchJobs: batchJobs,
 	}
 }
 
@@ -154,6 +157,13 @@ func (c *Container) KubeServicePort() v1.ServicePort {
 		Protocol: c.Protocol,
 		Port:     int32(c.Port),
 	}
+}
+
+func (c *Container) Image() string {
+	if c.BatchJobs {
+		return cyclonusWorkerImage
+	}
+	return agnhostImage
 }
 
 func (c *Container) KubeContainer() v1.Container {
@@ -178,7 +188,7 @@ func (c *Container) KubeContainer() v1.Container {
 	return v1.Container{
 		Name:            c.Name,
 		ImagePullPolicy: v1.PullIfNotPresent,
-		Image:           agnhostImage,
+		Image:           c.Image(),
 		Command:         cmd,
 		Env:             env,
 		SecurityContext: &v1.SecurityContext{},

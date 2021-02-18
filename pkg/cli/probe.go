@@ -78,10 +78,9 @@ func RunProbeCommand(args *ProbeArgs) {
 	protocols := parseProtocols(args.Protocols)
 	serverProtocols := parseProtocols(args.ServerProtocols)
 
-	resources, err := probe.NewDefaultResources(kubernetes, args.ServerNamespaces, args.ServerPods, args.ServerPorts, serverProtocols, externalIPs, args.PodCreationTimeoutSeconds)
+	resources, err := probe.NewDefaultResources(kubernetes, args.ServerNamespaces, args.ServerPods, args.ServerPorts, serverProtocols, externalIPs, args.PodCreationTimeoutSeconds, false)
 	utils.DoOrDie(err)
-	interpreter, err := connectivity.NewInterpreter(kubernetes, resources, false, 0, args.PerturbationWaitSeconds, false)
-	utils.DoOrDie(err)
+	interpreter := connectivity.NewInterpreter(kubernetes, resources, false, 0, args.PerturbationWaitSeconds, false, false)
 
 	actions := []*generator.Action{generator.ReadNetworkPolicies(args.ServerNamespaces)}
 

@@ -3,6 +3,7 @@ module github.com/mattfenwick/cyclonus
 go 1.15
 
 require (
+	github.com/go-resty/resty/v2 v2.5.0
 	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/onsi/ginkgo v1.11.0

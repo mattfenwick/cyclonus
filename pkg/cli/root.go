@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -25,7 +26,7 @@ func SetupRootCommand() *cobra.Command {
 		Use:   "cyclonus",
 		Short: "explain, probe, and query network policies",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return SetUpLogger(flags.Verbosity)
+			return utils.SetUpLogger(flags.Verbosity)
 		},
 	}
 
