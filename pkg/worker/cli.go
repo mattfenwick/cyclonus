@@ -1,15 +1,12 @@
 package worker
 
 import (
+	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"os"
-)
-
-const (
-	DefaultPort = 23456
 )
 
 func Run() {
@@ -22,27 +19,31 @@ func Run() {
 
 type Args struct {
 	Verbosity string
-	Port      int
+	Jobs      string
 }
 
 func SetupRootCommand() *cobra.Command {
 	args := &Args{}
 	command := &cobra.Command{
 		Use:   "cyclonus-worker",
-		Short: "thin wrapper around agnhost for issuing batches of connectivity requests",
+		Short: "thin wrapper around 'agnhost connect' for issuing batches of connectivity requests",
 		Run: func(cmd *cobra.Command, as []string) {
-			RunWorker(args)
+			RunWorkerCommand(args)
 		},
 	}
 
 	command.Flags().StringVarP(&args.Verbosity, "verbosity", "v", "info", "log level; one of [info, debug, trace, warn, error, fatal, panic]")
-	command.Flags().IntVar(&args.Port, "port", DefaultPort, "port to run server on")
+
+	command.Flags().StringVar(&args.Jobs, "jobs", "", "JSON-formatted string of jobs")
+	utils.DoOrDie(command.MarkFlagRequired("jobs"))
 
 	return command
 }
 
-func RunWorker(args *Args) {
+func RunWorkerCommand(args *Args) {
 	utils.DoOrDie(utils.SetUpLogger(args.Verbosity))
 
-	RunServer(args.Port)
+	out, err := RunWorker(args.Jobs)
+	utils.DoOrDie(err)
+	fmt.Printf("%s\n", out)
 }

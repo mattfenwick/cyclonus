@@ -46,6 +46,10 @@ type Job struct {
 	Protocol         v1.Protocol
 }
 
+func (j *Job) Key() string {
+	return fmt.Sprintf("%s/%s/%s/%s/%s/%d", j.FromKey, j.FromContainer, j.ToKey, j.ToContainer, j.Protocol, j.ResolvedPort)
+}
+
 func (j *Job) ToAddress() string {
 	return fmt.Sprintf("%s:%d", j.ToHost, j.ResolvedPort)
 }

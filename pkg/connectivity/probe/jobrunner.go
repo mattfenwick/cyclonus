@@ -5,6 +5,7 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
+	"github.com/mattfenwick/cyclonus/pkg/worker"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -139,4 +140,70 @@ func probeConnectivity(k8s *kube.Kubernetes, job *Job) (Connectivity, string, er
 		return ConnectivityBlocked, commandDebugString, nil
 	}
 	return ConnectivityAllowed, commandDebugString, nil
+}
+
+type KubeBatchJobRunner struct {
+	Client *worker.Client
+}
+
+func NewKubeBatchJobRunner(k8s *kube.Kubernetes) *KubeBatchJobRunner {
+	return &KubeBatchJobRunner{
+		Client: &worker.Client{Kubernetes: k8s},
+	}
+}
+
+func (k *KubeBatchJobRunner) RunJobs(jobs []*Job) []*JobResult {
+	jobMap := map[string]*Job{}
+
+	// 1. batch up jobs
+	batches := map[string]map[string]*worker.Batch{}
+	for _, job := range jobs {
+		ns, pod := job.FromNamespace, job.FromPod
+		if _, ok := batches[ns]; !ok {
+			batches[ns] = map[string]*worker.Batch{}
+		}
+		if _, ok := batches[ns][pod]; !ok {
+			batches[ns][pod] = &worker.Batch{Namespace: ns, Pod: pod, Container: job.FromContainer}
+		}
+		batch := batches[ns][pod]
+		batch.Requests = append(batch.Requests, &worker.Request{
+			Key:      job.Key(),
+			Protocol: job.Protocol,
+			Host:     job.ToHost,
+			Port:     job.ResolvedPort,
+		})
+
+		jobMap[job.Key()] = job
+	}
+
+	var jobResults []*JobResult
+	// 2. send them out and get the results
+	for _, dict := range batches {
+		for _, b := range dict {
+			results, err := k.Client.Batch(b)
+			if err != nil {
+				for _, r := range b.Requests {
+					jobResults = append(jobResults, &JobResult{
+						Job:      jobMap[r.Key],
+						Combined: ConnectivityCheckFailed,
+					})
+				}
+			} else {
+				for _, r := range results {
+					var c Connectivity
+					if r.IsSuccess() {
+						c = ConnectivityAllowed
+					} else {
+						c = ConnectivityBlocked
+					}
+					jobResults = append(jobResults, &JobResult{
+						Job:      jobMap[r.Request.Key],
+						Combined: c,
+					})
+				}
+			}
+		}
+	}
+
+	return jobResults
 }
