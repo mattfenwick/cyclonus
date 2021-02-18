@@ -2,10 +2,7 @@ package worker
 
 import (
 	"encoding/json"
-	"fmt"
-	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"os/exec"
 )
@@ -18,22 +15,18 @@ var (
 	}
 )
 
-func RunWorker(jobs string) (string, error) {
-	log.Tracef("received jobs: %s", jobs)
+func RunWorker(jobs string, concurrency int) (string, error) {
 	var batch Batch
 	err := json.Unmarshal([]byte(jobs), &batch)
 	if err != nil {
-		return "", errors.Wrapf(err, "unable to unmarshal json")
+		return "", errors.Wrapf(err, "unable to unmarshal json from '%s'", jobs)
 	}
 
 	if err := batch.IsValid(); err != nil {
 		return "", err
 	}
 
-	results, err := batch.Issue()
-	if err != nil {
-		return "", errors.Wrapf(err, "unable to issue requests")
-	}
+	results := IssueBatch(&batch, concurrency)
 
 	jsonBytes, err := json.MarshalIndent(results, "", "  ")
 	if err != nil {
@@ -42,75 +35,50 @@ func RunWorker(jobs string) (string, error) {
 	return string(jsonBytes), nil
 }
 
-type Batch struct {
-	Namespace string
-	Pod       string
-	Container string
-	Requests  []*Request
-}
-
-func (b *Batch) IsValid() error {
-	for _, r := range b.Requests {
-		if !protocols[r.Protocol] {
-			return errors.Errorf("invalid protocol %s", r.Protocol)
-		}
+func IssueBatch(batch *Batch, concurrency int) []*Result {
+	requestChan := make(chan *Request)
+	resultChan := make(chan *Result, len(batch.Requests))
+	for i := 0; i < concurrency; i++ {
+		go worker(requestChan, resultChan)
 	}
-	return nil
-}
-
-func (b *Batch) Issue() ([]*Result, error) {
-	var results []*Result
-	for _, r := range b.Requests {
-		results = append(results, r.Issue())
+	for _, b := range batch.Requests {
+		requestChan <- b
 	}
-	return results, nil
+	close(requestChan)
+
+	var resultSlice []*Result
+	for i := 0; i < len(batch.Requests); i++ {
+		resultSlice = append(resultSlice, <-resultChan)
+	}
+	return resultSlice
 }
 
-type Result struct {
-	Request *Request
-	Output  string
-	Error   string
-}
-
-func (r *Result) IsSuccess() bool {
-	return r.Error == ""
-}
-
-type Request struct {
-	Key      string
-	Protocol v1.Protocol
-	Host     string
-	Port     int
-}
-
-func (r *Request) Address() string {
-	return fmt.Sprintf("%s:%d", r.Host, r.Port)
-}
-
-func (r *Request) Command() []string {
-	switch r.Protocol {
-	case v1.ProtocolSCTP:
-		return []string{"/agnhost", "connect", r.Address(), "--timeout=1s", "--protocol=sctp"}
-	case v1.ProtocolTCP:
-		return []string{"/agnhost", "connect", r.Address(), "--timeout=1s", "--protocol=tcp"}
-	case v1.ProtocolUDP:
-		return []string{"/agnhost", "connect", r.Address(), "--timeout=1s", "--protocol=udp"}
-	default:
-		panic(errors.Errorf("protocol %s not supported", r.Protocol))
+func worker(requests <-chan *Request, results chan<- *Result) {
+	for request := range requests {
+		results <- IssueRequestWithRetries(request, 1)
 	}
 }
 
-func (r *Request) Issue() *Result {
+func IssueRequestWithRetries(r *Request, retries int) *Result {
+	result := IssueRequest(r)
+	for i := 0; i < retries && !result.IsSuccess(); i++ {
+		result = IssueRequest(r)
+	}
+	return result
+}
+
+func IssueRequest(r *Request) *Result {
 	command := r.Command()
 	name, args := command[0], command[1:]
-	out, err := utils.CommandRun(exec.Command(name, args...))
+	cmd := exec.Command(name, args...)
+	out, err := cmd.Output()
 	var errString string
 	if err != nil {
-		errString = err.Error()
+		errString = errors.Wrapf(err, "unable to run command '%s'", cmd.String()).Error()
 	}
 	return &Result{
 		Request: r,
-		Output:  out,
+		Output:  string(out),
 		Error:   errString,
 	}
 }

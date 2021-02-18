@@ -17,7 +17,7 @@ type Resources struct {
 	//ExternalIPs []string
 }
 
-func NewDefaultResources(kubernetes *kube.Kubernetes, namespaces []string, podNames []string, ports []int, protocols []v1.Protocol, externalIPs []string, podCreationTimeoutSeconds int) (*Resources, error) {
+func NewDefaultResources(kubernetes *kube.Kubernetes, namespaces []string, podNames []string, ports []int, protocols []v1.Protocol, externalIPs []string, podCreationTimeoutSeconds int, batchJobs bool) (*Resources, error) {
 	sort.Strings(externalIPs)
 	r := &Resources{
 		Namespaces: map[string]map[string]string{},
@@ -26,7 +26,7 @@ func NewDefaultResources(kubernetes *kube.Kubernetes, namespaces []string, podNa
 
 	for _, ns := range namespaces {
 		for _, podName := range podNames {
-			r.Pods = append(r.Pods, NewDefaultPod(ns, podName, map[string]string{"pod": podName}, "TODO", ports, protocols))
+			r.Pods = append(r.Pods, NewDefaultPod(ns, podName, map[string]string{"pod": podName}, "TODO", ports, protocols, batchJobs))
 		}
 		r.Namespaces[ns] = map[string]string{"ns": ns}
 	}

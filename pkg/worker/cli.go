@@ -18,8 +18,9 @@ func Run() {
 }
 
 type Args struct {
-	Verbosity string
-	Jobs      string
+	//Verbosity string
+	Jobs        string
+	Concurrency int
 }
 
 func SetupRootCommand() *cobra.Command {
@@ -32,7 +33,9 @@ func SetupRootCommand() *cobra.Command {
 		},
 	}
 
-	command.Flags().StringVarP(&args.Verbosity, "verbosity", "v", "info", "log level; one of [info, debug, trace, warn, error, fatal, panic]")
+	//command.Flags().StringVarP(&args.Verbosity, "verbosity", "v", "info", "log level; one of [info, debug, trace, warn, error, fatal, panic]")
+
+	command.Flags().IntVar(&args.Concurrency, "concurrency", 10, "number of jobs to simultaneously run")
 
 	command.Flags().StringVar(&args.Jobs, "jobs", "", "JSON-formatted string of jobs")
 	utils.DoOrDie(command.MarkFlagRequired("jobs"))
@@ -41,9 +44,9 @@ func SetupRootCommand() *cobra.Command {
 }
 
 func RunWorkerCommand(args *Args) {
-	utils.DoOrDie(utils.SetUpLogger(args.Verbosity))
+	//utils.DoOrDie(utils.SetUpLogger(args.Verbosity))
 
-	out, err := RunWorker(args.Jobs)
+	out, err := RunWorker(args.Jobs, args.Concurrency)
 	utils.DoOrDie(err)
 	fmt.Printf("%s\n", out)
 }

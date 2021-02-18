@@ -2,7 +2,6 @@ package worker
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -17,9 +16,10 @@ func (c *Client) Batch(b *Batch) ([]*Result, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to marshal json")
 	}
-	command := []string{"/worker", "--jobs", fmt.Sprintf("'%s'", bytes)}
+	command := []string{"/worker", "--jobs", string(bytes)}
+	log.Infof("issuing %s worker command with %d requests", b.Key(), len(b.Requests))
 	stdout, stderr, commandErr, err := c.Kubernetes.ExecuteRemoteCommand(b.Namespace, b.Pod, b.Container, command)
-	log.Debugf("%+v worker stdout:\n%s\nworker stderr:\n%s\n", b, stdout, stderr)
+	log.Tracef("%s worker stdout:\n%s\nworker stderr:\n%s\n", b.Key(), stdout, stderr)
 
 	if err != nil {
 		return nil, err
@@ -29,7 +29,15 @@ func (c *Client) Batch(b *Batch) ([]*Result, error) {
 
 	var results []*Result
 	err = json.Unmarshal([]byte(stdout), &results)
-	return results, errors.Wrapf(err, "unable to unmarshal json")
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to unmarshal json")
+	}
+
+	if len(results) != len(b.Requests) {
+		return results, errors.Errorf("expected %d results, but got only %d", len(b.Requests), len(results))
+	}
+
+	return results, nil
 }
 
 /*
