@@ -256,11 +256,11 @@ func (e *ExperimentalGenerator) Policies() []*FeaturePolicy {
 func (e *ExperimentalGenerator) GenerateTestCases() []*TestCase {
 	var cases []*TestCase
 	for _, fp := range e.Policies() {
-		//cases = append(cases, NewSingleStepTestCase("?", allAvailable, CreatePolicy(fp.Policy.NetworkPolicy())))
+		//cases = append(cases, NewSingleStepTestCase("?", ProbeAllAvailable, CreatePolicy(fp.Policy.NetworkPolicy())))
 		cases = append(cases, &TestCase{
 			Description: "?",
 			Features:    fp.Features,
-			Steps:       []*TestStep{NewTestStep(allAvailable, CreatePolicy(fp.Policy.NetworkPolicy()))},
+			Steps:       []*TestStep{NewTestStep(ProbeAllAvailable, CreatePolicy(fp.Policy.NetworkPolicy()))},
 		})
 	}
 	return cases

@@ -11,7 +11,7 @@ type ExampleGenerator struct{}
 func (e *ExampleGenerator) GenerateTestCases() []*TestCase {
 	return []*TestCase{
 		NewTestCase("should allow ingress access on one named port",
-			NewTestStep(allAvailable, CreatePolicy(
+			NewTestStep(ProbeAllAvailable, CreatePolicy(
 				&NetworkPolicy{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "allow-all",
@@ -31,7 +31,7 @@ func (e *ExampleGenerator) GenerateTestCases() []*TestCase {
 						PolicyTypes: []PolicyType{PolicyTypeIngress},
 					},
 				})),
-			NewTestStep(allAvailable),
+			NewTestStep(ProbeAllAvailable),
 			NewTestStep(probePort80TCP),
 			NewTestStep(probePort81TCP),
 			NewTestStep(probePortServe80TCP),

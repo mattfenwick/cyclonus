@@ -172,7 +172,7 @@ func (g *FragmentGenerator) FragmentPolicies() []*NetworkPolicy {
 func (g *FragmentGenerator) GenerateTestCases() []*TestCase {
 	var testCases []*TestCase
 	for _, netpol := range g.FragmentPolicies() {
-		testCases = append(testCases, NewSingleStepTestCase("TODO", allAvailable, CreatePolicy(netpol)))
+		testCases = append(testCases, NewSingleStepTestCase("TODO", ProbeAllAvailable, CreatePolicy(netpol)))
 	}
 	return testCases
 }

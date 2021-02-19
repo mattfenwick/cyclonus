@@ -11,9 +11,10 @@ var (
 	udp  = v1.ProtocolUDP
 
 	port53 = intstr.FromInt(53)
+
 	port79 = intstr.FromInt(79)
-	port81 = intstr.FromInt(81)
 	port80 = intstr.FromInt(80)
+	port81 = intstr.FromInt(81)
 	port82 = intstr.FromInt(82)
 )
 
@@ -24,7 +25,8 @@ var (
 )
 
 var (
-	allAvailable   = &ProbeConfig{AllAvailable: true}
+	ProbeAllAvailable = &ProbeConfig{AllAvailable: true}
+
 	probePort80TCP = &ProbeConfig{PortProtocol: &PortProtocol{Port: port80, Protocol: tcp}}
 	probePort81TCP = &ProbeConfig{PortProtocol: &PortProtocol{Port: port81, Protocol: tcp}}
 
