@@ -31,10 +31,15 @@ func (e *ExampleGenerator) GenerateTestCases() []*TestCase {
 						PolicyTypes: []PolicyType{PolicyTypeIngress},
 					},
 				})),
+			NewTestStep(ProbeAllAvailable,
+				CreateNamespace("w", map[string]string{"ns": "w"}),
+				CreatePod("w", "a", map[string]string{"pod": "a"})),
+			NewTestStep(ProbeAllAvailable, DeletePod("w", "a")),
+			NewTestStep(ProbeAllAvailable, DeleteNamespace("w")),
 			NewTestStep(ProbeAllAvailable),
-			NewTestStep(probePort80TCP),
+			//NewTestStep(probePort80TCP),
 			NewTestStep(probePort81TCP),
-			NewTestStep(probePortServe80TCP),
+			//NewTestStep(probePortServe80TCP),
 			NewTestStep(probePortServe81TCP)),
 	}
 }

@@ -88,15 +88,23 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 				err = testCaseState.CreatePolicy(action.CreatePolicy.Policy)
 			} else if action.UpdatePolicy != nil {
 				err = testCaseState.UpdatePolicy(action.UpdatePolicy.Policy)
+			} else if action.DeletePolicy != nil {
+				err = testCaseState.DeletePolicy(action.DeletePolicy.Namespace, action.DeletePolicy.Name)
+			} else if action.CreateNamespace != nil {
+				err = testCaseState.CreateNamespace(action.CreateNamespace.Namespace, action.CreateNamespace.Labels)
 			} else if action.SetNamespaceLabels != nil {
 				err = testCaseState.SetNamespaceLabels(action.SetNamespaceLabels.Namespace, action.SetNamespaceLabels.Labels)
+			} else if action.DeleteNamespace != nil {
+				err = testCaseState.DeleteNamespace(action.DeleteNamespace.Namespace)
+			} else if action.ReadNetworkPolicies != nil {
+				err = testCaseState.ReadPolicies(action.ReadNetworkPolicies.Namespaces)
+			} else if action.CreatePod != nil {
+				err = testCaseState.CreatePod(action.CreatePod.Namespace, action.CreatePod.Pod, action.CreatePod.Labels)
 			} else if action.SetPodLabels != nil {
 				ns, pod, labels := action.SetPodLabels.Namespace, action.SetPodLabels.Pod, action.SetPodLabels.Labels
 				err = testCaseState.SetPodLabels(ns, pod, labels)
-			} else if action.ReadNetworkPolicies != nil {
-				err = testCaseState.ReadPolicies(action.ReadNetworkPolicies.Namespaces)
-			} else if action.DeletePolicy != nil {
-				err = testCaseState.DeletePolicy(action.DeletePolicy.Namespace, action.DeletePolicy.Name)
+			} else if action.DeletePod != nil {
+				err = testCaseState.DeletePod(action.DeletePod.Namespace, action.DeletePod.Pod)
 			} else {
 				err = errors.Errorf("invalid Action at step %d, action %d", stepIndex, actionIndex)
 			}
@@ -119,6 +127,7 @@ func (t *Interpreter) runProbe(testCaseState *TestCaseState, probeConfig *genera
 	parsedPolicy := matcher.BuildNetworkPolicies(testCaseState.Policies)
 
 	logrus.Infof("running probe %+v", probeConfig)
+	logrus.Infof("with resources:\n%s", testCaseState.Resources.RenderTable())
 
 	simRunner := probe.NewSimulatedRunner(parsedPolicy)
 

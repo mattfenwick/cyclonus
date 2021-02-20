@@ -67,21 +67,29 @@ func (t *TestCase) DerivedFeatures(includePolicyFeatures bool) *Features {
 		for _, action := range step.Actions {
 			var policy *networkingv1.NetworkPolicy
 			actionFeatures := map[string]bool{}
-			if action.DeletePolicy != nil {
-				actionFeatures[ActionFeatureDeletePolicy] = true
-			} else if action.ReadNetworkPolicies != nil {
-				// TODO need to also analyze these policies after they get read
-				actionFeatures[ActionFeatureReadPolicies] = true
-			} else if action.SetPodLabels != nil {
-				actionFeatures[ActionFeatureSetPodLabels] = true
-			} else if action.SetNamespaceLabels != nil {
-				actionFeatures[ActionFeatureSetNamespaceLabels] = true
+			if action.CreatePolicy != nil {
+				actionFeatures[ActionFeatureCreatePolicy] = true
+				policy = action.CreatePolicy.Policy
 			} else if action.UpdatePolicy != nil {
 				actionFeatures[ActionFeatureUpdatePolicy] = true
 				policy = action.UpdatePolicy.Policy
-			} else if action.CreatePolicy != nil {
-				actionFeatures[ActionFeatureCreatePolicy] = true
-				policy = action.CreatePolicy.Policy
+			} else if action.DeletePolicy != nil {
+				actionFeatures[ActionFeatureDeletePolicy] = true
+			} else if action.CreateNamespace != nil {
+				actionFeatures[ActionFeatureCreateNamespace] = true
+			} else if action.SetNamespaceLabels != nil {
+				actionFeatures[ActionFeatureSetNamespaceLabels] = true
+			} else if action.DeleteNamespace != nil {
+				actionFeatures[ActionFeatureDeleteNamespace] = true
+			} else if action.ReadNetworkPolicies != nil {
+				// TODO need to also analyze these policies after they get read
+				actionFeatures[ActionFeatureReadPolicies] = true
+			} else if action.CreatePod != nil {
+				actionFeatures[ActionFeatureCreatePod] = true
+			} else if action.SetPodLabels != nil {
+				actionFeatures[ActionFeatureSetPodLabels] = true
+			} else if action.DeletePod != nil {
+				actionFeatures[ActionFeatureDeletePod] = true
 			} else {
 				panic("invalid Action")
 			}

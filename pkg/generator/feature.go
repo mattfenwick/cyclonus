@@ -8,12 +8,19 @@ import (
 )
 
 const (
-	ActionFeatureCreatePolicy       = "action: create policy"
-	ActionFeatureDeletePolicy       = "action: delete policy"
-	ActionFeatureReadPolicies       = "action: read policies"
-	ActionFeatureSetPodLabels       = "action: set pod labels"
+	ActionFeatureCreatePolicy = "action: create policy"
+	ActionFeatureUpdatePolicy = "action: update policy"
+	ActionFeatureDeletePolicy = "action: delete policy"
+
+	ActionFeatureCreateNamespace    = "action: create namespace"
 	ActionFeatureSetNamespaceLabels = "action: set namespace labels"
-	ActionFeatureUpdatePolicy       = "action: update policy"
+	ActionFeatureDeleteNamespace    = "action: delete namespace"
+
+	ActionFeatureReadPolicies = "action: read policies"
+
+	ActionFeatureCreatePod    = "action: create pod"
+	ActionFeatureSetPodLabels = "action: set pod labels"
+	ActionFeatureDeletePod    = "action: delete pod"
 )
 
 const (

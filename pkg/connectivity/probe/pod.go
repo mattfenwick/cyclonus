@@ -23,7 +23,7 @@ func NewPod(ns string, name string, labels map[string]string, ip string, contain
 	}
 }
 
-func NewDefaultPod(ns string, name string, labels map[string]string, ip string, ports []int, protocols []v1.Protocol, batchJobs bool) *Pod {
+func NewDefaultPod(ns string, name string, ports []int, protocols []v1.Protocol, batchJobs bool) *Pod {
 	var containers []*Container
 	for _, port := range ports {
 		for _, protocol := range protocols {
@@ -33,8 +33,8 @@ func NewDefaultPod(ns string, name string, labels map[string]string, ip string, 
 	return &Pod{
 		Namespace:  ns,
 		Name:       name,
-		Labels:     labels,
-		IP:         ip,
+		Labels:     map[string]string{"pod": name},
+		IP:         "TODO",
 		Containers: containers,
 	}
 }

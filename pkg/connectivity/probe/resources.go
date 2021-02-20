@@ -26,7 +26,7 @@ func NewDefaultResources(kubernetes *kube.Kubernetes, namespaces []string, podNa
 
 	for _, ns := range namespaces {
 		for _, podName := range podNames {
-			r.Pods = append(r.Pods, NewDefaultPod(ns, podName, map[string]string{"pod": podName}, "TODO", ports, protocols, batchJobs))
+			r.Pods = append(r.Pods, NewDefaultPod(ns, podName, ports, protocols, batchJobs))
 		}
 		r.Namespaces[ns] = map[string]string{"ns": ns}
 	}
@@ -42,6 +42,30 @@ func NewDefaultResources(kubernetes *kube.Kubernetes, namespaces []string, podNa
 	}
 
 	return r, nil
+}
+
+func (r *Resources) waitForPodsReady(kubernetes *kube.Kubernetes, timeoutSeconds int) error {
+	sleep := 5
+	for i := 0; i < timeoutSeconds; i += sleep {
+		podList, err := kubernetes.GetPodsInNamespaces(r.NamespacesSlice())
+		if err != nil {
+			return err
+		}
+
+		ready := 0
+		for _, pod := range podList {
+			if pod.Status.Phase == "Running" && pod.Status.PodIP != "" {
+				ready++
+			}
+		}
+		if ready == len(r.Pods) {
+			return nil
+		}
+
+		logrus.Infof("waiting for pods to be running and have IP addresses")
+		time.Sleep(time.Duration(sleep) * time.Second)
+	}
+	return errors.Errorf("pods not ready")
 }
 
 func (r *Resources) getPodIPsFromKube(kubernetes *kube.Kubernetes) error {
@@ -76,10 +100,10 @@ func (r *Resources) GetPod(ns string, name string) (*Pod, error) {
 	return nil, errors.Errorf("unable to find pod %s/%s", ns, name)
 }
 
-// UpdateNamespaceLabels returns a new object with an updated namespace.  It should not affect the original Resources object.
-func (r *Resources) UpdateNamespaceLabels(ns string, labels map[string]string) (*Resources, error) {
-	if _, ok := r.Namespaces[ns]; !ok {
-		return nil, errors.Errorf("no namespace %s", ns)
+// CreateNamespace returns a new object with a new namespace.  It should not affect the original Resources object.
+func (r *Resources) CreateNamespace(ns string, labels map[string]string) (*Resources, error) {
+	if _, ok := r.Namespaces[ns]; ok {
+		return nil, errors.Errorf("namespace %s already found", ns)
 	}
 	newNamespaces := map[string]map[string]string{}
 	for oldNs, oldLabels := range r.Namespaces {
@@ -89,6 +113,61 @@ func (r *Resources) UpdateNamespaceLabels(ns string, labels map[string]string) (
 	return &Resources{
 		Namespaces: newNamespaces,
 		Pods:       r.Pods,
+	}, nil
+}
+
+// UpdateNamespaceLabels returns a new object with an updated namespace.  It should not affect the original Resources object.
+func (r *Resources) UpdateNamespaceLabels(ns string, labels map[string]string) (*Resources, error) {
+	if _, ok := r.Namespaces[ns]; !ok {
+		return nil, errors.Errorf("namespace %s not found", ns)
+	}
+	newNamespaces := map[string]map[string]string{}
+	for oldNs, oldLabels := range r.Namespaces {
+		newNamespaces[oldNs] = oldLabels
+	}
+	newNamespaces[ns] = labels
+	return &Resources{
+		Namespaces: newNamespaces,
+		Pods:       r.Pods,
+	}, nil
+}
+
+// DeleteNamespace returns a new object without the namespace.  It should not affect the original Resources object.
+func (r *Resources) DeleteNamespace(ns string) (*Resources, error) {
+	if _, ok := r.Namespaces[ns]; !ok {
+		return nil, errors.Errorf("namespace %s not found", ns)
+	}
+	newNamespaces := map[string]map[string]string{}
+	for oldNs, oldLabels := range r.Namespaces {
+		if oldNs != ns {
+			newNamespaces[oldNs] = oldLabels
+		}
+	}
+	var pods []*Pod
+	for _, pod := range r.Pods {
+		if pod.Namespace == ns {
+			// skip
+		} else {
+			pods = append(pods, pod)
+		}
+	}
+	return &Resources{
+		Namespaces: newNamespaces,
+		Pods:       pods,
+	}, nil
+}
+
+// CreatePod returns a new object with a new pod.  It should not affect the original Resources object.
+func (r *Resources) CreatePod(ns string, podName string, labels map[string]string) (*Resources, error) {
+	// TODO this needs to be improved
+	//   for now, let's assume all pods have the same containers and just copy the containers from the first pod
+	if _, ok := r.Namespaces[ns]; !ok {
+		return nil, errors.Errorf("can't find namespace %s", ns)
+	}
+	return &Resources{
+		Namespaces: r.Namespaces,
+		Pods:       append(append([]*Pod{}, r.Pods...), NewPod(ns, podName, labels, "TODO", r.Pods[0].Containers)),
+		//ExternalIPs: r.ExternalIPs,
 	}, nil
 }
 
@@ -114,6 +193,27 @@ func (r *Resources) SetPodLabels(ns string, podName string, labels map[string]st
 	}, nil
 }
 
+// DeletePod returns a new object without the deleted pod.  It should not affect the original Resources object.
+func (r *Resources) DeletePod(ns string, podName string) (*Resources, error) {
+	var newPods []*Pod
+	found := false
+	for _, pod := range r.Pods {
+		if pod.Namespace == ns && pod.Name == podName {
+			found = true
+		} else {
+			newPods = append(newPods, pod)
+		}
+	}
+	if !found {
+		return nil, errors.Errorf("pod %s/%s not found", ns, podName)
+	}
+	return &Resources{
+		Namespaces: r.Namespaces,
+		Pods:       newPods,
+		//ExternalIPs: r.ExternalIPs,
+	}, nil
+}
+
 func (r *Resources) SortedPodNames() []string {
 	var podNames []string
 	for _, pod := range r.Pods {
@@ -133,7 +233,7 @@ func (r *Resources) NamespacesSlice() []string {
 
 func (r *Resources) CreateResourcesInKube(kubernetes *kube.Kubernetes) error {
 	for ns, labels := range r.Namespaces {
-		_, err := kubernetes.CreateOrUpdateNamespace(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns, Labels: labels}})
+		_, err := kubernetes.CreateOrUpdateNamespace(KubeNamespace(ns, labels))
 		if err != nil {
 			return err
 		}
@@ -149,6 +249,10 @@ func (r *Resources) CreateResourcesInKube(kubernetes *kube.Kubernetes) error {
 		}
 	}
 	return nil
+}
+
+func KubeNamespace(ns string, labels map[string]string) *v1.Namespace {
+	return &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns, Labels: labels}}
 }
 
 func (r *Resources) VerifyClusterState(kubernetes *kube.Kubernetes) error {
@@ -264,30 +368,6 @@ func (r *Resources) ResetLabelsInKube(kubernetes *kube.Kubernetes) error {
 		}
 	}
 	return nil
-}
-
-func (r *Resources) waitForPodsReady(kubernetes *kube.Kubernetes, timeoutSeconds int) error {
-	sleep := 5
-	for i := 0; i < timeoutSeconds; i += sleep {
-		podList, err := kubernetes.GetPodsInNamespaces(r.NamespacesSlice())
-		if err != nil {
-			return err
-		}
-
-		ready := 0
-		for _, pod := range podList {
-			if pod.Status.Phase == "Running" && pod.Status.PodIP != "" {
-				ready++
-			}
-		}
-		if ready == len(r.Pods) {
-			return nil
-		}
-
-		logrus.Infof("waiting for pods to be running and have IP addresses")
-		time.Sleep(time.Duration(sleep) * time.Second)
-	}
-	return errors.Errorf("pods not ready")
 }
 
 func (r *Resources) GetJobsForNamedPortProtocol(port intstr.IntOrString, protocol v1.Protocol) *Jobs {

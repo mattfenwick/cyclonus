@@ -144,6 +144,12 @@ func (k *Kubernetes) CreateService(svc *v1.Service) (*v1.Service, error) {
 	return createdService, nil
 }
 
+func (k *Kubernetes) DeleteService(namespace string, name string) error {
+	log.Debugf("deleting service %s/%s", namespace, name)
+	err := k.ClientSet.CoreV1().Services(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+	return errors.Wrapf(err, "unable to delete service %s/%s", namespace, name)
+}
+
 func (k *Kubernetes) CreateOrUpdateService(svc *v1.Service) (*v1.Service, error) {
 	nsr, err := k.ClientSet.CoreV1().Services(svc.Namespace).Create(context.TODO(), svc, metav1.CreateOptions{})
 	if err == nil {
@@ -215,6 +221,12 @@ func (k *Kubernetes) CreatePodIfNotExists(pod *v1.Pod) (*v1.Pod, error) {
 		return nil, nil
 	}
 	return nil, errors.Wrapf(err, "unable to create pod %s/%s:\n%s", pod.Namespace, pod.Name, utils.JsonString(pod))
+}
+
+func (k *Kubernetes) DeletePod(namespace string, podName string) error {
+	log.Debugf("deleting pod %s/%s", namespace, podName)
+	err := k.ClientSet.CoreV1().Pods(namespace).Delete(context.TODO(), podName, metav1.DeleteOptions{})
+	return errors.Wrapf(err, "unable to delete pod %s/%s", namespace, podName)
 }
 
 // ExecuteRemoteCommand executes a remote shell command on the given pod

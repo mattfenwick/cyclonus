@@ -1,4 +1,4 @@
-package generator
+package probe
 
 import (
 	"testing"
@@ -7,8 +7,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestGenerator(t *testing.T) {
+func TestProbe(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunDiscreteGeneratorTests()
+	RunResourcesTests()
 	RunSpecs(t, "generator suite")
 }
