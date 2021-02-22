@@ -25,14 +25,12 @@ func NewTestStep(pp *ProbeConfig, actions ...*Action) *TestStep {
 
 type TestCase struct {
 	Description string
-	Features    map[string]bool
 	Steps       []*TestStep
 }
 
 func NewSingleStepTestCase(description string, pp *ProbeConfig, actions ...*Action) *TestCase {
 	return &TestCase{
 		Description: description,
-		Features:    nil,
 		Steps:       []*TestStep{NewTestStep(pp, actions...)},
 	}
 }
@@ -45,8 +43,7 @@ func NewTestCase(description string, steps ...*TestStep) *TestCase {
 }
 
 func (t *TestCase) GetFeatures() map[string]bool {
-	derived := t.DerivedFeatures(t.Features == nil)
-	return mergeSets(derived, t.Features)
+	return t.DerivedFeatures()
 }
 
 func (t *TestCase) GetFeaturesSlice() []string {
@@ -69,7 +66,7 @@ func (t *TestCase) GetFeaturesSlice() []string {
 //	return slice
 //}
 
-func (t *TestCase) DerivedFeatures(includePolicyFeatures bool) map[string]bool {
+func (t *TestCase) DerivedFeatures() map[string]bool {
 	features := map[string]bool{}
 	for _, step := range t.Steps {
 		for _, action := range step.Actions {
@@ -102,12 +99,8 @@ func (t *TestCase) DerivedFeatures(includePolicyFeatures bool) map[string]bool {
 				panic("invalid Action")
 			}
 
-			// always bring in action features
 			features = mergeSets(features, actionFeatures)
-			// only bring in other policy features if requested
-			if includePolicyFeatures && policy != nil {
-				features = mergeSets(features, GetFeaturesForPolicy(policy))
-			}
+			features = mergeSets(features, GetFeaturesForPolicy(NewNetpol(policy)))
 		}
 	}
 	return features

@@ -3,7 +3,6 @@ package generator
 import (
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -55,6 +54,7 @@ const (
 )
 
 const (
+	TargetFeatureSpecificNamespace           = "target: specific namespace"
 	TargetFeatureNamespaceEmpty              = "target: empty namespace"
 	TargetFeaturePodSelectorEmpty            = "target: empty pod selector"
 	TargetFeaturePodSelectorMatchLabels      = "target: pod selector match labels"
@@ -67,38 +67,28 @@ const (
 	PolicyFeatureIngressAndEgress = "policy with both ingress and egress"
 )
 
-func GetFeaturesForPolicy(policy *networkingv1.NetworkPolicy) map[string]bool {
-	spec := policy.Spec
-	features := targetPodSelectorFeatures(spec.PodSelector)
-	if policy.Namespace == "" {
-		features[TargetFeatureNamespaceEmpty] = true
-	}
+func GetFeaturesForPolicy(policy *Netpol) map[string]bool {
+	features := targetFeatures(policy.Target)
 
-	ingress := map[string]bool{}
-	egress := map[string]bool{}
-	hasIngress, hasEegress := false, false
-	for _, policyType := range spec.PolicyTypes {
-		if policyType == networkingv1.PolicyTypeIngress {
-			hasIngress = true
-			ingress = mergeSets(ingress, addDirectionalityToKeys(true, ingressFeatures(spec.Ingress)))
-		} else if policyType == networkingv1.PolicyTypeEgress {
-			hasEegress = true
-			egress = mergeSets(egress, addDirectionalityToKeys(false, egressFeatures(spec.Egress)))
-		}
-	}
+	hasIngress := len(policy.Ingress.Rules) > 0
 	if hasIngress {
 		features[PolicyFeatureIngress] = true
+		features = mergeSets(features, addDirectionalityToKeys(true, ingressOrEgressFeatures(policy.Ingress.Rules)))
 	}
-	if hasEegress {
+
+	hasEgress := len(policy.Egress.Rules) > 0
+	if hasEgress {
 		features[PolicyFeatureEgress] = true
+		features = mergeSets(features, addDirectionalityToKeys(false, ingressOrEgressFeatures(policy.Egress.Rules)))
 	}
-	if hasIngress && hasEegress {
+
+	if hasIngress && hasEgress {
 		features[PolicyFeatureIngressAndEgress] = true
 	}
 	return features
 }
 
-func ingressFeatures(rules []networkingv1.NetworkPolicyIngressRule) map[string]bool {
+func ingressOrEgressFeatures(rules []*Rule) map[string]bool {
 	features := map[string]bool{}
 	switch len(rules) {
 	case 0:
@@ -109,24 +99,7 @@ func ingressFeatures(rules []networkingv1.NetworkPolicyIngressRule) map[string]b
 		features[RuleFeatureSliceSize2Plus] = true
 	}
 	for _, rule := range rules {
-		features = mergeSets(features, peerFeatures(rule.From))
-		features = mergeSets(features, portFeatures(rule.Ports))
-	}
-	return features
-}
-
-func egressFeatures(rules []networkingv1.NetworkPolicyEgressRule) map[string]bool {
-	features := map[string]bool{}
-	switch len(rules) {
-	case 0:
-		features[RuleFeatureSliceEmpty] = true
-	case 1:
-		features[RuleFeatureSliceSize1] = true
-	default:
-		features[RuleFeatureSliceSize2Plus] = true
-	}
-	for _, rule := range rules {
-		features = mergeSets(features, peerFeatures(rule.To))
+		features = mergeSets(features, peerFeatures(rule.Peers))
 		features = mergeSets(features, portFeatures(rule.Ports))
 	}
 	return features
@@ -222,15 +195,22 @@ func portFeatures(npPorts []networkingv1.NetworkPolicyPort) map[string]bool {
 	return features
 }
 
-func targetPodSelectorFeatures(sel metav1.LabelSelector) map[string]bool {
+func targetFeatures(target *NetpolTarget) map[string]bool {
 	features := map[string]bool{}
-	if len(sel.MatchLabels) == 0 && len(sel.MatchExpressions) == 0 {
+	if target.Namespace == "" {
+		features[TargetFeatureNamespaceEmpty] = true
+	} else {
+		features[TargetFeatureSpecificNamespace] = true
+	}
+
+	selector := target.PodSelector
+	if len(selector.MatchLabels) == 0 && len(selector.MatchExpressions) == 0 {
 		features[TargetFeaturePodSelectorEmpty] = true
 	}
-	if len(sel.MatchLabels) > 0 {
+	if len(selector.MatchLabels) > 0 {
 		features[TargetFeaturePodSelectorMatchLabels] = true
 	}
-	if len(sel.MatchExpressions) > 0 {
+	if len(selector.MatchExpressions) > 0 {
 		features[TargetFeaturePodSelectorMatchExpressions] = true
 	}
 	return features
