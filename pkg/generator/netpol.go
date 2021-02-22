@@ -16,6 +16,32 @@ type Netpol struct {
 	Egress      *NetpolPeers
 }
 
+func NewNetpol(policy *NetworkPolicy) *Netpol {
+	var ingress, egress = &NetpolPeers{}, &NetpolPeers{}
+	for _, i := range policy.Spec.Ingress {
+		ingress.Rules = append(ingress.Rules, &Rule{
+			Ports: i.Ports,
+			Peers: i.From,
+		})
+	}
+	for _, i := range policy.Spec.Egress {
+		egress.Rules = append(egress.Rules, &Rule{
+			Ports: i.Ports,
+			Peers: i.To,
+		})
+	}
+	return &Netpol{
+		Name:        policy.Namespace,
+		Description: "generated from networkingv1.NetworkPolicy",
+		Target: &NetpolTarget{
+			Namespace:   policy.Namespace,
+			PodSelector: policy.Spec.PodSelector,
+		},
+		Ingress: ingress,
+		Egress:  egress,
+	}
+}
+
 func (n *Netpol) NetworkPolicy() *NetworkPolicy {
 	return &NetworkPolicy{
 		TypeMeta: metav1.TypeMeta{

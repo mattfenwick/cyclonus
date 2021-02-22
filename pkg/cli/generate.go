@@ -93,7 +93,7 @@ func RunGenerateCommand(args *GenerateArgs) {
 	case "discrete":
 		testCaseGenerator = generator.NewDefaultDiscreteGenerator(args.AllowDNS, zcPod.IP)
 	case "experimental":
-		testCaseGenerator = generator.NewExperimentalGenerator(args.AllowDNS, zcPod.IP)
+		testCaseGenerator = generator.NewBreadthGenerator(args.AllowDNS, zcPod.IP)
 	case "conflicts":
 		testCaseGenerator = &generator.ConflictGenerator{
 			AllowDNS:    args.AllowDNS,

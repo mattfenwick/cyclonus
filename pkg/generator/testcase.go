@@ -25,7 +25,7 @@ func NewTestStep(pp *ProbeConfig, actions ...*Action) *TestStep {
 
 type TestCase struct {
 	Description string
-	Features    *Features
+	Features    map[string]bool
 	Steps       []*TestStep
 }
 
@@ -44,9 +44,17 @@ func NewTestCase(description string, steps ...*TestStep) *TestCase {
 	}
 }
 
-func (t *TestCase) GetFeatures() *Features {
+func (t *TestCase) GetFeatures() map[string]bool {
 	derived := t.DerivedFeatures(t.Features == nil)
-	return derived.Combine(t.Features)
+	return mergeSets(derived, t.Features)
+}
+
+func (t *TestCase) GetFeaturesSlice() []string {
+	var features []string
+	for f := range t.GetFeatures() {
+		features = append(features, f)
+	}
+	return features
 }
 
 //func (t *TestCase) SortedFeatures() []Feature {
@@ -61,8 +69,8 @@ func (t *TestCase) GetFeatures() *Features {
 //	return slice
 //}
 
-func (t *TestCase) DerivedFeatures(includePolicyFeatures bool) *Features {
-	features := &Features{}
+func (t *TestCase) DerivedFeatures(includePolicyFeatures bool) map[string]bool {
+	features := map[string]bool{}
 	for _, step := range t.Steps {
 		for _, action := range step.Actions {
 			var policy *networkingv1.NetworkPolicy
@@ -93,11 +101,13 @@ func (t *TestCase) DerivedFeatures(includePolicyFeatures bool) *Features {
 			} else {
 				panic("invalid Action")
 			}
-			newFeatures := &Features{General: actionFeatures}
+
+			// always bring in action features
+			features = mergeSets(features, actionFeatures)
+			// only bring in other policy features if requested
 			if includePolicyFeatures && policy != nil {
-				newFeatures = newFeatures.Combine(GetFeaturesForPolicy(policy))
+				features = mergeSets(features, GetFeaturesForPolicy(policy))
 			}
-			features = features.Combine(newFeatures)
 		}
 	}
 	return features

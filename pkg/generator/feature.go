@@ -67,83 +67,11 @@ const (
 	PolicyFeatureIngressAndEgress = "policy with both ingress and egress"
 )
 
-type Features struct {
-	General map[string]bool
-	Ingress map[string]bool
-	Egress  map[string]bool
-}
-
-func (f *Features) Strings() []string {
-	var strs []string
-	for feature := range f.General {
-		strs = append(strs, feature)
-	}
-	for feature := range f.Ingress {
-		strs = append(strs, "Ingress: "+feature)
-	}
-	for feature := range f.Egress {
-		strs = append(strs, "Egress: "+feature)
-	}
-	return strs
-}
-
-func (f *Features) Combine(other *Features) *Features {
-	if other == nil {
-		return f
-	}
-	return &Features{
-		General: mergeSets(f.General, other.General),
-		Ingress: mergeSets(f.Ingress, other.Ingress),
-		Egress:  mergeSets(f.Egress, other.Egress),
-	}
-}
-
-/*
-// AllFeatures is a slice of all Features.  Make sure to keep it updated as new Features are created.
-var AllFeatures = []string{
-	string(ActionFeatureCreatePolicy),
-	string(ActionFeatureDeletePolicy),
-	string(ActionFeatureReadPolicies),
-	string(ActionFeatureSetPodLabels),
-	string(ActionFeatureSetNamespaceLabels),
-	string(ActionFeatureUpdatePolicy),
-
-	string(TargetFeatureNamespaceEmpty),
-	string(TargetFeaturePodSelectorEmpty),
-	string(TargetFeaturePodSelectorMatchLabels),
-	string(TargetFeaturePodSelectorMatchExpressions),
-
-	string(FeatureIngressEmptyPortSlice),
-	string(FeatureIngressNumberedPort),
-	string(FeatureIngressNamedPort),
-	string(FeatureIngressNilPort),
-
-	string(FeatureIngressEmptyPeerSlice),
-	string(FeatureIngressPeerIPBlock),
-	string(FeatureIngressPeerIPBlockEmptyExcept),
-	string(FeatureIngressPeerIPBlockNonemptyExcept),
-	string(FeatureIngressPeerPodSelectorEmpty),
-	string(FeatureIngressPeerPodSelectorMatchLabels),
-	string(FeatureIngressPeerPodSelectorMatchExpressions),
-	string(FeatureIngressPeerPodSelectorNil),
-	string(FeatureIngressPeerNamespaceSelectorEmpty),
-	string(FeatureIngressPeerNamespaceSelectorMatchLabels),
-	string(FeatureIngressPeerNamespaceSelectorMatchExpressions),
-	string(FeatureIngressPeerNamespaceSelectorNil),
-
-	string(FeatureIngressEmptySlice),
-
-	string(PolicyFeatureIngress),
-	string(PolicyFeatureEgress),
-	string(PolicyFeatureIngressAndEgress),
-}
-*/
-
-func GetFeaturesForPolicy(policy *networkingv1.NetworkPolicy) *Features {
+func GetFeaturesForPolicy(policy *networkingv1.NetworkPolicy) map[string]bool {
 	spec := policy.Spec
-	general := targetPodSelectorFeatures(spec.PodSelector)
+	features := targetPodSelectorFeatures(spec.PodSelector)
 	if policy.Namespace == "" {
-		general[TargetFeatureNamespaceEmpty] = true
+		features[TargetFeatureNamespaceEmpty] = true
 	}
 
 	ingress := map[string]bool{}
@@ -152,26 +80,22 @@ func GetFeaturesForPolicy(policy *networkingv1.NetworkPolicy) *Features {
 	for _, policyType := range spec.PolicyTypes {
 		if policyType == networkingv1.PolicyTypeIngress {
 			hasIngress = true
-			ingress = mergeSets(ingress, ingressFeatures(spec.Ingress))
+			ingress = mergeSets(ingress, addDirectionalityToKeys(true, ingressFeatures(spec.Ingress)))
 		} else if policyType == networkingv1.PolicyTypeEgress {
 			hasEegress = true
-			egress = mergeSets(egress, egressFeatures(spec.Egress))
+			egress = mergeSets(egress, addDirectionalityToKeys(false, egressFeatures(spec.Egress)))
 		}
 	}
 	if hasIngress {
-		general[PolicyFeatureIngress] = true
+		features[PolicyFeatureIngress] = true
 	}
 	if hasEegress {
-		general[PolicyFeatureEgress] = true
+		features[PolicyFeatureEgress] = true
 	}
 	if hasIngress && hasEegress {
-		general[PolicyFeatureIngressAndEgress] = true
+		features[PolicyFeatureIngressAndEgress] = true
 	}
-	return &Features{
-		General: general,
-		Ingress: ingress,
-		Egress:  egress,
-	}
+	return features
 }
 
 func ingressFeatures(rules []networkingv1.NetworkPolicyIngressRule) map[string]bool {
@@ -310,6 +234,24 @@ func targetPodSelectorFeatures(sel metav1.LabelSelector) map[string]bool {
 		features[TargetFeaturePodSelectorMatchExpressions] = true
 	}
 	return features
+}
+
+func addDirectionalityToKeys(isIngress bool, dict map[string]bool) map[string]bool {
+	var prefix string
+	if isIngress {
+		prefix = "Ingress: "
+	} else {
+		prefix = "Egress: "
+	}
+	return addPrefixToKeys(prefix, dict)
+}
+
+func addPrefixToKeys(prefix string, dict map[string]bool) map[string]bool {
+	out := map[string]bool{}
+	for k := range dict {
+		out[prefix+k] = true
+	}
+	return out
 }
 
 func mergeSets(l, r map[string]bool) map[string]bool {
