@@ -149,7 +149,7 @@ func (e *BreadthGenerator) GenerateTestCases() []*TestCase {
 	var cases []*TestCase
 	for _, policy := range e.Policies() {
 		cases = append(cases, &TestCase{
-			Description: "?",
+			Description: policy.Description,
 			Steps:       []*TestStep{NewTestStep(ProbeAllAvailable, CreatePolicy(policy.NetworkPolicy()))},
 		})
 	}
