@@ -52,6 +52,8 @@ func NewDepthGenerator(allowDNS bool, podIP string) *DepthGenerator {
 func (e *DepthGenerator) Policies() []*Netpol {
 	var policies []*Netpol
 
+	// TODO avoid duplicating breadth tests here?
+
 	// base policy
 	policies = append(policies, BuildPolicy())
 
