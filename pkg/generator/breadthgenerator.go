@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"fmt"
 	. "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -34,16 +35,21 @@ func basePolicy() *Netpol {
 				},
 			},
 			AllowDNSRule,
-		},
-		},
+		}},
 	}
 }
 
 type Setter func(policy *Netpol)
 
-func SetPodSelector(sel metav1.LabelSelector) Setter {
+func SetDescription(description string) Setter {
 	return func(policy *Netpol) {
-		policy.Target.PodSelector = sel
+		policy.Description = description
+	}
+}
+
+func SetNamespace(ns string) Setter {
+	return func(policy *Netpol) {
+		policy.Target.Namespace = ns
 	}
 }
 
@@ -54,6 +60,12 @@ func SetRules(isIngress bool, rules []*Rule) Setter {
 		} else {
 			policy.Egress.Rules = rules
 		}
+	}
+}
+
+func SetPodSelector(sel metav1.LabelSelector) Setter {
+	return func(policy *Netpol) {
+		policy.Target.PodSelector = sel
 	}
 }
 
@@ -85,6 +97,24 @@ func BuildPolicy(setters ...Setter) *Netpol {
 	return policy
 }
 
+// BreadthGenerator should provide tests that cover the following features, without worrying about
+//   corner cases or going into features in depth:
+// - probe, policy on tcp
+// - probe, policy on udp
+// - probe, policy on sctp
+// - named port
+// - numbered port
+// - pod selector (all, by label)
+// - ingress (+ same for egress)
+//   - deny all
+//   - allow all
+//   - pod
+//     - namespace selector (all, by label, same as target)
+//     - pod selector (all, by label)
+//   - ipblock
+//     - allow cidr
+//     - except cidr
+// - egress: DNS (udp/53)
 type BreadthGenerator struct {
 	PodIP    string
 	AllowDNS bool
@@ -97,57 +127,66 @@ func NewBreadthGenerator(allowDNS bool, podIP string) *BreadthGenerator {
 	}
 }
 
-func (e *BreadthGenerator) Policies() []*Netpol {
-	var policies []*Netpol
+func (e *BreadthGenerator) Policies() [][]Setter {
+	var policies [][]Setter
 
-	// base policy
-	policies = append(policies, BuildPolicy())
+	addPolicy := func(description string, setters ...Setter) {
+		policies = append(policies, append([]Setter{SetDescription(description)}, setters...))
+	}
+
+	addPolicy("base policy")
 
 	// target
 	// namespace
-	//policies = append(policies, BuildPolicy(SetNamespace("y")))
+	addPolicy("target: set namespace", SetNamespace("y"))
+
 	// pod selector
-	for _, sel := range DefaultTargets() {
-		policies = append(policies, BuildPolicy(SetPodSelector(sel)))
-	}
+	addPolicy("target: empty selector", SetPodSelector(*emptySelector))
+	addPolicy("target: match labels selector", SetPodSelector(*podAMatchLabelsSelector))
+	addPolicy("target: match expressions selector", SetPodSelector(*podABMatchExpressionsSelector))
 
 	for _, isIngress := range []bool{true, false} {
-		// empty rules
-		policies = append(policies, BuildPolicy(SetRules(isIngress, []*Rule{})))
-
-		// all ports/protocols
-		policies = append(policies, BuildPolicy(SetPorts(isIngress, emptySliceOfPorts)))
-		// specific protocol
-		policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &tcp, Port: &port80}})))
-		policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &udp, Port: &port80}})))
-		policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &sctp, Port: &port80}})))
-		// numbered port
-		policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &tcp, Port: &port79}})))
-		policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &sctp, Port: &port81}})))
-		// named port
-		policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &tcp, Port: &portServe79TCP}})))
-		policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &udp, Port: &portServe81UDP}})))
-
-		// TODO what's the expected outcome for these tests?
-		// wrong protocol for port
-		//policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &udp, Port: &portServe80TCP}})))
-		//policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &sctp, Port: &portServe80TCP}})))
-
-		// ns/pod peer, ipblock peer
-		policies = append(policies, BuildPolicy(SetPeers(isIngress, emptySliceOfPeers)))
-		for _, peers := range DefaultPeers(e.PodIP) {
-			policies = append(policies, BuildPolicy(SetPeers(isIngress, []NetworkPolicyPeer{peers})))
+		prefix := "ingress: "
+		if !isIngress {
+			prefix = "egress: "
 		}
-	}
 
-	// ingress/egress
+		addPolicy(prefix+"deny all", SetRules(isIngress, []*Rule{}))
+		addPolicy(prefix+"allow all", SetRules(isIngress, []*Rule{{}}))
+
+		addPolicy(prefix+"all ports/protocols", SetPorts(isIngress, emptySliceOfPorts))
+
+		addPolicy(prefix+"numbered port on TCP", SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &tcp, Port: &port81}}))
+		addPolicy(prefix+"numbered port on UDP", SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &udp, Port: &port81}}))
+		addPolicy(prefix+"numbered port on SCTP", SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &sctp, Port: &port81}}))
+
+		addPolicy(prefix+"named port on TCP", SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &tcp, Port: &portServe81TCP}}))
+		addPolicy(prefix+"named port on UDP", SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &udp, Port: &portServe81UDP}}))
+		addPolicy(prefix+"named port on SCTP", SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &sctp, Port: &portServe81SCTP}}))
+
+		addPolicy(prefix+"all pods and ip address", SetPeers(isIngress, emptySliceOfPeers))
+
+		addPolicy(prefix+"all pods, policy namespace", SetPeers(isIngress, []NetworkPolicyPeer{{PodSelector: emptySelector, NamespaceSelector: nilSelector}}))
+		addPolicy(prefix+"all pods, namespace by label", SetPeers(isIngress, []NetworkPolicyPeer{{PodSelector: emptySelector, NamespaceSelector: nsXMatchLabelsSelector}}))
+		addPolicy(prefix+"all pods, all namespaces", SetPeers(isIngress, []NetworkPolicyPeer{{PodSelector: emptySelector, NamespaceSelector: emptySelector}}))
+		addPolicy(prefix+"pods by label, policy namespace", SetPeers(isIngress, []NetworkPolicyPeer{{PodSelector: podCMatchLabelsSelector, NamespaceSelector: nilSelector}}))
+		addPolicy(prefix+"pods by label, namespace by label", SetPeers(isIngress, []NetworkPolicyPeer{{PodSelector: podCMatchLabelsSelector, NamespaceSelector: nsXMatchLabelsSelector}}))
+		addPolicy(prefix+"pods by label, all namespaces", SetPeers(isIngress, []NetworkPolicyPeer{{PodSelector: podCMatchLabelsSelector, NamespaceSelector: emptySelector}}))
+
+		// TODO normalize these CIDRs
+		cidr24 := fmt.Sprintf("%s/24", e.PodIP)
+		cidr28 := fmt.Sprintf("%s/28", e.PodIP)
+		addPolicy(prefix+"ipblock", SetPeers(isIngress, []NetworkPolicyPeer{{IPBlock: &IPBlock{CIDR: cidr24}}}))
+		addPolicy(prefix+"ipblock with except", SetPeers(isIngress, []NetworkPolicyPeer{{IPBlock: &IPBlock{CIDR: cidr24, Except: []string{cidr28}}}}))
+	}
 
 	return policies
 }
 
 func (e *BreadthGenerator) GenerateTestCases() []*TestCase {
 	var cases []*TestCase
-	for _, policy := range e.Policies() {
+	for _, steps := range e.Policies() {
+		policy := BuildPolicy(steps...)
 		cases = append(cases, &TestCase{
 			Description: policy.Description,
 			Steps:       []*TestStep{NewTestStep(ProbeAllAvailable, CreatePolicy(policy.NetworkPolicy()))},

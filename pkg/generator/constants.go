@@ -24,6 +24,8 @@ var (
 	portServe81TCP = intstr.FromString("serve-81-tcp")
 
 	portServe81UDP = intstr.FromString("serve-81-udp")
+
+	portServe81SCTP = intstr.FromString("serve-81-sctp")
 )
 
 var (
