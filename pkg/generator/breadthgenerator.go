@@ -6,7 +6,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func basePolicy() *Netpol {
+func baseBreadthPolicy() *Netpol {
 	return &Netpol{
 		Name: "base",
 		Target: &NetpolTarget{
@@ -90,7 +90,7 @@ func SetPeers(isIngress bool, peers []NetworkPolicyPeer) Setter {
 }
 
 func BuildPolicy(setters ...Setter) *Netpol {
-	policy := basePolicy()
+	policy := baseBreadthPolicy()
 	for _, setter := range setters {
 		setter(policy)
 	}

@@ -15,8 +15,8 @@ func SinglePortProtocolTestCases() []NetworkPolicyPort {
 	return []NetworkPolicyPort{
 		{Protocol: nil, Port: nil},
 		{Protocol: &tcp, Port: nil},
-		{Protocol: nil, Port: &port80},
-		{Protocol: &tcp, Port: &port80},
+		{Protocol: nil, Port: &port81},
+		{Protocol: &tcp, Port: &port81},
 		{Protocol: nil, Port: &portServe81TCP},
 		{Protocol: &tcp, Port: &portServe81TCP},
 	}
