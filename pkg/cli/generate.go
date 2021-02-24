@@ -51,7 +51,7 @@ func SetupGenerateCommand() *cobra.Command {
 	command.Flags().StringSliceVar(&args.ServerPods, "pod", []string{"a", "b", "c"}, "pods to create in namespaces")
 
 	command.Flags().BoolVar(&args.BatchJobs, "batch-jobs", false, "if true, run jobs in batches to avoid saturating the Kube APIServer with too many exec requests")
-	command.Flags().IntVar(&args.Retries, "retries", 0, "number of kube probe retries to allow, if probe fails")
+	command.Flags().IntVar(&args.Retries, "retries", 1, "number of kube probe retries to allow, if probe fails")
 	command.Flags().BoolVar(&args.AllowDNS, "allow-dns", true, "if using egress, allow udp over port 53 for DNS resolution")
 	command.Flags().BoolVar(&args.Noisy, "noisy", false, "if true, print all results")
 	command.Flags().BoolVar(&args.IgnoreLoopback, "ignore-loopback", false, "if true, ignore loopback for truthtable correctness verification")
@@ -92,8 +92,10 @@ func RunGenerateCommand(args *GenerateArgs) {
 		testCaseGenerator = generator.NewDefaultFragmentGenerator(args.AllowDNS, args.ServerNamespaces, zcPod.IP)
 	case "discrete":
 		testCaseGenerator = generator.NewDefaultDiscreteGenerator(args.AllowDNS, zcPod.IP)
-	case "experimental":
-		testCaseGenerator = generator.NewExperimentalGenerator(args.AllowDNS, zcPod.IP)
+	case "breadth":
+		testCaseGenerator = generator.NewBreadthGenerator(args.AllowDNS, zcPod.IP)
+	case "depth":
+		testCaseGenerator = generator.NewDepthGenerator(args.AllowDNS, zcPod.IP)
 	case "conflicts":
 		testCaseGenerator = &generator.ConflictGenerator{
 			AllowDNS:    args.AllowDNS,

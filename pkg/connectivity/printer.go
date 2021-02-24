@@ -189,7 +189,7 @@ func (t *Printer) PrintTestCaseResult(result *Result) {
 		t.PrintStep(i+1, result.TestCase.Steps[i], result.Steps[i])
 	}
 	fmt.Println("features:")
-	for _, feature := range result.TestCase.GetFeatures().Strings() {
+	for feature := range result.TestCase.GetFeatures() {
 		fmt.Printf(" - %s\n", feature)
 	}
 

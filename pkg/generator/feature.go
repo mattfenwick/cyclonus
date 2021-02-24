@@ -3,7 +3,6 @@ package generator
 import (
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -21,6 +20,20 @@ const (
 	ActionFeatureCreatePod    = "action: create pod"
 	ActionFeatureSetPodLabels = "action: set pod labels"
 	ActionFeatureDeletePod    = "action: delete pod"
+)
+
+const (
+	PolicyFeatureIngress          = "policy with ingress"
+	PolicyFeatureEgress           = "policy with egress"
+	PolicyFeatureIngressAndEgress = "policy with both ingress and egress"
+)
+
+const (
+	TargetFeatureSpecificNamespace           = "target: specific namespace"
+	TargetFeatureNamespaceEmpty              = "target: empty namespace"
+	TargetFeaturePodSelectorEmpty            = "target: empty pod selector"
+	TargetFeaturePodSelectorMatchLabels      = "target: pod selector match labels"
+	TargetFeaturePodSelectorMatchExpressions = "target: pod selector match expression"
 )
 
 const (
@@ -54,144 +67,28 @@ const (
 	PeerFeatureNamespaceSelectorMatchExpressions = "peer namespace selector match expression"
 )
 
-const (
-	TargetFeatureNamespaceEmpty              = "target: empty namespace"
-	TargetFeaturePodSelectorEmpty            = "target: empty pod selector"
-	TargetFeaturePodSelectorMatchLabels      = "target: pod selector match labels"
-	TargetFeaturePodSelectorMatchExpressions = "target: pod selector match expression"
-)
+func GetFeaturesForPolicy(policy *Netpol) map[string]bool {
+	features := targetFeatures(policy.Target)
 
-const (
-	PolicyFeatureIngress          = "policy with ingress"
-	PolicyFeatureEgress           = "policy with egress"
-	PolicyFeatureIngressAndEgress = "policy with both ingress and egress"
-)
-
-type Features struct {
-	General map[string]bool
-	Ingress map[string]bool
-	Egress  map[string]bool
-}
-
-func (f *Features) Strings() []string {
-	var strs []string
-	for feature := range f.General {
-		strs = append(strs, feature)
-	}
-	for feature := range f.Ingress {
-		strs = append(strs, "Ingress: "+feature)
-	}
-	for feature := range f.Egress {
-		strs = append(strs, "Egress: "+feature)
-	}
-	return strs
-}
-
-func (f *Features) Combine(other *Features) *Features {
-	if other == nil {
-		return f
-	}
-	return &Features{
-		General: mergeSets(f.General, other.General),
-		Ingress: mergeSets(f.Ingress, other.Ingress),
-		Egress:  mergeSets(f.Egress, other.Egress),
-	}
-}
-
-/*
-// AllFeatures is a slice of all Features.  Make sure to keep it updated as new Features are created.
-var AllFeatures = []string{
-	string(ActionFeatureCreatePolicy),
-	string(ActionFeatureDeletePolicy),
-	string(ActionFeatureReadPolicies),
-	string(ActionFeatureSetPodLabels),
-	string(ActionFeatureSetNamespaceLabels),
-	string(ActionFeatureUpdatePolicy),
-
-	string(TargetFeatureNamespaceEmpty),
-	string(TargetFeaturePodSelectorEmpty),
-	string(TargetFeaturePodSelectorMatchLabels),
-	string(TargetFeaturePodSelectorMatchExpressions),
-
-	string(FeatureIngressEmptyPortSlice),
-	string(FeatureIngressNumberedPort),
-	string(FeatureIngressNamedPort),
-	string(FeatureIngressNilPort),
-
-	string(FeatureIngressEmptyPeerSlice),
-	string(FeatureIngressPeerIPBlock),
-	string(FeatureIngressPeerIPBlockEmptyExcept),
-	string(FeatureIngressPeerIPBlockNonemptyExcept),
-	string(FeatureIngressPeerPodSelectorEmpty),
-	string(FeatureIngressPeerPodSelectorMatchLabels),
-	string(FeatureIngressPeerPodSelectorMatchExpressions),
-	string(FeatureIngressPeerPodSelectorNil),
-	string(FeatureIngressPeerNamespaceSelectorEmpty),
-	string(FeatureIngressPeerNamespaceSelectorMatchLabels),
-	string(FeatureIngressPeerNamespaceSelectorMatchExpressions),
-	string(FeatureIngressPeerNamespaceSelectorNil),
-
-	string(FeatureIngressEmptySlice),
-
-	string(PolicyFeatureIngress),
-	string(PolicyFeatureEgress),
-	string(PolicyFeatureIngressAndEgress),
-}
-*/
-
-func GetFeaturesForPolicy(policy *networkingv1.NetworkPolicy) *Features {
-	spec := policy.Spec
-	general := targetPodSelectorFeatures(spec.PodSelector)
-	if policy.Namespace == "" {
-		general[TargetFeatureNamespaceEmpty] = true
-	}
-
-	ingress := map[string]bool{}
-	egress := map[string]bool{}
-	hasIngress, hasEegress := false, false
-	for _, policyType := range spec.PolicyTypes {
-		if policyType == networkingv1.PolicyTypeIngress {
-			hasIngress = true
-			ingress = mergeSets(ingress, ingressFeatures(spec.Ingress))
-		} else if policyType == networkingv1.PolicyTypeEgress {
-			hasEegress = true
-			egress = mergeSets(egress, egressFeatures(spec.Egress))
-		}
-	}
+	hasIngress := len(policy.Ingress.Rules) > 0
 	if hasIngress {
-		general[PolicyFeatureIngress] = true
+		features[PolicyFeatureIngress] = true
+		features = mergeSets(features, addDirectionalityToKeys(true, ingressOrEgressFeatures(policy.Ingress.Rules)))
 	}
-	if hasEegress {
-		general[PolicyFeatureEgress] = true
-	}
-	if hasIngress && hasEegress {
-		general[PolicyFeatureIngressAndEgress] = true
-	}
-	return &Features{
-		General: general,
-		Ingress: ingress,
-		Egress:  egress,
-	}
-}
 
-func ingressFeatures(rules []networkingv1.NetworkPolicyIngressRule) map[string]bool {
-	features := map[string]bool{}
-	switch len(rules) {
-	case 0:
-		features[RuleFeatureSliceEmpty] = true
-	case 1:
-		features[RuleFeatureSliceSize1] = true
-	default:
-		features[RuleFeatureSliceSize2Plus] = true
+	hasEgress := len(policy.Egress.Rules) > 0
+	if hasEgress {
+		features[PolicyFeatureEgress] = true
+		features = mergeSets(features, addDirectionalityToKeys(false, ingressOrEgressFeatures(policy.Egress.Rules)))
 	}
-	for _, rule := range rules {
-		features = mergeSets(features, peerFeatures(rule.From))
-		features = mergeSets(features, portFeatures(rule.Ports))
+
+	if hasIngress && hasEgress {
+		features[PolicyFeatureIngressAndEgress] = true
 	}
 	return features
 }
 
-func egressFeatures(rules []networkingv1.NetworkPolicyEgressRule) map[string]bool {
+func ingressOrEgressFeatures(rules []*Rule) map[string]bool {
 	features := map[string]bool{}
 	switch len(rules) {
 	case 0:
@@ -202,7 +99,7 @@ func egressFeatures(rules []networkingv1.NetworkPolicyEgressRule) map[string]boo
 		features[RuleFeatureSliceSize2Plus] = true
 	}
 	for _, rule := range rules {
-		features = mergeSets(features, peerFeatures(rule.To))
+		features = mergeSets(features, peerFeatures(rule.Peers))
 		features = mergeSets(features, portFeatures(rule.Ports))
 	}
 	return features
@@ -298,18 +195,43 @@ func portFeatures(npPorts []networkingv1.NetworkPolicyPort) map[string]bool {
 	return features
 }
 
-func targetPodSelectorFeatures(sel metav1.LabelSelector) map[string]bool {
+func targetFeatures(target *NetpolTarget) map[string]bool {
 	features := map[string]bool{}
-	if len(sel.MatchLabels) == 0 && len(sel.MatchExpressions) == 0 {
+	if target.Namespace == "" {
+		features[TargetFeatureNamespaceEmpty] = true
+	} else {
+		features[TargetFeatureSpecificNamespace] = true
+	}
+
+	selector := target.PodSelector
+	if len(selector.MatchLabels) == 0 && len(selector.MatchExpressions) == 0 {
 		features[TargetFeaturePodSelectorEmpty] = true
 	}
-	if len(sel.MatchLabels) > 0 {
+	if len(selector.MatchLabels) > 0 {
 		features[TargetFeaturePodSelectorMatchLabels] = true
 	}
-	if len(sel.MatchExpressions) > 0 {
+	if len(selector.MatchExpressions) > 0 {
 		features[TargetFeaturePodSelectorMatchExpressions] = true
 	}
 	return features
+}
+
+func addDirectionalityToKeys(isIngress bool, dict map[string]bool) map[string]bool {
+	var prefix string
+	if isIngress {
+		prefix = "Ingress: "
+	} else {
+		prefix = "Egress: "
+	}
+	return addPrefixToKeys(prefix, dict)
+}
+
+func addPrefixToKeys(prefix string, dict map[string]bool) map[string]bool {
+	out := map[string]bool{}
+	for k := range dict {
+		out[prefix+k] = true
+	}
+	return out
 }
 
 func mergeSets(l, r map[string]bool) map[string]bool {

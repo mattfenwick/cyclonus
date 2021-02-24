@@ -10,5 +10,6 @@ import (
 func TestModel(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunIPAddressTests()
+	RunLabelSelectorTests()
 	RunSpecs(t, "network policy matcher suite")
 }

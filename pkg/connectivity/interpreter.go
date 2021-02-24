@@ -127,7 +127,7 @@ func (t *Interpreter) runProbe(testCaseState *TestCaseState, probeConfig *genera
 	parsedPolicy := matcher.BuildNetworkPolicies(testCaseState.Policies)
 
 	logrus.Infof("running probe %+v", probeConfig)
-	logrus.Infof("with resources:\n%s", testCaseState.Resources.RenderTable())
+	logrus.Debugf("with resources:\n%s", testCaseState.Resources.RenderTable())
 
 	simRunner := probe.NewSimulatedRunner(parsedPolicy)
 

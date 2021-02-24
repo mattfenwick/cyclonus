@@ -29,7 +29,7 @@ func (r *Result) ResultsByProtocol() map[bool]map[v1.Protocol]int {
 }
 
 func (r *Result) Features() []string {
-	return r.TestCase.GetFeatures().Strings()
+	return r.TestCase.GetFeaturesSlice()
 }
 
 type StepResult struct {
