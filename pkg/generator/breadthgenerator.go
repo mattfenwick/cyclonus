@@ -218,8 +218,7 @@ func (e *BreadthGenerator) ActionTestCases() []*TestCase {
 			Steps: []*TestStep{
 				NewTestStep(ProbeAllAvailable,
 					CreatePolicy(BuildPolicy(SetPeers(true, []NetworkPolicyPeer{{
-						NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"new-ns": "qrs"}}}})).NetworkPolicy()),
-					CreatePolicy(baseBreadthPolicy().NetworkPolicy())),
+						NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"new-ns": "qrs"}}}})).NetworkPolicy())),
 				NewTestStep(ProbeAllAvailable,
 					SetNamespaceLabels("y", map[string]string{"ns": "y", "new-ns": "qrs"})),
 				NewTestStep(ProbeAllAvailable,
@@ -244,8 +243,7 @@ func (e *BreadthGenerator) ActionTestCases() []*TestCase {
 				NewTestStep(ProbeAllAvailable,
 					CreatePolicy(BuildPolicy(SetPeers(true, []NetworkPolicyPeer{{
 						PodSelector:       &metav1.LabelSelector{MatchLabels: map[string]string{"new-label": "abc"}},
-						NamespaceSelector: nsYZMatchExpressionsSelector}})).NetworkPolicy()),
-					CreatePolicy(baseBreadthPolicy().NetworkPolicy())),
+						NamespaceSelector: nsYZMatchExpressionsSelector}})).NetworkPolicy())),
 				NewTestStep(ProbeAllAvailable,
 					SetPodLabels("y", "b", map[string]string{"pod": "b", "new-label": "abc"})),
 				NewTestStep(ProbeAllAvailable,
