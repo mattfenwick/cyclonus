@@ -94,6 +94,8 @@ func RunAnalyzeCommand(args *AnalyzeArgs) {
 		kubePolicies = append(kubePolicies, netpol.AllExamples...)
 	}
 
+	logrus.Debugf("parsed policies:\n%s", utils.JsonString(kubePolicies))
+
 	// 4. consume policies
 	explainedPolicies := matcher.BuildNetworkPolicies(kubePolicies)
 
