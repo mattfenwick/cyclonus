@@ -197,6 +197,7 @@ func (e *BreadthGenerator) ActionTestCases() []*TestCase {
 			Steps: []*TestStep{
 				NewTestStep(ProbeAllAvailable, CreatePolicy(baseBreadthPolicy().NetworkPolicy())),
 				NewTestStep(ProbeAllAvailable, UpdatePolicy(BuildPolicy(SetPorts(true, []NetworkPolicyPort{{Protocol: &udp, Port: &portServe81UDP}})).NetworkPolicy())),
+				// TODO make an analogous modification for egress
 			},
 		},
 
@@ -213,21 +214,18 @@ func (e *BreadthGenerator) ActionTestCases() []*TestCase {
 			},
 		},
 		{
-			Description: "Update namespace so that policy no longer applies",
+			Description: "Update namespace so that policy applies, then again so it no longer applies",
 			Steps: []*TestStep{
 				NewTestStep(ProbeAllAvailable,
-					CreatePolicy(baseBreadthPolicy().NetworkPolicy()),
-					SetNamespaceLabels("y", map[string]string{})),
+					CreatePolicy(BuildPolicy(SetPeers(true, []NetworkPolicyPeer{{
+						NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"new-ns": "qrs"}}}})).NetworkPolicy()),
+					CreatePolicy(baseBreadthPolicy().NetworkPolicy())),
+				NewTestStep(ProbeAllAvailable,
+					SetNamespaceLabels("y", map[string]string{"ns": "y", "new-ns": "qrs"})),
+				NewTestStep(ProbeAllAvailable,
+					SetNamespaceLabels("y", map[string]string{"ns": "y"})),
 			},
 		},
-		//{
-		//	Description: "Update namespace so that policy does apply",
-		//	Steps: []*TestStep{
-		//		NewTestStep(ProbeAllAvailable,
-		//			CreatePolicy(baseBreadthPolicy().NetworkPolicy()),
-		//			SetNamespaceLabels("z", map[string]string{"ns": "y"})),
-		//	},
-		//},
 
 		{
 			Description: "Create/delete pod",
@@ -240,30 +238,20 @@ func (e *BreadthGenerator) ActionTestCases() []*TestCase {
 					DeletePod("x", "d")),
 			},
 		},
-		// TODO this test case subtly breaks expectations:
-		//   the {"pod": "b"} label is used to connect services to pods; changing that breaks the connection.
-		//   However, the simulated tests don't know about that connection, so continue thinking that the
-		//   traffic is allowed (it's not blocked by netpols, it just can't get through on kube because the
-		//   probes target the services, not the pods directly).
-		//   Instead, change this test case to use a new label.
-		//{
-		//	Description: "Update pod so that policy no longer applies",
-		//	Steps: []*TestStep{
-		//		NewTestStep(ProbeAllAvailable,
-		//			CreatePolicy(baseBreadthPolicy().NetworkPolicy())),
-		//		NewTestStep(ProbeAllAvailable,
-		//			SetPodLabels("y", "b", map[string]string{})),
-		//	},
-		//},
-		// TODO finish this test case and enable
-		//{
-		//	Description: "Update pod so that policy does apply",
-		//	Steps: []*TestStep{
-		//		NewTestStep(ProbeAllAvailable,
-		//			CreatePolicy(baseBreadthPolicy().NetworkPolicy()),
-		//			SetPodLabels("y", "c", map[string]string{"pod": "b"})),
-		//	},
-		//},
+		{
+			Description: "Update pod so that policy applies, then again so it no longer applies",
+			Steps: []*TestStep{
+				NewTestStep(ProbeAllAvailable,
+					CreatePolicy(BuildPolicy(SetPeers(true, []NetworkPolicyPeer{{
+						PodSelector:       &metav1.LabelSelector{MatchLabels: map[string]string{"new-label": "abc"}},
+						NamespaceSelector: nsYZMatchExpressionsSelector}})).NetworkPolicy()),
+					CreatePolicy(baseBreadthPolicy().NetworkPolicy())),
+				NewTestStep(ProbeAllAvailable,
+					SetPodLabels("y", "b", map[string]string{"pod": "b", "new-label": "abc"})),
+				NewTestStep(ProbeAllAvailable,
+					SetPodLabels("y", "b", map[string]string{"pod": "b"})),
+			},
+		},
 	}
 }
 
