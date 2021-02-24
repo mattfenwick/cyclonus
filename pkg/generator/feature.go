@@ -23,6 +23,20 @@ const (
 )
 
 const (
+	PolicyFeatureIngress          = "policy with ingress"
+	PolicyFeatureEgress           = "policy with egress"
+	PolicyFeatureIngressAndEgress = "policy with both ingress and egress"
+)
+
+const (
+	TargetFeatureSpecificNamespace           = "target: specific namespace"
+	TargetFeatureNamespaceEmpty              = "target: empty namespace"
+	TargetFeaturePodSelectorEmpty            = "target: empty pod selector"
+	TargetFeaturePodSelectorMatchLabels      = "target: pod selector match labels"
+	TargetFeaturePodSelectorMatchExpressions = "target: pod selector match expression"
+)
+
+const (
 	RuleFeatureSliceEmpty     = "0 rules"
 	RuleFeatureSliceSize1     = "1 rule"
 	RuleFeatureSliceSize2Plus = "2+ rules"
@@ -51,20 +65,6 @@ const (
 	PeerFeatureNamespaceSelectorEmpty            = "peer namespace selector empty"
 	PeerFeatureNamespaceSelectorMatchLabels      = "peer namespace selector match labels"
 	PeerFeatureNamespaceSelectorMatchExpressions = "peer namespace selector match expression"
-)
-
-const (
-	TargetFeatureSpecificNamespace           = "target: specific namespace"
-	TargetFeatureNamespaceEmpty              = "target: empty namespace"
-	TargetFeaturePodSelectorEmpty            = "target: empty pod selector"
-	TargetFeaturePodSelectorMatchLabels      = "target: pod selector match labels"
-	TargetFeaturePodSelectorMatchExpressions = "target: pod selector match expression"
-)
-
-const (
-	PolicyFeatureIngress          = "policy with ingress"
-	PolicyFeatureEgress           = "policy with egress"
-	PolicyFeatureIngressAndEgress = "policy with both ingress and egress"
 )
 
 func GetFeaturesForPolicy(policy *Netpol) map[string]bool {

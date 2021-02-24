@@ -25,15 +25,15 @@ func NewPolicyWithTargets(ingress []*Target, egress []*Target) *Policy {
 	return np
 }
 
-func (np *Policy) SortedTargets() ([]*Target, []*Target) {
+func (p *Policy) SortedTargets() ([]*Target, []*Target) {
 	var ingress, egress []*Target
-	for _, rule := range np.Ingress {
+	for _, rule := range p.Ingress {
 		ingress = append(ingress, rule)
 	}
 	sort.Slice(ingress, func(i, j int) bool {
 		return ingress[i].GetPrimaryKey() < ingress[j].GetPrimaryKey()
 	})
-	for _, rule := range np.Egress {
+	for _, rule := range p.Egress {
 		egress = append(egress, rule)
 	}
 	sort.Slice(egress, func(i, j int) bool {
@@ -42,19 +42,19 @@ func (np *Policy) SortedTargets() ([]*Target, []*Target) {
 	return ingress, egress
 }
 
-func (np *Policy) AddTargets(isIngress bool, targets []*Target) {
+func (p *Policy) AddTargets(isIngress bool, targets []*Target) {
 	for _, target := range targets {
-		np.AddTarget(isIngress, target)
+		p.AddTarget(isIngress, target)
 	}
 }
 
-func (np *Policy) AddTarget(isIngress bool, target *Target) *Target {
+func (p *Policy) AddTarget(isIngress bool, target *Target) *Target {
 	pk := target.GetPrimaryKey()
 	var dict map[string]*Target
 	if isIngress {
-		dict = np.Ingress
+		dict = p.Ingress
 	} else {
-		dict = np.Egress
+		dict = p.Egress
 	}
 	if prev, ok := dict[pk]; ok {
 		combined := prev.Combine(target)
@@ -65,13 +65,13 @@ func (np *Policy) AddTarget(isIngress bool, target *Target) *Target {
 	return dict[pk]
 }
 
-func (np *Policy) TargetsApplyingToPod(isIngress bool, namespace string, podLabels map[string]string) []*Target {
+func (p *Policy) TargetsApplyingToPod(isIngress bool, namespace string, podLabels map[string]string) []*Target {
 	var targets []*Target
 	var dict map[string]*Target
 	if isIngress {
-		dict = np.Ingress
+		dict = p.Ingress
 	} else {
-		dict = np.Egress
+		dict = p.Egress
 	}
 	for _, target := range dict {
 		if target.IsMatch(namespace, podLabels) {
@@ -128,14 +128,14 @@ func (ar *AllowedResult) IsAllowed() bool {
 // - whether the traffic is allowed
 // - which rules allowed the traffic
 // - which rules matched the traffic target
-func (np *Policy) IsTrafficAllowed(traffic *Traffic) *AllowedResult {
+func (p *Policy) IsTrafficAllowed(traffic *Traffic) *AllowedResult {
 	return &AllowedResult{
-		Ingress: np.IsIngressOrEgressAllowed(traffic, true),
-		Egress:  np.IsIngressOrEgressAllowed(traffic, false),
+		Ingress: p.IsIngressOrEgressAllowed(traffic, true),
+		Egress:  p.IsIngressOrEgressAllowed(traffic, false),
 	}
 }
 
-func (np *Policy) IsIngressOrEgressAllowed(traffic *Traffic, isIngress bool) *DirectionResult {
+func (p *Policy) IsIngressOrEgressAllowed(traffic *Traffic, isIngress bool) *DirectionResult {
 	var target *TrafficPeer
 	var peer *TrafficPeer
 	if isIngress {
@@ -152,7 +152,7 @@ func (np *Policy) IsIngressOrEgressAllowed(traffic *Traffic, isIngress bool) *Di
 		return &DirectionResult{AllowingTargets: nil, DenyingTargets: nil}
 	}
 
-	matchingTargets := np.TargetsApplyingToPod(isIngress, target.Internal.Namespace, target.Internal.PodLabels)
+	matchingTargets := p.TargetsApplyingToPod(isIngress, target.Internal.Namespace, target.Internal.PodLabels)
 
 	// 2. No targets match => automatic allow
 	if len(matchingTargets) == 0 {

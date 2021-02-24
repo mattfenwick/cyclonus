@@ -178,6 +178,8 @@ func (e *BreadthGenerator) Policies() [][]Setter {
 		cidr28 := fmt.Sprintf("%s/28", e.PodIP)
 		addPolicy(prefix+"ipblock", SetPeers(isIngress, []NetworkPolicyPeer{{IPBlock: &IPBlock{CIDR: cidr24}}}))
 		addPolicy(prefix+"ipblock with except", SetPeers(isIngress, []NetworkPolicyPeer{{IPBlock: &IPBlock{CIDR: cidr24, Except: []string{cidr28}}}}))
+
+		// TODO add tests for actions
 	}
 
 	return policies
@@ -185,8 +187,8 @@ func (e *BreadthGenerator) Policies() [][]Setter {
 
 func (e *BreadthGenerator) GenerateTestCases() []*TestCase {
 	var cases []*TestCase
-	for _, steps := range e.Policies() {
-		policy := BuildPolicy(steps...)
+	for _, modifications := range e.Policies() {
+		policy := BuildPolicy(modifications...)
 		cases = append(cases, &TestCase{
 			Description: policy.Description,
 			Steps:       []*TestStep{NewTestStep(ProbeAllAvailable, CreatePolicy(policy.NetworkPolicy()))},
