@@ -178,21 +178,100 @@ func (e *BreadthGenerator) Policies() [][]Setter {
 		cidr28 := fmt.Sprintf("%s/28", e.PodIP)
 		addPolicy(prefix+"ipblock", SetPeers(isIngress, []NetworkPolicyPeer{{IPBlock: &IPBlock{CIDR: cidr24}}}))
 		addPolicy(prefix+"ipblock with except", SetPeers(isIngress, []NetworkPolicyPeer{{IPBlock: &IPBlock{CIDR: cidr24, Except: []string{cidr28}}}}))
-
-		// TODO add tests for actions
 	}
 
 	return policies
+}
+
+func (e *BreadthGenerator) ActionTestCases() []*TestCase {
+	return []*TestCase{
+		{
+			Description: "Create/delete policy",
+			Steps: []*TestStep{
+				NewTestStep(ProbeAllAvailable, CreatePolicy(baseBreadthPolicy().NetworkPolicy())),
+				NewTestStep(ProbeAllAvailable, DeletePolicy(baseBreadthPolicy().Target.Namespace, baseBreadthPolicy().Name)),
+			},
+		},
+		{
+			Description: "Create/update policy",
+			Steps: []*TestStep{
+				NewTestStep(ProbeAllAvailable, CreatePolicy(baseBreadthPolicy().NetworkPolicy())),
+				NewTestStep(ProbeAllAvailable, UpdatePolicy(BuildPolicy(SetPorts(true, []NetworkPolicyPort{{Protocol: &udp, Port: &portServe81UDP}})).NetworkPolicy())),
+			},
+		},
+
+		{
+			Description: "Create/delete namespace",
+			Steps: []*TestStep{
+				NewTestStep(ProbeAllAvailable,
+					CreatePolicy(baseBreadthPolicy().NetworkPolicy())),
+				NewTestStep(ProbeAllAvailable,
+					CreateNamespace("y-2", map[string]string{"ns": "y"}),
+					CreatePod("y-2", "a", map[string]string{"pod": "a"}),
+					CreatePod("y-2", "b", map[string]string{"pod": "b"})),
+				NewTestStep(ProbeAllAvailable, DeleteNamespace("y-2")),
+			},
+		},
+		{
+			Description: "Update namespace so that policy no longer applies",
+			Steps: []*TestStep{
+				NewTestStep(ProbeAllAvailable,
+					CreatePolicy(baseBreadthPolicy().NetworkPolicy()),
+					SetNamespaceLabels("y", map[string]string{})),
+			},
+		},
+		//{
+		//	Description: "Update namespace so that policy does apply",
+		//	Steps: []*TestStep{
+		//		NewTestStep(ProbeAllAvailable,
+		//			CreatePolicy(baseBreadthPolicy().NetworkPolicy()),
+		//			SetNamespaceLabels("z", map[string]string{"ns": "y"})),
+		//	},
+		//},
+
+		{
+			Description: "Create/delete pod",
+			Steps: []*TestStep{
+				NewTestStep(ProbeAllAvailable,
+					CreatePolicy(baseBreadthPolicy().NetworkPolicy())),
+				NewTestStep(ProbeAllAvailable,
+					CreatePod("x", "d", map[string]string{"pod": "d"})),
+				NewTestStep(ProbeAllAvailable,
+					DeletePod("x", "d")),
+			},
+		},
+		// TODO this test case subtly breaks expectations:
+		//   the {"pod": "b"} label is used to connect services to pods; changing that breaks the connection.
+		//   However, the simulated tests don't know about that connection, so continue thinking that the
+		//   traffic is allowed (it's not blocked by netpols, it just can't get through on kube because the
+		//   probes target the services, not the pods directly).
+		//   Instead, change this test case to use a new label.
+		//{
+		//	Description: "Update pod so that policy no longer applies",
+		//	Steps: []*TestStep{
+		//		NewTestStep(ProbeAllAvailable,
+		//			CreatePolicy(baseBreadthPolicy().NetworkPolicy())),
+		//		NewTestStep(ProbeAllAvailable,
+		//			SetPodLabels("y", "b", map[string]string{})),
+		//	},
+		//},
+		// TODO finish this test case and enable
+		//{
+		//	Description: "Update pod so that policy does apply",
+		//	Steps: []*TestStep{
+		//		NewTestStep(ProbeAllAvailable,
+		//			CreatePolicy(baseBreadthPolicy().NetworkPolicy()),
+		//			SetPodLabels("y", "c", map[string]string{"pod": "b"})),
+		//	},
+		//},
+	}
 }
 
 func (e *BreadthGenerator) GenerateTestCases() []*TestCase {
 	var cases []*TestCase
 	for _, modifications := range e.Policies() {
 		policy := BuildPolicy(modifications...)
-		cases = append(cases, &TestCase{
-			Description: policy.Description,
-			Steps:       []*TestStep{NewTestStep(ProbeAllAvailable, CreatePolicy(policy.NetworkPolicy()))},
-		})
+		cases = append(cases, NewSingleStepTestCase(policy.Description, ProbeAllAvailable, CreatePolicy(policy.NetworkPolicy())))
 	}
-	return cases
+	return append(cases, e.ActionTestCases()...)
 }

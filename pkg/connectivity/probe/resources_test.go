@@ -34,5 +34,20 @@ func RunResourcesTests() {
 			Expect(r.Pods).To(HaveLen(1))
 			Expect(r2.Pods).To(HaveLen(2))
 		})
+
+		It("Should set pod labels nondestructively", func() {
+			labels := map[string]string{"pod": "b"}
+			r := &Resources{
+				Namespaces: map[string]map[string]string{
+					"y": {},
+				},
+				Pods: []*Pod{{Namespace: "y", Name: "b", Labels: labels}},
+			}
+			r2, err := r.SetPodLabels("y", "b", map[string]string{})
+			Expect(err).To(Succeed())
+
+			Expect(r.Pods[0].Labels).To(Equal(labels))
+			Expect(r2.Pods[0].Labels).To(Equal(map[string]string{}))
+		})
 	})
 }

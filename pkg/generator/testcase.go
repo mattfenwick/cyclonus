@@ -100,7 +100,9 @@ func (t *TestCase) DerivedFeatures() map[string]bool {
 			}
 
 			features = mergeSets(features, actionFeatures)
-			features = mergeSets(features, GetFeaturesForPolicy(NewNetpol(policy)))
+			if policy != nil {
+				features = mergeSets(features, GetFeaturesForPolicy(NewNetpol(policy)))
+			}
 		}
 	}
 	return features
