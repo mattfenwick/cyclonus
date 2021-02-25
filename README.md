@@ -34,7 +34,7 @@ Kube results for:
 | z/c | .   | .   | .   | X   | .   | X   | .   | .   | .   |
 +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
 
-0 wrong, 81 no value, 0 correct, 0 ignored out of 81 total
+0 wrong, 0 no value, 81 correct, 0 ignored out of 81 total
 ```
 
 ## Policy generator
