@@ -28,8 +28,8 @@ func (r *Result) ResultsByProtocol() map[bool]map[v1.Protocol]int {
 	return counts
 }
 
-func (r *Result) Features() []string {
-	return r.TestCase.GetFeaturesSlice()
+func (r *Result) Features() ([]string, []string, []string, []string) {
+	return r.TestCase.GetFeatures()
 }
 
 type StepResult struct {
