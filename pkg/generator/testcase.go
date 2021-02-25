@@ -42,68 +42,69 @@ func NewTestCase(description string, steps ...*TestStep) *TestCase {
 	}
 }
 
-func (t *TestCase) GetFeatures() map[string]bool {
-	return t.DerivedFeatures()
-}
-
-func (t *TestCase) GetFeaturesSlice() []string {
-	var features []string
-	for f := range t.GetFeatures() {
-		features = append(features, f)
-	}
-	return features
-}
-
-//func (t *TestCase) SortedFeatures() []Feature {
-//	var slice []Feature
-//	features := t.Features()
-//	for f := range features {
-//		slice = append(slice, f)
-//	}
-//	sort.Slice(slice, func(i, j int) bool {
-//		return slice[i] < slice[j]
-//	})
-//	return slice
-//}
-
-func (t *TestCase) DerivedFeatures() map[string]bool {
+func (t *TestCase) traverseActions() (map[string]bool, []*networkingv1.NetworkPolicy) {
 	features := map[string]bool{}
+	var policies []*networkingv1.NetworkPolicy
 	for _, step := range t.Steps {
 		for _, action := range step.Actions {
-			var policy *networkingv1.NetworkPolicy
-			actionFeatures := map[string]bool{}
 			if action.CreatePolicy != nil {
-				actionFeatures[ActionFeatureCreatePolicy] = true
-				policy = action.CreatePolicy.Policy
+				features[ActionFeatureCreatePolicy] = true
+				policies = append(policies, action.CreatePolicy.Policy)
 			} else if action.UpdatePolicy != nil {
-				actionFeatures[ActionFeatureUpdatePolicy] = true
-				policy = action.UpdatePolicy.Policy
+				features[ActionFeatureUpdatePolicy] = true
+				policies = append(policies, action.UpdatePolicy.Policy)
 			} else if action.DeletePolicy != nil {
-				actionFeatures[ActionFeatureDeletePolicy] = true
+				features[ActionFeatureDeletePolicy] = true
 			} else if action.CreateNamespace != nil {
-				actionFeatures[ActionFeatureCreateNamespace] = true
+				features[ActionFeatureCreateNamespace] = true
 			} else if action.SetNamespaceLabels != nil {
-				actionFeatures[ActionFeatureSetNamespaceLabels] = true
+				features[ActionFeatureSetNamespaceLabels] = true
 			} else if action.DeleteNamespace != nil {
-				actionFeatures[ActionFeatureDeleteNamespace] = true
+				features[ActionFeatureDeleteNamespace] = true
 			} else if action.ReadNetworkPolicies != nil {
 				// TODO need to also analyze these policies after they get read
-				actionFeatures[ActionFeatureReadPolicies] = true
+				features[ActionFeatureReadPolicies] = true
 			} else if action.CreatePod != nil {
-				actionFeatures[ActionFeatureCreatePod] = true
+				features[ActionFeatureCreatePod] = true
 			} else if action.SetPodLabels != nil {
-				actionFeatures[ActionFeatureSetPodLabels] = true
+				features[ActionFeatureSetPodLabels] = true
 			} else if action.DeletePod != nil {
-				actionFeatures[ActionFeatureDeletePod] = true
+				features[ActionFeatureDeletePod] = true
 			} else {
 				panic("invalid Action")
 			}
-
-			features = mergeSets(features, actionFeatures)
-			if policy != nil {
-				features = mergeSets(features, GetFeaturesForPolicy(NewNetpol(policy)))
-			}
 		}
 	}
-	return features
+	return features, policies
+}
+
+func (t *TestCase) GetFeatures() ([]string, []string, []string, []string) {
+	actionSet, policies := t.traverseActions()
+	generalSet, ingressSet, egressSet := map[string]bool{}, map[string]bool{}, map[string]bool{}
+	for _, policy := range policies {
+		parsedPolicy := NewNetpol(policy)
+		generalSet = mergeSets(generalSet, GeneralNetpolTraverser.Traverse(parsedPolicy))
+		ingressSet = mergeSets(ingressSet, IngressNetpolTraverser.Traverse(parsedPolicy))
+		egressSet = mergeSets(egressSet, EgressNetpolTraverser.Traverse(parsedPolicy))
+	}
+	return setToSlice(generalSet), setToSlice(ingressSet), setToSlice(egressSet), setToSlice(actionSet)
+}
+
+func setToSlice(set map[string]bool) []string {
+	var slice []string
+	for f := range set {
+		slice = append(slice, f)
+	}
+	return slice
+}
+
+func mergeSets(l, r map[string]bool) map[string]bool {
+	merged := map[string]bool{}
+	for k := range l {
+		merged[k] = true
+	}
+	for k := range r {
+		merged[k] = true
+	}
+	return merged
 }

@@ -31,7 +31,10 @@ func (t *Printer) PrintSummary() {
 	table.SetHeader([]string{"Test", "Result", "Step/Try", "Wrong", "Right", "Ignored", "TCP", "SCTP", "UDP"})
 
 	passedTotal, failedTotal := 0, 0
-	passFailCounts := map[bool]map[string]int{false: {}, true: {}}
+	generalPassFailCounts := map[bool]map[string]int{false: {}, true: {}}
+	ingressPassFailCounts := map[bool]map[string]int{false: {}, true: {}}
+	egressPassFailCounts := map[bool]map[string]int{false: {}, true: {}}
+	actionPassFailCounts := map[bool]map[string]int{false: {}, true: {}}
 	protocolCounts := map[v1.Protocol]map[Comparison]int{v1.ProtocolTCP: {}, v1.ProtocolSCTP: {}, v1.ProtocolUDP: {}}
 
 	for testNumber, result := range t.Results {
@@ -43,9 +46,11 @@ func (t *Printer) PrintSummary() {
 			}
 		}
 
-		for _, feature := range result.Features() {
-			passFailCounts[passed][feature]++
-		}
+		general, ingress, egress, actions := result.Features()
+		incrementCounts(generalPassFailCounts, passed, general)
+		incrementCounts(ingressPassFailCounts, passed, ingress)
+		incrementCounts(egressPassFailCounts, passed, egress)
+		incrementCounts(actionPassFailCounts, passed, actions)
 
 		var testResult string
 		if passed {
@@ -94,7 +99,17 @@ func (t *Printer) PrintSummary() {
 	table.Render()
 	fmt.Println(tableString.String())
 
-	fmt.Println(passFailTable(passFailCounts, passedTotal, failedTotal, protocolCounts))
+	fmt.Println(passFailTable("general", generalPassFailCounts, &passedTotal, &failedTotal))
+	fmt.Println(passFailTable("ingress", ingressPassFailCounts, nil, nil))
+	fmt.Println(passFailTable("egress", egressPassFailCounts, nil, nil))
+	fmt.Println(passFailTable("actions", actionPassFailCounts, nil, nil))
+	fmt.Println(protocolPassFailTable(protocolCounts))
+}
+
+func incrementCounts(dict map[bool]map[string]int, b bool, keys []string) {
+	for _, k := range keys {
+		dict[b][k]++
+	}
 }
 
 func protocolResult(passed int, failed int) string {
@@ -115,11 +130,11 @@ func (p *passFailRow) PassedPercentage() float64 {
 	return percentage(p.Passed, p.Passed+p.Failed)
 }
 
-func passFailTable(passFailCounts map[bool]map[string]int, passedTotal int, failedTotal int, protocolCounts map[v1.Protocol]map[Comparison]int) string {
+func passFailTable(caption string, passFailCounts map[bool]map[string]int, passedTotal *int, failedTotal *int) string {
 	str := &strings.Builder{}
 	table := tablewriter.NewWriter(str)
 	table.SetAutoWrapText(false)
-	str.WriteString("Pass/Fail counts:\n")
+	str.WriteString(fmt.Sprintf("%s counts:\n", caption))
 
 	table.SetHeader([]string{"Feature", "Passed", "Failed", "Passed %"})
 
@@ -138,6 +153,31 @@ func passFailTable(passFailCounts map[bool]map[string]int, passedTotal int, fail
 			Failed:  passFailCounts[false][feature],
 		})
 	}
+
+	sort.Slice(rows, func(i, j int) bool {
+		return rows[i].PassedPercentage() < rows[j].PassedPercentage()
+	})
+	if passedTotal != nil || failedTotal != nil {
+		rows = append(rows, &passFailRow{Feature: "Total", Passed: *passedTotal, Failed: *failedTotal})
+	}
+
+	for _, row := range rows {
+		table.Append([]string{row.Feature, intToString(row.Passed), intToString(row.Failed), fmt.Sprintf("%.0f", row.PassedPercentage())})
+	}
+
+	table.Render()
+	return str.String()
+}
+
+func protocolPassFailTable(protocolCounts map[v1.Protocol]map[Comparison]int) string {
+	str := &strings.Builder{}
+	table := tablewriter.NewWriter(str)
+	table.SetAutoWrapText(false)
+	str.WriteString("Pass/Fail for probes on protocols:\n")
+
+	table.SetHeader([]string{"Protocol", "Passed", "Failed", "Passed %"})
+
+	var rows []*passFailRow
 	for protocol, counts := range protocolCounts {
 		rows = append(rows, &passFailRow{
 			Feature: fmt.Sprintf("probe on %s", protocol),
@@ -145,11 +185,6 @@ func passFailTable(passFailCounts map[bool]map[string]int, passedTotal int, fail
 			Failed:  counts[DifferentComparison],
 		})
 	}
-
-	sort.Slice(rows, func(i, j int) bool {
-		return rows[i].PassedPercentage() < rows[j].PassedPercentage()
-	})
-	rows = append(rows, &passFailRow{Feature: "Total", Passed: passedTotal, Failed: failedTotal})
 
 	for _, row := range rows {
 		table.Append([]string{row.Feature, intToString(row.Passed), intToString(row.Failed), fmt.Sprintf("%.0f", row.PassedPercentage())})
@@ -188,10 +223,10 @@ func (t *Printer) PrintTestCaseResult(result *Result) {
 	for i := range result.Steps {
 		t.PrintStep(i+1, result.TestCase.Steps[i], result.Steps[i])
 	}
-	fmt.Println("features:")
-	for feature := range result.TestCase.GetFeatures() {
-		fmt.Printf(" - %s\n", feature)
-	}
+	//fmt.Println("features:")
+	//for feature := range result.TestCase.GetFeatures() {
+	//	fmt.Printf(" - %s\n", feature)
+	//}
 
 	fmt.Printf("\n\n")
 }
