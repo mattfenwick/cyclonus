@@ -40,7 +40,7 @@ func readPoliciesFromPath(policyPath string) ([]*networkingv1.NetworkPolicy, err
 
 		log.Debugf("failed to parse list from %s, falling back to parsing single policy", path)
 		var policy *networkingv1.NetworkPolicy
-		err = yaml.Unmarshal(bytes, &policy)
+		err = yaml.UnmarshalStrict(bytes, &policy)
 		if err != nil {
 			return errors.Wrapf(err, "unable to unmarshal single policy from yaml at %s", path)
 		}
