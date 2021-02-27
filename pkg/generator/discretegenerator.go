@@ -190,7 +190,7 @@ func (g *DiscreteGenerator) GenerateTestCases() []*TestCase {
 		for _, np := range netpols {
 			actions = append(actions, CreatePolicy(np.NetworkPolicy()))
 		}
-		testCases = append(testCases, NewSingleStepTestCase("TODO", ProbeAllAvailable, actions...))
+		testCases = append(testCases, NewSingleStepTestCase("TODO", NewStringSet(), ProbeAllAvailable, actions...))
 	}
 	return testCases
 }

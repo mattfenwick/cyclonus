@@ -2,40 +2,7 @@ package generator
 
 import (
 	. "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-var basePolicy = &Netpol{
-	Name: "base",
-	Target: &NetpolTarget{
-		Namespace:   "x",
-		PodSelector: metav1.LabelSelector{MatchLabels: map[string]string{"pod": "a"}},
-	},
-	Ingress: &NetpolPeers{Rules: []*Rule{{
-		Ports: []NetworkPolicyPort{{
-			Port:     &port80,
-			Protocol: &tcp,
-		}},
-		Peers: []NetworkPolicyPeer{{
-			PodSelector:       podBCMatchExpressionsSelector,
-			NamespaceSelector: nsXYMatchExpressionsSelector},
-		}},
-	}},
-	Egress: &NetpolPeers{Rules: []*Rule{
-		{
-			Ports: []NetworkPolicyPort{{
-				Port:     &port80,
-				Protocol: &tcp,
-			}},
-			Peers: []NetworkPolicyPeer{{
-				PodSelector:       podABMatchExpressionsSelector,
-				NamespaceSelector: nsYZMatchExpressionsSelector},
-			},
-		},
-		AllowDNSRule,
-	},
-	},
-}
 
 type DepthGenerator struct {
 	PodIP    string
@@ -51,11 +18,6 @@ func NewDepthGenerator(allowDNS bool, podIP string) *DepthGenerator {
 
 func (e *DepthGenerator) Policies() []*Netpol {
 	var policies []*Netpol
-
-	// TODO avoid duplicating breadth tests here?
-
-	// base policy
-	policies = append(policies, BuildPolicy())
 
 	// target
 	// namespace
@@ -85,15 +47,6 @@ func (e *DepthGenerator) Policies() []*Netpol {
 		// wrong protocol for port
 		policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &udp, Port: &portServe80TCP}})))
 		policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &sctp, Port: &portServe80TCP}})))
-		// pairs of ports
-		for i, ports1 := range SinglePortProtocolTestCases() {
-			policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{ports1})))
-			for j, ports2 := range SinglePortProtocolTestCases() {
-				if i < j {
-					policies = append(policies, BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{ports1, ports2})))
-				}
-			}
-		}
 
 		// ns/pod peer, ipblock peer
 		policies = append(policies, BuildPolicy(SetPeers(isIngress, emptySliceOfPeers)))
@@ -110,7 +63,7 @@ func (e *DepthGenerator) Policies() []*Netpol {
 func (e *DepthGenerator) GenerateTestCases() []*TestCase {
 	var cases []*TestCase
 	for _, fp := range e.Policies() {
-		cases = append(cases, NewSingleStepTestCase(fp.Description, ProbeAllAvailable, CreatePolicy(fp.NetworkPolicy())))
+		cases = append(cases, NewSingleStepTestCase(fp.Description, NewStringSet(), ProbeAllAvailable, CreatePolicy(fp.NetworkPolicy())))
 	}
 	return cases
 }

@@ -11,6 +11,7 @@ type ExampleGenerator struct{}
 func (e *ExampleGenerator) GenerateTestCases() []*TestCase {
 	return []*TestCase{
 		NewTestCase("should allow ingress access on one named port",
+			NewStringSet(),
 			NewTestStep(ProbeAllAvailable, CreatePolicy(
 				&NetworkPolicy{
 					ObjectMeta: metav1.ObjectMeta{

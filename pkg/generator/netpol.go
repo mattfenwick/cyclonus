@@ -132,3 +132,62 @@ func (r *Rule) Egress() NetworkPolicyEgressRule {
 		To:    r.Peers,
 	}
 }
+
+// Setter is used to declaratively build network policies
+type Setter func(policy *Netpol)
+
+func SetDescription(description string) Setter {
+	return func(policy *Netpol) {
+		policy.Description = description
+	}
+}
+
+func SetNamespace(ns string) Setter {
+	return func(policy *Netpol) {
+		policy.Target.Namespace = ns
+	}
+}
+
+func SetRules(isIngress bool, rules []*Rule) Setter {
+	return func(policy *Netpol) {
+		if isIngress {
+			policy.Ingress.Rules = rules
+		} else {
+			policy.Egress.Rules = rules
+		}
+	}
+}
+
+func SetPodSelector(sel metav1.LabelSelector) Setter {
+	return func(policy *Netpol) {
+		policy.Target.PodSelector = sel
+	}
+}
+
+func SetPorts(isIngress bool, ports []NetworkPolicyPort) Setter {
+	return func(policy *Netpol) {
+		if isIngress {
+			policy.Ingress.Rules[0].Ports = ports
+		} else {
+			policy.Egress.Rules[0].Ports = ports
+		}
+	}
+}
+
+func SetPeers(isIngress bool, peers []NetworkPolicyPeer) Setter {
+	return func(policy *Netpol) {
+		if isIngress {
+			policy.Ingress.Rules[0].Peers = peers
+		} else {
+			policy.Egress.Rules[0].Peers = peers
+		}
+	}
+}
+
+func BuildPolicy(setters ...Setter) *Netpol {
+	policy := baseBreadthPolicy()
+	for _, setter := range setters {
+		setter(policy)
+	}
+	return policy
+}

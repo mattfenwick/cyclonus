@@ -39,64 +39,6 @@ func baseBreadthPolicy() *Netpol {
 	}
 }
 
-type Setter func(policy *Netpol)
-
-func SetDescription(description string) Setter {
-	return func(policy *Netpol) {
-		policy.Description = description
-	}
-}
-
-func SetNamespace(ns string) Setter {
-	return func(policy *Netpol) {
-		policy.Target.Namespace = ns
-	}
-}
-
-func SetRules(isIngress bool, rules []*Rule) Setter {
-	return func(policy *Netpol) {
-		if isIngress {
-			policy.Ingress.Rules = rules
-		} else {
-			policy.Egress.Rules = rules
-		}
-	}
-}
-
-func SetPodSelector(sel metav1.LabelSelector) Setter {
-	return func(policy *Netpol) {
-		policy.Target.PodSelector = sel
-	}
-}
-
-func SetPorts(isIngress bool, ports []NetworkPolicyPort) Setter {
-	return func(policy *Netpol) {
-		if isIngress {
-			policy.Ingress.Rules[0].Ports = ports
-		} else {
-			policy.Egress.Rules[0].Ports = ports
-		}
-	}
-}
-
-func SetPeers(isIngress bool, peers []NetworkPolicyPeer) Setter {
-	return func(policy *Netpol) {
-		if isIngress {
-			policy.Ingress.Rules[0].Peers = peers
-		} else {
-			policy.Egress.Rules[0].Peers = peers
-		}
-	}
-}
-
-func BuildPolicy(setters ...Setter) *Netpol {
-	policy := baseBreadthPolicy()
-	for _, setter := range setters {
-		setter(policy)
-	}
-	return policy
-}
-
 // BreadthGenerator should provide tests that cover the following features, without worrying about
 //   corner cases or going into features in depth:
 // - probe, policy on tcp
@@ -153,16 +95,6 @@ func (e *BreadthGenerator) Policies() [][]Setter {
 
 		addPolicy(prefix+"deny all", SetRules(isIngress, []*Rule{}))
 		addPolicy(prefix+"allow all", SetRules(isIngress, []*Rule{{}}))
-
-		addPolicy(prefix+"all ports/protocols", SetPorts(isIngress, emptySliceOfPorts))
-
-		addPolicy(prefix+"numbered port on TCP", SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &tcp, Port: &port81}}))
-		addPolicy(prefix+"numbered port on UDP", SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &udp, Port: &port81}}))
-		addPolicy(prefix+"numbered port on SCTP", SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &sctp, Port: &port81}}))
-
-		addPolicy(prefix+"named port on TCP", SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &tcp, Port: &portServe81TCP}}))
-		addPolicy(prefix+"named port on UDP", SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &udp, Port: &portServe81UDP}}))
-		addPolicy(prefix+"named port on SCTP", SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &sctp, Port: &portServe81SCTP}}))
 
 		addPolicy(prefix+"all pods and ip address", SetPeers(isIngress, emptySliceOfPeers))
 
@@ -257,7 +189,7 @@ func (e *BreadthGenerator) GenerateTestCases() []*TestCase {
 	var cases []*TestCase
 	for _, modifications := range e.Policies() {
 		policy := BuildPolicy(modifications...)
-		cases = append(cases, NewSingleStepTestCase(policy.Description, ProbeAllAvailable, CreatePolicy(policy.NetworkPolicy())))
+		cases = append(cases, NewSingleStepTestCase(policy.Description, NewStringSet(), ProbeAllAvailable, CreatePolicy(policy.NetworkPolicy())))
 	}
 	return append(cases, e.ActionTestCases()...)
 }

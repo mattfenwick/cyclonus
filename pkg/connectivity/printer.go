@@ -241,8 +241,12 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 	fmt.Printf("Policy explanation:\n%s\n", policy.ExplainTable())
 
 	fmt.Printf("\n\nResults for network policies:\n")
-	for _, netpol := range stepResult.KubePolicies {
-		fmt.Printf(" - %s/%s:\n", netpol.Namespace, netpol.Name)
+	if len(stepResult.KubePolicies) > 0 {
+		for _, p := range stepResult.KubePolicies {
+			fmt.Printf("Network policy:\n\n%s\n", PrintNetworkPolicy(p))
+		}
+	} else {
+		fmt.Println("no network policies")
 	}
 
 	if len(stepResult.KubeProbes) == 0 {
@@ -265,14 +269,6 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 
 		for i, kubeResult := range stepResult.KubeProbes {
 			fmt.Printf("kube results, try %d:\n%s\n", i, kubeResult.RenderTable())
-		}
-
-		if len(stepResult.KubePolicies) > 0 {
-			for _, p := range stepResult.KubePolicies {
-				fmt.Printf("Network policy:\n\n%s\n", PrintNetworkPolicy(p))
-			}
-		} else {
-			fmt.Println("no network policies")
 		}
 
 		fmt.Printf("\nActual vs expected (last round):\n%s\n", comparison.RenderSuccessTable())

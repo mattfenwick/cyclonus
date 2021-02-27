@@ -7,7 +7,6 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -102,7 +101,7 @@ func RunGenerateCommand(args *GenerateArgs) {
 			Source:      generator.NewNetpolTarget("x", map[string]string{"pod": "b"}, nil),
 			Destination: generator.NewNetpolTarget("y", map[string]string{"pod": "c"}, nil)}
 	default:
-		panic(errors.Errorf("invalid test mode %s", args.Mode))
+		testCaseGenerator = generator.NewTestCaseGeneratorReplacement(args.AllowDNS, zcPod.IP, []string{"empty port slice"})
 	}
 
 	testCases := testCaseGenerator.GenerateTestCases()

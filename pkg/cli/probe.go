@@ -101,7 +101,7 @@ func RunProbeCommand(args *ProbeArgs) {
 	}
 
 	if args.ProbeAllAvailable {
-		result := interpreter.ExecuteTestCase(generator.NewSingleStepTestCase("all available one-off probe", &generator.ProbeConfig{AllAvailable: true}, actions...))
+		result := interpreter.ExecuteTestCase(generator.NewSingleStepTestCase("all available one-off probe", generator.NewStringSet(), &generator.ProbeConfig{AllAvailable: true}, actions...))
 		printer.PrintTestCaseResult(result)
 	} else {
 		for _, port := range args.Ports {
@@ -112,7 +112,7 @@ func RunProbeCommand(args *ProbeArgs) {
 					Port:     parsedPort,
 				}
 				probeConfig := &generator.ProbeConfig{PortProtocol: pp}
-				result := interpreter.ExecuteTestCase(generator.NewSingleStepTestCase("specific port/protocol one-off probe", probeConfig, actions...))
+				result := interpreter.ExecuteTestCase(generator.NewSingleStepTestCase("specific port/protocol one-off probe", generator.NewStringSet(), probeConfig, actions...))
 
 				printer.PrintTestCaseResult(result)
 			}
