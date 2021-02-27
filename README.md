@@ -1,18 +1,35 @@
 # Cyclonus
 
-## network policy explainer, prober, and test case generator!
+## Network policy explainer, prober, and test case generator
 
 Parse, explain, and probe network policies to understand their implications and help design
 policies that suit your needs!
 
-Grab the [latest release](https://github.com/mattfenwick/cyclonus/releases) to get started using Cyclonus!
+## Quickstart
+
+Grab the [latest release](https://github.com/mattfenwick/cyclonus/releases) to get started using Cyclonus.
+
+## Integrations
+
+### krew plugin
+
+Cyclonus is available as a [krew/kubectl plugin](https://github.com/mattfenwick/kubectl-cyclonus):
+
+ - [Set up krew](https://krew.sigs.k8s.io/docs/user-guide/quickstart/)
+ - install cyclonus through krew: `kubectl krew install cyclonus`
+ - use cyclonus as a kubectl plugin: `kubectl cyclonus -h`.
+
+### Antrea testing
+
+Cyclonus runs network policy tests for Antrea on a daily basis;
+[check it out on github](https://github.com/vmware-tanzu/antrea/actions/workflows/netpol_cyclonus.yml).
 
 ## Probe
 
 Run a connectivity probe against a Kubernetes cluster.
 
 ```
-$ go run cmd/cyclonus/main.go probe
+cyclonus probe
 
 Kube results for:
   policy y/allow-all-for-label:
@@ -43,7 +60,7 @@ Generate network policies, install the policies one at a time in kubernetes, and
 to expected connectivity using a truth table.
 
 ```
-$ go run cmd/cyclonus/main.go generate \
+cyclonus generate \
   --mode simple-fragments \
   --netpol-creation-wait-seconds 15
 
@@ -73,7 +90,7 @@ Groups policies by target, divides rules into egress and ingress, and gives a ba
 policies.  This clarifies the interactions between "denies" and "allows" from multiple policies.
 
 ```
-$ go run cmd/cyclonus/main.go analyze \
+cyclonus analyze \
   --policy-path ./networkpolicies/simple-example/
 
 +---------+---------------+------------------------+---------------------+--------------------------+
@@ -114,7 +131,7 @@ This takes the previous command a step further: it combines the rules from all t
 to a pod. 
 
 ```
-$ go run ./cmd/cyclonus/main.go analyze \
+cylonus analyze \
   --explain=false \
   --policy-path ./networkpolicies/simple-example/ \
   --target-pod-path ./examples/targets.json
@@ -146,7 +163,7 @@ Given arbitrary traffic examples (from a source to a destination, including labe
 this command parses network policies and determines if the traffic is allowed or not.
 
 ```
-go run ./cmd/cyclonus/main.go analyze \
+cyclonus analyze \
   --explain=false \
   --policy-path ./networkpolicies/simple-example/ \
   --traffic-path ./examples/traffic.json
@@ -185,7 +202,7 @@ Is traffic allowed?
 Runs a simulated connectivity probe against a set of network policies, without using a kubernetes cluster.
 
 ```
-$ go run ./cmd/cyclonus/main.go analyze \
+cyclonus analyze \
   --explain=false \
   --policy-path ./networkpolicies/simple-example/ \
   --probe-path ./examples/probe.json
@@ -211,7 +228,7 @@ Combined:
 Checks network policies for common problems.
 
 ```
-go run ./cmd/cyclonus/main.go analyze \
+cyclonus analyze \
   --explain=false \
   --lint=true \
   --policy-path ./networkpolicies/simple-example
