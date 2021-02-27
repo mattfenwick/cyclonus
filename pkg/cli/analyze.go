@@ -8,7 +8,6 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/linter"
 	"io/ioutil"
 
-	"github.com/mattfenwick/cyclonus/pkg/explainer"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/kube/netpol"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
@@ -121,7 +120,7 @@ func RunAnalyzeCommand(args *AnalyzeArgs) {
 }
 
 func ExplainPolicies(explainedPolicies *matcher.Policy) {
-	fmt.Printf("%s\n", explainer.TableExplainer(explainedPolicies))
+	fmt.Printf("%s\n", explainedPolicies.ExplainTable())
 }
 
 func Lint(kubePolicies []*networkingv1.NetworkPolicy) {
@@ -161,8 +160,8 @@ func QueryTargets(explainedPolicies *matcher.Policy, podPath string) {
 			combinedEgresses = []*matcher.Target{combinedEgressTarget}
 		}
 
-		fmt.Printf("Matching targets:\n%s\n", explainer.TableExplainer(matcher.NewPolicyWithTargets(ingressTargets, egressTargets)))
-		fmt.Printf("Combined rules for pod %+v:\n%s\n\n\n", pod, explainer.TableExplainer(matcher.NewPolicyWithTargets(combinedIngresses, combinedEgresses)))
+		fmt.Printf("Matching targets:\n%s\n", matcher.NewPolicyWithTargets(ingressTargets, egressTargets).ExplainTable())
+		fmt.Printf("Combined rules for pod %+v:\n%s\n\n\n", pod, matcher.NewPolicyWithTargets(combinedIngresses, combinedEgresses).ExplainTable())
 	}
 }
 
