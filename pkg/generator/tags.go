@@ -1,18 +1,20 @@
 package generator
 
 const (
+	TagExample = "example"
+
+	TagUpstreamE2E = "upstream e2e"
+
 	TagEmptyPortSlice   = "empty port slice"
 	TagSinglePortSlice  = "single port slice"
 	TagTwoPlusPortSlice = "two or more port slice"
-
-	TagNilPort      = "nil port"
-	TagNumberedPort = "numbered port"
-	TagNamedPort    = "named port"
-
-	TagNilProtocol  = "nil protocol"
-	TagTCPProtocol  = "TCP protocol"
-	TagUDPProtocol  = "UDP protocol"
-	TagSCTPProtocol = "SCTP protocol"
+	TagNilPort          = "nil port"
+	TagNumberedPort     = "numbered port"
+	TagNamedPort        = "named port"
+	TagNilProtocol      = "nil protocol"
+	TagTCPProtocol      = "TCP protocol"
+	TagUDPProtocol      = "UDP protocol"
+	TagSCTPProtocol     = "SCTP protocol"
 )
 
 var AllTags = []string{

@@ -18,8 +18,19 @@ func NewTestCaseGeneratorReplacement(allowDNS bool, podIP string, tags []string)
 	}
 }
 
+func flatten(caseSlices ...[]*TestCase) []*TestCase {
+	var cases []*TestCase
+	for _, slice := range caseSlices {
+		cases = append(cases, slice...)
+	}
+	return cases
+}
+
 func (t *TestCaseGeneratorReplacement) GenerateAllTestCases() []*TestCase {
-	return t.PortProtocolTestCases()
+	return flatten(
+		t.PortProtocolTestCases(),
+		t.ExampleTestCases(),
+		t.UpstreamE2ETestCases())
 }
 
 func (t *TestCaseGeneratorReplacement) GenerateTestCases() []*TestCase {
