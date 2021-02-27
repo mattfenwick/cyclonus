@@ -5,16 +5,18 @@ type TestCaseGenerator interface {
 }
 
 type TestCaseGeneratorReplacement struct {
-	PodIP    string
-	AllowDNS bool
-	Tags     []string
+	PodIP      string
+	AllowDNS   bool
+	Tags       []string
+	Namespaces []string
 }
 
-func NewTestCaseGeneratorReplacement(allowDNS bool, podIP string, tags []string) *TestCaseGeneratorReplacement {
+func NewTestCaseGeneratorReplacement(allowDNS bool, podIP string, tags []string, namespaces []string) *TestCaseGeneratorReplacement {
 	return &TestCaseGeneratorReplacement{
-		PodIP:    podIP,
-		AllowDNS: allowDNS,
-		Tags:     tags,
+		PodIP:      podIP,
+		AllowDNS:   allowDNS,
+		Tags:       tags,
+		Namespaces: namespaces,
 	}
 }
 
@@ -28,6 +30,8 @@ func flatten(caseSlices ...[]*TestCase) []*TestCase {
 
 func (t *TestCaseGeneratorReplacement) GenerateAllTestCases() []*TestCase {
 	return flatten(
+		t.TargetTestCases(),
+		t.RulesTestCases(),
 		t.PortProtocolTestCases(),
 		t.ExampleTestCases(),
 		t.UpstreamE2ETestCases())

@@ -37,3 +37,8 @@ var (
 	probePortServe80TCP = &ProbeConfig{PortProtocol: &PortProtocol{Port: portServe80TCP, Protocol: tcp}}
 	probePortServe81TCP = &ProbeConfig{PortProtocol: &PortProtocol{Port: portServe81TCP, Protocol: tcp}}
 )
+
+var (
+	DenyAllRules  = []*Rule{}
+	AllowAllRules = []*Rule{{}}
+)

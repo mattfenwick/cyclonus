@@ -5,6 +5,15 @@ const (
 
 	TagUpstreamE2E = "upstream e2e"
 
+	TagTargetNamespace   = "target namespace"
+	TagTargetPodSelector = "target pod selector"
+
+	TagIngress = "ingress"
+	TagEgress  = "egress"
+
+	TagDenyAll  = "deny all"
+	TagAllowAll = "allow all"
+
 	TagEmptyPortSlice   = "empty port slice"
 	TagSinglePortSlice  = "single port slice"
 	TagTwoPlusPortSlice = "two or more port slice"

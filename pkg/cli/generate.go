@@ -97,11 +97,15 @@ func RunGenerateCommand(args *GenerateArgs) {
 			Source:      generator.NewNetpolTarget("x", map[string]string{"pod": "b"}, nil),
 			Destination: generator.NewNetpolTarget("y", map[string]string{"pod": "c"}, nil)}
 	default:
-		testCaseGenerator = generator.NewTestCaseGeneratorReplacement(args.AllowDNS, zcPod.IP, []string{"empty port slice"})
+		testCaseGenerator = generator.NewTestCaseGeneratorReplacement(args.AllowDNS, zcPod.IP, []string{generator.TagTargetNamespace, generator.TagTargetPodSelector}, args.ServerNamespaces)
 	}
 
 	testCases := testCaseGenerator.GenerateTestCases()
 	fmt.Printf("testing %d cases\n\n", len(testCases))
+	for i, testCase := range testCases {
+		logrus.Infof("test #%d to run: %s", i+1, testCase.Description)
+	}
+
 	for i, testCase := range testCases {
 		logrus.Infof("starting test case #%d", i+1)
 

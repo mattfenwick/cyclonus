@@ -9,9 +9,9 @@ import (
 
 func describeDirectionality(isIngress bool) string {
 	if isIngress {
-		return "ingress"
+		return TagIngress
 	} else {
-		return "egress"
+		return TagEgress
 	}
 }
 

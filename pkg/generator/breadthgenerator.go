@@ -78,15 +78,6 @@ func (e *BreadthGenerator) Policies() [][]Setter {
 
 	addPolicy("base policy")
 
-	// target
-	// namespace
-	addPolicy("target: set namespace", SetNamespace("y"))
-
-	// pod selector
-	addPolicy("target: empty selector", SetPodSelector(*emptySelector))
-	addPolicy("target: match labels selector", SetPodSelector(*podAMatchLabelsSelector))
-	addPolicy("target: match expressions selector", SetPodSelector(*podABMatchExpressionsSelector))
-
 	for _, isIngress := range []bool{true, false} {
 		prefix := "ingress: "
 		if !isIngress {
