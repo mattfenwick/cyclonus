@@ -32,6 +32,7 @@ func (t *TestCaseGeneratorReplacement) GenerateAllTestCases() []*TestCase {
 	return flatten(
 		t.TargetTestCases(),
 		t.RulesTestCases(),
+		t.PeersTestCases(),
 		t.PortProtocolTestCases(),
 		t.ExampleTestCases(),
 		t.UpstreamE2ETestCases())

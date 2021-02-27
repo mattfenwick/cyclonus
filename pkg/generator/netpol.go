@@ -185,9 +185,42 @@ func SetPeers(isIngress bool, peers []NetworkPolicyPeer) Setter {
 }
 
 func BuildPolicy(setters ...Setter) *Netpol {
-	policy := baseBreadthPolicy()
+	policy := baseTestPolicy()
 	for _, setter := range setters {
 		setter(policy)
 	}
 	return policy
+}
+
+func baseTestPolicy() *Netpol {
+	return &Netpol{
+		Name: "base",
+		Target: &NetpolTarget{
+			Namespace:   "x",
+			PodSelector: metav1.LabelSelector{MatchLabels: map[string]string{"pod": "a"}},
+		},
+		Ingress: &NetpolPeers{Rules: []*Rule{{
+			Ports: []NetworkPolicyPort{{
+				Port:     &port80,
+				Protocol: &tcp,
+			}},
+			Peers: []NetworkPolicyPeer{{
+				PodSelector:       podBCMatchExpressionsSelector,
+				NamespaceSelector: nsXYMatchExpressionsSelector},
+			}},
+		}},
+		Egress: &NetpolPeers{Rules: []*Rule{
+			{
+				Ports: []NetworkPolicyPort{{
+					Port:     &port80,
+					Protocol: &tcp,
+				}},
+				Peers: []NetworkPolicyPeer{{
+					PodSelector:       podABMatchExpressionsSelector,
+					NamespaceSelector: nsYZMatchExpressionsSelector},
+				},
+			},
+			AllowDNSRule,
+		}},
+	}
 }

@@ -8,6 +8,12 @@ import (
 
 func (t *TestCaseGeneratorReplacement) TargetTestCases() []*TestCase {
 	var cases []*TestCase
+
+	// TODO want to test the empty-string-to-default-namespace behavior, but the kube client doesn't allow an empty
+	//   namespace like kubectl does
+	//cases = append(cases, NewSingleStepTestCase("set namespace to empty string", NewStringSet(TagTargetNamespace), ProbeAllAvailable,
+	//	CreatePolicy(BuildPolicy(SetNamespace("")).NetworkPolicy())))
+
 	for _, ns := range t.Namespaces {
 		tags := NewStringSet(TagTargetNamespace)
 		cases = append(cases, NewSingleStepTestCase(fmt.Sprintf("set namespace to %s", ns), tags, ProbeAllAvailable,

@@ -14,6 +14,15 @@ const (
 	TagDenyAll  = "deny all"
 	TagAllowAll = "allow all"
 
+	TagEmptyPeerSlice    = "empty peer slice"
+	TagAllPods           = "all pods"
+	TagPodsByLabel       = "pods by label"
+	TagAllNamespaces     = "all namespaces"
+	TagNamespacesByLabel = "namespaces by label"
+	TagPolicyNamespace   = "policy namespace"
+	TagIPBlock           = "IP block"
+	TagIPBlockWithExcept = "IP block with except"
+
 	TagEmptyPortSlice   = "empty port slice"
 	TagSinglePortSlice  = "single port slice"
 	TagTwoPlusPortSlice = "two or more port slice"
