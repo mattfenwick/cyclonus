@@ -3,7 +3,6 @@ package recipes
 import (
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
-	"github.com/mattfenwick/cyclonus/pkg/explainer"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	v1 "k8s.io/api/core/v1"
@@ -57,7 +56,7 @@ func Run() {
 	for _, recipe := range AllRecipes {
 		table := recipe.RunProbe()
 
-		fmt.Printf("Policies:\n%s\n", explainer.TableExplainer(matcher.BuildNetworkPolicies(recipe.Policies())))
+		fmt.Printf("Policies:\n%s\n", matcher.BuildNetworkPolicies(recipe.Policies()).ExplainTable())
 
 		fmt.Printf("resources:\n%s\n", recipe.Resources.RenderTable())
 

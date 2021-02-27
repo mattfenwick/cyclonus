@@ -2,7 +2,6 @@ package connectivity
 
 import (
 	"fmt"
-	"github.com/mattfenwick/cyclonus/pkg/explainer"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/olekukonko/tablewriter"
@@ -239,7 +238,7 @@ func (t *Printer) PrintStep(i int, step *generator.TestStep, stepResult *StepRes
 	}
 	policy := stepResult.Policy
 
-	fmt.Printf("Policy explanation:\n%s\n", explainer.TableExplainer(policy))
+	fmt.Printf("Policy explanation:\n%s\n", policy.ExplainTable())
 
 	fmt.Printf("\n\nResults for network policies:\n")
 	for _, netpol := range stepResult.KubePolicies {
