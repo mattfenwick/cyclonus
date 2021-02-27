@@ -87,8 +87,6 @@ func RunGenerateCommand(args *GenerateArgs) {
 		testCaseGenerator = generator.NewDefaultFragmentGenerator(args.AllowDNS, args.ServerNamespaces, zcPod.IP)
 	case "discrete":
 		testCaseGenerator = generator.NewDefaultDiscreteGenerator(args.AllowDNS, zcPod.IP)
-	case "breadth":
-		testCaseGenerator = generator.NewBreadthGenerator(args.AllowDNS, zcPod.IP)
 	case "depth":
 		testCaseGenerator = generator.NewDepthGenerator(args.AllowDNS, zcPod.IP)
 	case "conflicts":

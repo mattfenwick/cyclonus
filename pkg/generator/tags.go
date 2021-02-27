@@ -1,6 +1,16 @@
 package generator
 
 const (
+	TagCreatePolicy       = "create policy"
+	TagDeletePolicy       = "delete policy"
+	TagUpdatePolicy       = "update policy"
+	TagCreatePod          = "create pod"
+	TagDeletePod          = "delete pod"
+	TagSetPodLabels       = "set pod labels"
+	TagCreateNamespace    = "create namespace"
+	TagDeleteNamespace    = "delete namespace"
+	TagSetNamespaceLabels = "set namespace labels"
+
 	TagExample = "example"
 
 	TagUpstreamE2E = "upstream e2e"
@@ -36,7 +46,31 @@ const (
 )
 
 var AllTags = []string{
+	TagExample,
+
+	TagUpstreamE2E,
+
+	TagTargetNamespace,
+	TagTargetPodSelector,
+
+	TagIngress,
+	TagEgress,
+
+	TagDenyAll,
+	TagAllowAll,
+
+	TagEmptyPeerSlice,
+	TagAllPods,
+	TagPodsByLabel,
+	TagAllNamespaces,
+	TagNamespacesByLabel,
+	TagPolicyNamespace,
+	TagIPBlock,
+	TagIPBlockWithExcept,
+
 	TagEmptyPortSlice,
+	TagSinglePortSlice,
+	TagTwoPlusPortSlice,
 	TagNilPort,
 	TagNumberedPort,
 	TagNamedPort,

@@ -5,22 +5,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type BreadthGenerator struct {
-	PodIP    string
-	AllowDNS bool
-}
-
-func NewBreadthGenerator(allowDNS bool, podIP string) *BreadthGenerator {
-	return &BreadthGenerator{
-		PodIP:    podIP,
-		AllowDNS: allowDNS,
-	}
-}
-
-func (e *BreadthGenerator) ActionTestCases() []*TestCase {
+func (t *TestCaseGeneratorReplacement) ActionTestCases() []*TestCase {
 	return []*TestCase{
 		{
 			Description: "Create/delete policy",
+			Tags:        NewStringSet(TagCreatePolicy, TagDeletePolicy),
 			Steps: []*TestStep{
 				NewTestStep(ProbeAllAvailable, CreatePolicy(baseTestPolicy().NetworkPolicy())),
 				NewTestStep(ProbeAllAvailable, DeletePolicy(baseTestPolicy().Target.Namespace, baseTestPolicy().Name)),
@@ -28,6 +17,7 @@ func (e *BreadthGenerator) ActionTestCases() []*TestCase {
 		},
 		{
 			Description: "Create/update policy",
+			Tags:        NewStringSet(TagCreatePolicy, TagUpdatePolicy),
 			Steps: []*TestStep{
 				NewTestStep(ProbeAllAvailable, CreatePolicy(baseTestPolicy().NetworkPolicy())),
 				NewTestStep(ProbeAllAvailable, UpdatePolicy(BuildPolicy(SetPorts(true, []NetworkPolicyPort{{Protocol: &udp, Port: &portServe81UDP}})).NetworkPolicy())),
@@ -37,6 +27,7 @@ func (e *BreadthGenerator) ActionTestCases() []*TestCase {
 
 		{
 			Description: "Create/delete namespace",
+			Tags:        NewStringSet(TagCreateNamespace, TagDeleteNamespace),
 			Steps: []*TestStep{
 				NewTestStep(ProbeAllAvailable,
 					CreatePolicy(baseTestPolicy().NetworkPolicy())),
@@ -49,6 +40,7 @@ func (e *BreadthGenerator) ActionTestCases() []*TestCase {
 		},
 		{
 			Description: "Update namespace so that policy applies, then again so it no longer applies",
+			Tags:        NewStringSet(TagSetNamespaceLabels),
 			Steps: []*TestStep{
 				NewTestStep(ProbeAllAvailable,
 					CreatePolicy(BuildPolicy(SetPeers(true, []NetworkPolicyPeer{{
@@ -62,6 +54,7 @@ func (e *BreadthGenerator) ActionTestCases() []*TestCase {
 
 		{
 			Description: "Create/delete pod",
+			Tags:        NewStringSet(TagCreatePod, TagDeletePod),
 			Steps: []*TestStep{
 				NewTestStep(ProbeAllAvailable,
 					CreatePolicy(baseTestPolicy().NetworkPolicy())),
@@ -73,6 +66,7 @@ func (e *BreadthGenerator) ActionTestCases() []*TestCase {
 		},
 		{
 			Description: "Update pod so that policy applies, then again so it no longer applies",
+			Tags:        NewStringSet(TagSetPodLabels),
 			Steps: []*TestStep{
 				NewTestStep(ProbeAllAvailable,
 					CreatePolicy(BuildPolicy(SetPeers(true, []NetworkPolicyPeer{{
@@ -85,8 +79,4 @@ func (e *BreadthGenerator) ActionTestCases() []*TestCase {
 			},
 		},
 	}
-}
-
-func (e *BreadthGenerator) GenerateTestCases() []*TestCase {
-	return e.ActionTestCases()
 }

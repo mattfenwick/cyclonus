@@ -35,6 +35,7 @@ func (t *TestCaseGeneratorReplacement) GenerateAllTestCases() []*TestCase {
 		t.PeersTestCases(),
 		t.PortProtocolTestCases(),
 		t.ExampleTestCases(),
+		t.ActionTestCases(),
 		t.UpstreamE2ETestCases())
 }
 
