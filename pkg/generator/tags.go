@@ -1,6 +1,8 @@
 package generator
 
 const (
+	TagPathological = "pathological"
+
 	TagCreatePolicy       = "create policy"
 	TagDeletePolicy       = "delete policy"
 	TagUpdatePolicy       = "update policy"
@@ -24,14 +26,15 @@ const (
 	TagDenyAll  = "deny all"
 	TagAllowAll = "allow all"
 
-	TagEmptyPeerSlice    = "empty peer slice"
-	TagAllPods           = "all pods"
-	TagPodsByLabel       = "pods by label"
-	TagAllNamespaces     = "all namespaces"
-	TagNamespacesByLabel = "namespaces by label"
-	TagPolicyNamespace   = "policy namespace"
-	TagIPBlock           = "IP block"
-	TagIPBlockWithExcept = "IP block with except"
+	TagEmptyPeerSlice       = "empty peer slice"
+	TagAllPodsNilSelector   = "all pods nil selector"
+	TagAllPodsEmptySelector = "all pods empty selector"
+	TagPodsByLabel          = "pods by label"
+	TagAllNamespaces        = "all namespaces"
+	TagNamespacesByLabel    = "namespaces by label"
+	TagPolicyNamespace      = "policy namespace"
+	TagIPBlock              = "IP block"
+	TagIPBlockWithExcept    = "IP block with except"
 
 	TagEmptyPortSlice   = "empty port slice"
 	TagSinglePortSlice  = "single port slice"
@@ -46,6 +49,8 @@ const (
 )
 
 var AllTags = []string{
+	TagPathological,
+
 	TagExample,
 
 	TagUpstreamE2E,
@@ -60,7 +65,8 @@ var AllTags = []string{
 	TagAllowAll,
 
 	TagEmptyPeerSlice,
-	TagAllPods,
+	TagAllPodsNilSelector,
+	TagAllPodsEmptySelector,
 	TagPodsByLabel,
 	TagAllNamespaces,
 	TagNamespacesByLabel,

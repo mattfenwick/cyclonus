@@ -134,7 +134,7 @@ func DefaultIPBlockPeers(podIP string) []NetworkPolicyPeer {
 func DefaultPodPeers() []NetworkPolicyPeer {
 	var peers []NetworkPolicyPeer
 	for _, nsSel := range []*metav1.LabelSelector{nilSelector, emptySelector, nsXMatchLabelsSelector} {
-		for _, podSel := range []*metav1.LabelSelector{nilSelector, emptySelector, podAMatchLabelsSelector} {
+		for _, podSel := range []*metav1.LabelSelector{nilSelector, emptySelector, podCMatchLabelsSelector} {
 			if nsSel == nil && podSel == nil {
 				// skip this case -- this is where IPBlock needs to be non-nil
 			} else {

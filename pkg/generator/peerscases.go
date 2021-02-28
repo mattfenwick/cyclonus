@@ -2,8 +2,30 @@ package generator
 
 import (
 	"fmt"
+	"github.com/mattfenwick/cyclonus/pkg/kube"
 	. "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+func describePeerPodSelector(selector *metav1.LabelSelector) string {
+	if selector == nil {
+		return TagAllPodsNilSelector
+	} else if kube.IsLabelSelectorEmpty(*selector) {
+		return TagAllPodsEmptySelector
+	} else {
+		return TagPodsByLabel
+	}
+}
+
+func describePeerNamespaceSelector(selector *metav1.LabelSelector) string {
+	if selector == nil {
+		return TagPolicyNamespace
+	} else if kube.IsLabelSelectorEmpty(*selector) {
+		return TagAllNamespaces
+	} else {
+		return TagNamespacesByLabel
+	}
+}
 
 func (t *TestCaseGeneratorReplacement) PeersTestCases() []*TestCase {
 	var cases []*TestCase
@@ -18,24 +40,17 @@ func (t *TestCaseGeneratorReplacement) PeersTestCases() []*TestCase {
 			NewSingleStepTestCase("", NewStringSet(dir, TagEmptyPeerSlice), ProbeAllAvailable,
 				CreatePolicy(BuildPolicy(SetPeers(isIngress, emptySliceOfPeers)).NetworkPolicy())),
 
-			NewSingleStepTestCase("", NewStringSet(dir, TagAllPods, TagPolicyNamespace), ProbeAllAvailable,
-				CreatePolicy(BuildPolicy(SetPeers(isIngress, []NetworkPolicyPeer{{PodSelector: emptySelector, NamespaceSelector: nilSelector}})).NetworkPolicy())),
-			NewSingleStepTestCase("", NewStringSet(dir, TagAllPods, TagNamespacesByLabel), ProbeAllAvailable,
-				CreatePolicy(BuildPolicy(SetPeers(isIngress, []NetworkPolicyPeer{{PodSelector: emptySelector, NamespaceSelector: nsXMatchLabelsSelector}})).NetworkPolicy())),
-			NewSingleStepTestCase("", NewStringSet(dir, TagAllPods, TagAllNamespaces), ProbeAllAvailable,
-				CreatePolicy(BuildPolicy(SetPeers(isIngress, []NetworkPolicyPeer{{PodSelector: emptySelector, NamespaceSelector: emptySelector}})).NetworkPolicy())),
-
-			NewSingleStepTestCase("", NewStringSet(dir, TagPodsByLabel, TagPolicyNamespace), ProbeAllAvailable,
-				CreatePolicy(BuildPolicy(SetPeers(isIngress, []NetworkPolicyPeer{{PodSelector: podCMatchLabelsSelector, NamespaceSelector: nilSelector}})).NetworkPolicy())),
-			NewSingleStepTestCase("", NewStringSet(dir, TagPodsByLabel, TagNamespacesByLabel), ProbeAllAvailable,
-				CreatePolicy(BuildPolicy(SetPeers(isIngress, []NetworkPolicyPeer{{PodSelector: podCMatchLabelsSelector, NamespaceSelector: nsXMatchLabelsSelector}})).NetworkPolicy())),
-			NewSingleStepTestCase("", NewStringSet(dir, TagPodsByLabel, TagAllNamespaces), ProbeAllAvailable,
-				CreatePolicy(BuildPolicy(SetPeers(isIngress, []NetworkPolicyPeer{{PodSelector: podCMatchLabelsSelector, NamespaceSelector: emptySelector}})).NetworkPolicy())),
-
 			NewSingleStepTestCase("", NewStringSet(dir, TagIPBlock), ProbeAllAvailable,
 				CreatePolicy(BuildPolicy(SetPeers(isIngress, []NetworkPolicyPeer{{IPBlock: &IPBlock{CIDR: cidr24}}})).NetworkPolicy())),
 			NewSingleStepTestCase("", NewStringSet(dir, TagIPBlockWithExcept), ProbeAllAvailable,
 				CreatePolicy(BuildPolicy(SetPeers(isIngress, []NetworkPolicyPeer{{IPBlock: &IPBlock{CIDR: cidr24, Except: []string{cidr28}}}})).NetworkPolicy())))
+
+		for _, peers := range DefaultPodPeers() {
+			cases = append(cases, NewSingleStepTestCase("",
+				NewStringSet(dir, describePeerNamespaceSelector(peers.NamespaceSelector), describePeerPodSelector(peers.PodSelector)),
+				ProbeAllAvailable,
+				CreatePolicy(BuildPolicy(SetPeers(isIngress, []NetworkPolicyPeer{peers})).NetworkPolicy())))
+		}
 	}
 	return cases
 }

@@ -62,8 +62,8 @@ func networkPolicyPorts() []NetworkPolicyPort {
 	}
 	ports := []*intstr.IntOrString{
 		nil,
+		&port80,
 		&port81,
-		&portServe81TCP,
 	}
 	var npps []NetworkPolicyPort
 	for _, protocol := range protocols {
@@ -71,22 +71,45 @@ func networkPolicyPorts() []NetworkPolicyPort {
 			npps = append(npps, NetworkPolicyPort{Protocol: protocol, Port: port})
 		}
 	}
+	npps = append(npps,
+		NetworkPolicyPort{Protocol: &tcp, Port: &portServe80TCP},
+		NetworkPolicyPort{Protocol: &tcp, Port: &portServe81TCP},
+		NetworkPolicyPort{Protocol: &udp, Port: &portServe80UDP},
+		NetworkPolicyPort{Protocol: &udp, Port: &portServe81UDP},
+		NetworkPolicyPort{Protocol: &sctp, Port: &portServe80SCTP},
+		NetworkPolicyPort{Protocol: &sctp, Port: &portServe81SCTP})
 	return npps
 }
 
 func (t *TestCaseGeneratorReplacement) SinglePortProtocolTestCases() []*TestCase {
 	var cases []*TestCase
-	for _, npp := range networkPolicyPorts() {
-		for _, isIngress := range []bool{false, true} {
+	for _, isIngress := range []bool{false, true} {
+		dir := describeDirectionality(isIngress)
+		for _, npp := range networkPolicyPorts() {
 			tags := NewStringSet(
 				TagSinglePortSlice,
-				describeDirectionality(isIngress),
+				dir,
 				describePort(npp.Port),
 				describeProtocol(npp.Protocol),
 			)
 			cases = append(cases, NewSingleStepTestCase("", tags, ProbeAllAvailable,
 				CreatePolicy(BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{npp})).NetworkPolicy())))
 		}
+
+		// pathological cases
+		cases = append(cases,
+			NewSingleStepTestCase("open a named port that doesn't match its protocol",
+				NewStringSet(TagSinglePortSlice, TagPathological, dir, describePort(&portServe81UDP), describeProtocol(&tcp)),
+				ProbeAllAvailable,
+				CreatePolicy(BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &tcp, Port: &portServe81UDP}})).NetworkPolicy())),
+			NewSingleStepTestCase("open a named port that isn't served",
+				NewStringSet(TagSinglePortSlice, TagPathological, dir, describePort(&portServe7981UDP), describeProtocol(&tcp)),
+				ProbeAllAvailable,
+				CreatePolicy(BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &tcp, Port: &portServe7981UDP}})).NetworkPolicy())),
+			NewSingleStepTestCase("open a numbered port that isn't served",
+				NewStringSet(TagSinglePortSlice, TagPathological, dir, describePort(&port7981), describeProtocol(&tcp)),
+				ProbeAllAvailable,
+				CreatePolicy(BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &tcp, Port: &port7981}})).NetworkPolicy())))
 	}
 	return cases
 }

@@ -87,15 +87,13 @@ func RunGenerateCommand(args *GenerateArgs) {
 		testCaseGenerator = generator.NewDefaultFragmentGenerator(args.AllowDNS, args.ServerNamespaces, zcPod.IP)
 	case "discrete":
 		testCaseGenerator = generator.NewDefaultDiscreteGenerator(args.AllowDNS, zcPod.IP)
-	case "depth":
-		testCaseGenerator = generator.NewDepthGenerator(args.AllowDNS, zcPod.IP)
 	case "conflicts":
 		testCaseGenerator = &generator.ConflictGenerator{
 			AllowDNS:    args.AllowDNS,
 			Source:      generator.NewNetpolTarget("x", map[string]string{"pod": "b"}, nil),
 			Destination: generator.NewNetpolTarget("y", map[string]string{"pod": "c"}, nil)}
 	default:
-		testCaseGenerator = generator.NewTestCaseGeneratorReplacement(args.AllowDNS, zcPod.IP, []string{generator.TagTargetNamespace, generator.TagTargetPodSelector}, args.ServerNamespaces)
+		testCaseGenerator = generator.NewTestCaseGeneratorReplacement(args.AllowDNS, zcPod.IP, []string{generator.TagPathological}, args.ServerNamespaces)
 	}
 
 	testCases := testCaseGenerator.GenerateTestCases()
