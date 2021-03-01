@@ -248,34 +248,3 @@ func (g *FragmentGenerator) IngressPolicies() []*NetworkPolicy {
 func (g *FragmentGenerator) EgressPolicies() []*NetworkPolicy {
 	return g.multidimensionalPolicies(false)
 }
-
-func (g *FragmentGenerator) IngressEgressPolicies(allowDNS bool) []*NetworkPolicy {
-	panic("TODO -- how to get this to a workable number?")
-	//var policies []*NetworkPolicy
-	//i := 0
-	//for _, ingress := range g.IngressRuleSlices() {
-	//	for _, egress := range g.EgressRuleSlices() {
-	//		for _, target := range g.Targets {
-	//			for _, ns := range g.Namespaces {
-	//				if allowDNS {
-	//					egress = append(egress, AllowDNSEgressRule)
-	//				}
-	//				policies = append(policies, &NetworkPolicy{
-	//					ObjectMeta: metav1.ObjectMeta{
-	//						Name:      fmt.Sprintf("policy-%d", i),
-	//						Namespace: ns,
-	//					},
-	//					Spec: NetworkPolicySpec{
-	//						PodSelector: target,
-	//						Ingress:     ingress,
-	//						Egress:      egress,
-	//						PolicyTypes: []PolicyType{PolicyTypeIngress, PolicyTypeEgress},
-	//					},
-	//				})
-	//				i++
-	//			}
-	//		}
-	//	}
-	//}
-	//return policies
-}
