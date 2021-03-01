@@ -48,7 +48,7 @@ func (t *TestCaseGeneratorReplacement) ZeroPortProtocolTestCases() []*TestCase {
 	for _, isIngress := range []bool{false, true} {
 		tags := NewStringSet(describeDirectionality(isIngress), TagEmptyPortSlice)
 		cases = append(cases, NewSingleStepTestCase("", tags, ProbeAllAvailable,
-			CreatePolicy(BuildPolicy(SetPorts(isIngress, emptySliceOfPorts)).NetworkPolicy())))
+			CreatePolicy(BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{})).NetworkPolicy())))
 	}
 	return cases
 }

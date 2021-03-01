@@ -2,6 +2,8 @@ package generator
 
 import (
 	v1 "k8s.io/api/core/v1"
+	. "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -45,4 +47,71 @@ var (
 var (
 	DenyAllRules  = []*Rule{}
 	AllowAllRules = []*Rule{{}}
+)
+
+var (
+	AllowDNSRule = &Rule{
+		Ports: []NetworkPolicyPort{
+			{
+				Protocol: &udp,
+				Port:     &port53,
+			},
+		},
+	}
+
+	AllowDNSPeers = &NetpolPeers{
+		Rules: []*Rule{AllowDNSRule},
+	}
+)
+
+func AllowDNSPolicy(source *NetpolTarget) *Netpol {
+	return &Netpol{
+		Name:   "allow-dns",
+		Target: source,
+		Egress: AllowDNSPeers,
+	}
+}
+
+var (
+	emptySelector                 = &metav1.LabelSelector{}
+	podAMatchLabelsSelector       = &metav1.LabelSelector{MatchLabels: map[string]string{"pod": "a"}}
+	podCMatchLabelsSelector       = &metav1.LabelSelector{MatchLabels: map[string]string{"pod": "c"}}
+	podABMatchExpressionsSelector = &metav1.LabelSelector{
+		MatchExpressions: []metav1.LabelSelectorRequirement{
+			{
+				Key:      "pod",
+				Operator: metav1.LabelSelectorOpIn,
+				Values:   []string{"a", "b"},
+			},
+		},
+	}
+	podBCMatchExpressionsSelector = &metav1.LabelSelector{
+		MatchExpressions: []metav1.LabelSelectorRequirement{
+			{
+				Key:      "pod",
+				Operator: metav1.LabelSelectorOpIn,
+				Values:   []string{"b", "c"},
+			},
+		},
+	}
+
+	nsXMatchLabelsSelector       = &metav1.LabelSelector{MatchLabels: map[string]string{"ns": "x"}}
+	nsXYMatchExpressionsSelector = &metav1.LabelSelector{
+		MatchExpressions: []metav1.LabelSelectorRequirement{
+			{
+				Key:      "ns",
+				Operator: metav1.LabelSelectorOpIn,
+				Values:   []string{"x", "y"},
+			},
+		},
+	}
+	nsYZMatchExpressionsSelector = &metav1.LabelSelector{
+		MatchExpressions: []metav1.LabelSelectorRequirement{
+			{
+				Key:      "ns",
+				Operator: metav1.LabelSelectorOpIn,
+				Values:   []string{"y", "z"},
+			},
+		},
+	}
 )
