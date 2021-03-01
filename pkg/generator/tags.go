@@ -5,52 +5,65 @@ const (
 
 	TagConflict = "conflict"
 
-	TagCreatePolicy       = "create policy"
-	TagDeletePolicy       = "delete policy"
-	TagUpdatePolicy       = "update policy"
-	TagCreatePod          = "create pod"
-	TagDeletePod          = "delete pod"
-	TagSetPodLabels       = "set pod labels"
-	TagCreateNamespace    = "create namespace"
-	TagDeleteNamespace    = "delete namespace"
-	TagSetNamespaceLabels = "set namespace labels"
+	TagCreatePolicy       = "create-policy"
+	TagDeletePolicy       = "delete-policy"
+	TagUpdatePolicy       = "update-policy"
+	TagCreatePod          = "create-pod"
+	TagDeletePod          = "delete-pod"
+	TagSetPodLabels       = "set-pod-labels"
+	TagCreateNamespace    = "create-namespace"
+	TagDeleteNamespace    = "delete-namespace"
+	TagSetNamespaceLabels = "set-namespace-labels"
 
 	TagExample = "example"
 
-	TagUpstreamE2E = "upstream e2e"
+	TagUpstreamE2E = "upstream-e2e"
 
-	TagTargetNamespace   = "target namespace"
-	TagTargetPodSelector = "target pod selector"
+	TagTargetNamespace   = "target-namespace"
+	TagTargetPodSelector = "target-pod-selector"
 
 	TagIngress = "ingress"
 	TagEgress  = "egress"
 
-	TagDenyAll  = "deny all"
-	TagAllowAll = "allow all"
+	TagDenyAll  = "deny-all"
+	TagAllowAll = "allow-all"
 
-	TagEmptyPeerSlice       = "empty peer slice"
-	TagSinglePeerSlice      = "single peer slice"
-	TagTwoPlusPeerSlice     = "two or more peer slice"
-	TagAllPodsNilSelector   = "all pods nil selector"
-	TagAllPodsEmptySelector = "all pods empty selector"
-	TagPodsByLabel          = "pods by label"
-	TagAllNamespaces        = "all namespaces"
-	TagNamespacesByLabel    = "namespaces by label"
-	TagPolicyNamespace      = "policy namespace"
-	TagIPBlock              = "IP block"
-	TagIPBlockWithExcept    = "IP block with except"
+	TagEmptyPeerSlice       = "empty-peer-slice"
+	TagSinglePeerSlice      = "single-peer-slice"
+	TagTwoPlusPeerSlice     = "two-or-more-peer-slice"
+	TagAllPodsNilSelector   = "all-pods-nil-selector"
+	TagAllPodsEmptySelector = "all-pods-empty-selector"
+	TagPodsByLabel          = "pods-by-label"
+	TagAllNamespaces        = "all-namespaces"
+	TagNamespacesByLabel    = "namespaces-by-label"
+	TagPolicyNamespace      = "policy-namespace"
+	TagIPBlock              = "IP-block"
+	TagIPBlockWithExcept    = "IP-block-with-except"
 
-	TagEmptyPortSlice   = "empty port slice"
-	TagSinglePortSlice  = "single port slice"
-	TagTwoPlusPortSlice = "two or more port slice"
-	TagNilPort          = "nil port"
-	TagNumberedPort     = "numbered port"
-	TagNamedPort        = "named port"
-	TagNilProtocol      = "nil protocol"
-	TagTCPProtocol      = "TCP protocol"
-	TagUDPProtocol      = "UDP protocol"
-	TagSCTPProtocol     = "SCTP protocol"
+	TagEmptyPortSlice   = "empty-port-slice"
+	TagSinglePortSlice  = "single-port-slice"
+	TagTwoPlusPortSlice = "two-or-more-port-slice"
+	TagNilPort          = "nil-port"
+	TagNumberedPort     = "numbered-port"
+	TagNamedPort        = "named-port"
+	TagNilProtocol      = "nil-protocol"
+	TagTCPProtocol      = "TCP-protocol"
+	TagUDPProtocol      = "UDP-protocol"
+	TagSCTPProtocol     = "SCTP-protocol"
 )
+
+func CountTestCasesByTag(testCases []*TestCase) map[string]int {
+	counts := map[string]int{}
+	for _, tag := range AllTags {
+		counts[tag] = 0
+	}
+	for _, tc := range testCases {
+		for _, key := range tc.Tags.Keys() {
+			counts[key]++
+		}
+	}
+	return counts
+}
 
 var AllTags = []string{
 	TagPathological,

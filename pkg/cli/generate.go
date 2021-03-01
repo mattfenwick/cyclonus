@@ -42,7 +42,7 @@ func SetupGenerateCommand() *cobra.Command {
 		},
 	}
 
-	command.Flags().StringSliceVar(&args.ServerProtocols, "server-protocol", []string{"tcp", "udp", "sctp"}, "protocols to run server on")
+	command.Flags().StringSliceVar(&args.ServerProtocols, "server-protocol", []string{"TCP", "UDP", "SCTP"}, "protocols to run server on")
 	command.Flags().IntSliceVar(&args.ServerPorts, "server-port", []int{80, 81}, "ports to run server on")
 	command.Flags().StringSliceVar(&args.ServerNamespaces, "namespace", []string{"x", "y", "z"}, "namespaces to create/use pods in")
 	command.Flags().StringSliceVar(&args.ServerPods, "pod", []string{"a", "b", "c"}, "pods to create in namespaces")
@@ -58,7 +58,7 @@ func SetupGenerateCommand() *cobra.Command {
 	command.Flags().BoolVar(&args.CleanupNamespaces, "cleanup-namespaces", false, "if true, clean up namespaces after completion")
 
 	command.Flags().StringSliceVar(&args.Include, "include", []string{}, "include tests with any of these tags; if empty, all tests will be included")
-	command.Flags().StringSliceVar(&args.Exclude, "exclude", []string{generator.TagTwoPlusPeerSlice, generator.TagTwoPlusPortSlice}, "exclude tests with any of these tags")
+	command.Flags().StringSliceVar(&args.Exclude, "exclude", []string{generator.TagTwoPlusPeerSlice, generator.TagTwoPlusPortSlice, generator.TagExample}, "exclude tests with any of these tags")
 
 	return command
 }
@@ -85,6 +85,10 @@ func RunGenerateCommand(args *GenerateArgs) {
 	testCaseGenerator := generator.NewTestCaseGenerator(args.AllowDNS, zcPod.IP, args.ServerNamespaces, args.Include, args.Exclude)
 
 	testCases := testCaseGenerator.GenerateTestCases()
+	fmt.Printf("test cases to run by tag:\n")
+	for tag, count := range generator.CountTestCasesByTag(testCases) {
+		fmt.Printf("- %s: %d\n", tag, count)
+	}
 	fmt.Printf("testing %d cases\n\n", len(testCases))
 	for i, testCase := range testCases {
 		logrus.Infof("test #%d to run: %s", i+1, testCase.Description)
