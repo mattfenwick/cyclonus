@@ -27,7 +27,6 @@ spec:
       - command:
         - ./cyclonus
         - generate
-        - --mode=simple-fragments
         name: cyclonus
         imagePullPolicy: IfNotPresent
         image: mfenwick100/cyclonus:latest

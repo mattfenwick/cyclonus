@@ -11,9 +11,6 @@ spec:
       - command:
         - ./cyclonus
         - generate
-        - --mode=simple-fragments
-        - --noisy=true
-        - --perturbation-wait-seconds=1
         - --cleanup-namespaces=true
         name: cyclonus
         imagePullPolicy: IfNotPresent
