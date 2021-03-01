@@ -1,7 +1,6 @@
 package generator
 
 import (
-	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	. "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,30 +26,63 @@ func describePeerNamespaceSelector(selector *metav1.LabelSelector) string {
 	}
 }
 
-func (t *TestCaseGeneratorReplacement) PeersTestCases() []*TestCase {
+func (t *TestCaseGeneratorReplacement) ZeroPeersTestCases() []*TestCase {
 	var cases []*TestCase
-
-	// TODO normalize these CIDRs
-	cidr24 := fmt.Sprintf("%s/24", t.PodIP)
-	cidr28 := fmt.Sprintf("%s/28", t.PodIP)
-
 	for _, isIngress := range []bool{true, false} {
 		dir := describeDirectionality(isIngress)
-		cases = append(cases,
-			NewSingleStepTestCase("", NewStringSet(dir, TagEmptyPeerSlice), ProbeAllAvailable,
-				CreatePolicy(BuildPolicy(SetPeers(isIngress, emptySliceOfPeers)).NetworkPolicy())),
+		cases = append(cases, NewSingleStepTestCase("", NewStringSet(dir, TagEmptyPeerSlice), ProbeAllAvailable,
+			CreatePolicy(BuildPolicy(SetPeers(isIngress, emptySliceOfPeers)).NetworkPolicy())))
+	}
+	return cases
+}
 
-			NewSingleStepTestCase("", NewStringSet(dir, TagIPBlock), ProbeAllAvailable,
-				CreatePolicy(BuildPolicy(SetPeers(isIngress, []NetworkPolicyPeer{{IPBlock: &IPBlock{CIDR: cidr24}}})).NetworkPolicy())),
-			NewSingleStepTestCase("", NewStringSet(dir, TagIPBlockWithExcept), ProbeAllAvailable,
-				CreatePolicy(BuildPolicy(SetPeers(isIngress, []NetworkPolicyPeer{{IPBlock: &IPBlock{CIDR: cidr24, Except: []string{cidr28}}}})).NetworkPolicy())))
+func describePeer(peer NetworkPolicyPeer) []string {
+	if peer.IPBlock != nil {
+		if len(peer.IPBlock.Except) == 0 {
+			return []string{TagIPBlock}
+		}
+		return []string{TagIPBlockWithExcept}
+	}
+	return []string{
+		describePeerNamespaceSelector(peer.NamespaceSelector),
+		describePeerPodSelector(peer.PodSelector),
+	}
+}
 
-		for _, peers := range DefaultPodPeers() {
-			cases = append(cases, NewSingleStepTestCase("",
-				NewStringSet(dir, describePeerNamespaceSelector(peers.NamespaceSelector), describePeerPodSelector(peers.PodSelector)),
-				ProbeAllAvailable,
-				CreatePolicy(BuildPolicy(SetPeers(isIngress, []NetworkPolicyPeer{peers})).NetworkPolicy())))
+func (t *TestCaseGeneratorReplacement) SinglePeersTestCases() []*TestCase {
+	var cases []*TestCase
+	for _, isIngress := range []bool{true, false} {
+		for _, peer := range DefaultPeers(t.PodIP) {
+			tags := append([]string{TagSinglePeerSlice, describeDirectionality(isIngress)}, describePeer(peer)...)
+			cases = append(cases,
+				NewSingleStepTestCase("", NewStringSet(tags...), ProbeAllAvailable,
+					CreatePolicy(BuildPolicy(SetPeers(isIngress, []NetworkPolicyPeer{peer})).NetworkPolicy())))
 		}
 	}
 	return cases
+}
+
+func (t *TestCaseGeneratorReplacement) TwoPeersTestCases() []*TestCase {
+	var cases []*TestCase
+	for _, isIngress := range []bool{true, false} {
+		for i, peer1 := range DefaultPeers(t.PodIP) {
+			for j, peer2 := range DefaultPeers(t.PodIP) {
+				if i < j {
+					tags := append([]string{TagTwoPlusPeerSlice, describeDirectionality(isIngress)}, describePeer(peer1)...)
+					tags = append(tags, describePeer(peer2)...)
+					cases = append(cases,
+						NewSingleStepTestCase("", NewStringSet(tags...), ProbeAllAvailable,
+							CreatePolicy(BuildPolicy(SetPeers(isIngress, []NetworkPolicyPeer{peer1, peer2})).NetworkPolicy())))
+				}
+			}
+		}
+	}
+	return cases
+}
+
+func (t *TestCaseGeneratorReplacement) PeersTestCases() []*TestCase {
+	return flatten(
+		t.ZeroPeersTestCases(),
+		t.SinglePeersTestCases(),
+		t.TwoPeersTestCases())
 }

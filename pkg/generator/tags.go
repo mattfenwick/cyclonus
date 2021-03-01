@@ -27,6 +27,8 @@ const (
 	TagAllowAll = "allow all"
 
 	TagEmptyPeerSlice       = "empty peer slice"
+	TagSinglePeerSlice      = "single peer slice"
+	TagTwoPlusPeerSlice     = "two or more peer slice"
 	TagAllPodsNilSelector   = "all pods nil selector"
 	TagAllPodsEmptySelector = "all pods empty selector"
 	TagPodsByLabel          = "pods by label"
@@ -65,6 +67,8 @@ var AllTags = []string{
 	TagAllowAll,
 
 	TagEmptyPeerSlice,
+	TagSinglePeerSlice,
+	TagTwoPlusPeerSlice,
 	TagAllPodsNilSelector,
 	TagAllPodsEmptySelector,
 	TagPodsByLabel,
