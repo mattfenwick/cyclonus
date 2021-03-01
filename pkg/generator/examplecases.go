@@ -6,7 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func (t *TestCaseGeneratorReplacement) ExampleTestCases() []*TestCase {
+func (t *TestCaseGenerator) ExampleTestCases() []*TestCase {
 	return []*TestCase{
 		NewTestCase("should allow ingress access on one named port",
 			NewStringSet(TagExample),

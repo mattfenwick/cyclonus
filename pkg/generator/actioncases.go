@@ -5,7 +5,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (t *TestCaseGeneratorReplacement) ActionTestCases() []*TestCase {
+func (t *TestCaseGenerator) ActionTestCases() []*TestCase {
 	return []*TestCase{
 		{
 			Description: "Create/delete policy",

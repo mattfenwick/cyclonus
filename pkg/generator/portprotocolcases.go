@@ -43,7 +43,7 @@ func describeProtocol(protocol *v1.Protocol) string {
 	}
 }
 
-func (t *TestCaseGeneratorReplacement) ZeroPortProtocolTestCases() []*TestCase {
+func (t *TestCaseGenerator) ZeroPortProtocolTestCases() []*TestCase {
 	var cases []*TestCase
 	for _, isIngress := range []bool{false, true} {
 		tags := NewStringSet(describeDirectionality(isIngress), TagEmptyPortSlice)
@@ -81,7 +81,7 @@ func networkPolicyPorts() []NetworkPolicyPort {
 	return npps
 }
 
-func (t *TestCaseGeneratorReplacement) SinglePortProtocolTestCases() []*TestCase {
+func (t *TestCaseGenerator) SinglePortProtocolTestCases() []*TestCase {
 	var cases []*TestCase
 	for _, isIngress := range []bool{false, true} {
 		dir := describeDirectionality(isIngress)
@@ -114,7 +114,7 @@ func (t *TestCaseGeneratorReplacement) SinglePortProtocolTestCases() []*TestCase
 	return cases
 }
 
-func (t *TestCaseGeneratorReplacement) TwoPortProtocolTestCases() []*TestCase {
+func (t *TestCaseGenerator) TwoPortProtocolTestCases() []*TestCase {
 	var cases []*TestCase
 	for _, isIngress := range []bool{false, true} {
 		for i, ports1 := range networkPolicyPorts() {
@@ -136,7 +136,7 @@ func (t *TestCaseGeneratorReplacement) TwoPortProtocolTestCases() []*TestCase {
 	return cases
 }
 
-func (t *TestCaseGeneratorReplacement) PortProtocolTestCases() []*TestCase {
+func (t *TestCaseGenerator) PortProtocolTestCases() []*TestCase {
 	var cases []*TestCase
 	cases = append(cases, t.ZeroPortProtocolTestCases()...)
 	cases = append(cases, t.SinglePortProtocolTestCases()...)

@@ -71,7 +71,7 @@ func describePeerNamespaceSelector(selector *metav1.LabelSelector) string {
 	}
 }
 
-func (t *TestCaseGeneratorReplacement) ZeroPeersTestCases() []*TestCase {
+func (t *TestCaseGenerator) ZeroPeersTestCases() []*TestCase {
 	var cases []*TestCase
 	for _, isIngress := range []bool{true, false} {
 		dir := describeDirectionality(isIngress)
@@ -94,7 +94,7 @@ func describePeer(peer NetworkPolicyPeer) []string {
 	}
 }
 
-func (t *TestCaseGeneratorReplacement) SinglePeersTestCases() []*TestCase {
+func (t *TestCaseGenerator) SinglePeersTestCases() []*TestCase {
 	var cases []*TestCase
 	for _, isIngress := range []bool{true, false} {
 		for _, peer := range makePeers(t.PodIP) {
@@ -107,7 +107,7 @@ func (t *TestCaseGeneratorReplacement) SinglePeersTestCases() []*TestCase {
 	return cases
 }
 
-func (t *TestCaseGeneratorReplacement) TwoPeersTestCases() []*TestCase {
+func (t *TestCaseGenerator) TwoPeersTestCases() []*TestCase {
 	var cases []*TestCase
 	for _, isIngress := range []bool{true, false} {
 		for i, peer1 := range makePeers(t.PodIP) {
@@ -125,7 +125,7 @@ func (t *TestCaseGeneratorReplacement) TwoPeersTestCases() []*TestCase {
 	return cases
 }
 
-func (t *TestCaseGeneratorReplacement) PeersTestCases() []*TestCase {
+func (t *TestCaseGenerator) PeersTestCases() []*TestCase {
 	return flatten(
 		t.ZeroPeersTestCases(),
 		t.SinglePeersTestCases(),

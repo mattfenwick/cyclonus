@@ -6,7 +6,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (t *TestCaseGeneratorReplacement) TargetTestCases() []*TestCase {
+func (t *TestCaseGenerator) TargetTestCases() []*TestCase {
 	var cases []*TestCase
 
 	// TODO want to test the empty-string-to-default-namespace behavior, but the kube client doesn't allow an empty

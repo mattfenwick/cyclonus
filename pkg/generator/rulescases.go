@@ -1,6 +1,6 @@
 package generator
 
-func (t *TestCaseGeneratorReplacement) RulesTestCases() []*TestCase {
+func (t *TestCaseGenerator) RulesTestCases() []*TestCase {
 	// TODO break rules into length 0, 1, 2, etc.
 	var cases []*TestCase
 	for _, isIngress := range []bool{false, true} {

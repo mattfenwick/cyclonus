@@ -3,6 +3,8 @@ package generator
 const (
 	TagPathological = "pathological"
 
+	TagConflict = "conflict"
+
 	TagCreatePolicy       = "create policy"
 	TagDeletePolicy       = "delete policy"
 	TagUpdatePolicy       = "update policy"
@@ -52,6 +54,8 @@ const (
 
 var AllTags = []string{
 	TagPathological,
+
+	TagConflict,
 
 	TagExample,
 

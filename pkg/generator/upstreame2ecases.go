@@ -6,7 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func (t *TestCaseGeneratorReplacement) UpstreamE2ETestCases() []*TestCase {
+func (t *TestCaseGenerator) UpstreamE2ETestCases() []*TestCase {
 	return []*TestCase{
 		NewSingleStepTestCase("should support a 'default-deny-ingress' policy",
 			NewStringSet(TagUpstreamE2E),

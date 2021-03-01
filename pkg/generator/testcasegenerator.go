@@ -1,9 +1,5 @@
 package generator
 
-type TestCaseGenerator interface {
-	GenerateTestCases() []*TestCase
-}
-
 /*
 TODO
 Test cases:
@@ -39,19 +35,21 @@ Test cases:
 1 policy with both ingress and egress
 2 policies with both ingress and egress
 */
-type TestCaseGeneratorReplacement struct {
-	PodIP      string
-	AllowDNS   bool
-	Tags       []string
-	Namespaces []string
+type TestCaseGenerator struct {
+	PodIP        string
+	AllowDNS     bool
+	Namespaces   []string
+	Tags         []string
+	ExcludedTags []string
 }
 
-func NewTestCaseGeneratorReplacement(allowDNS bool, podIP string, tags []string, namespaces []string) *TestCaseGeneratorReplacement {
-	return &TestCaseGeneratorReplacement{
-		PodIP:      podIP,
-		AllowDNS:   allowDNS,
-		Tags:       tags,
-		Namespaces: namespaces,
+func NewTestCaseGenerator(allowDNS bool, podIP string, namespaces []string, tags []string, excludedTags []string) *TestCaseGenerator {
+	return &TestCaseGenerator{
+		PodIP:        podIP,
+		AllowDNS:     allowDNS,
+		Namespaces:   namespaces,
+		Tags:         tags,
+		ExcludedTags: excludedTags,
 	}
 }
 
@@ -63,7 +61,7 @@ func flatten(caseSlices ...[]*TestCase) []*TestCase {
 	return cases
 }
 
-func (t *TestCaseGeneratorReplacement) GenerateAllTestCases() []*TestCase {
+func (t *TestCaseGenerator) GenerateAllTestCases() []*TestCase {
 	return flatten(
 		t.TargetTestCases(),
 		t.RulesTestCases(),
@@ -71,13 +69,14 @@ func (t *TestCaseGeneratorReplacement) GenerateAllTestCases() []*TestCase {
 		t.PortProtocolTestCases(),
 		t.ExampleTestCases(),
 		t.ActionTestCases(),
+		t.ConflictTestCases(),
 		t.UpstreamE2ETestCases())
 }
 
-func (t *TestCaseGeneratorReplacement) GenerateTestCases() []*TestCase {
+func (t *TestCaseGenerator) GenerateTestCases() []*TestCase {
 	var cases []*TestCase
 	for _, testcase := range t.GenerateAllTestCases() {
-		if len(t.Tags) == 0 || testcase.Tags.ContainsAny(t.Tags) {
+		if (len(t.Tags) == 0 || testcase.Tags.ContainsAny(t.Tags)) && !testcase.Tags.ContainsAny(t.ExcludedTags) {
 			cases = append(cases, testcase)
 		}
 	}

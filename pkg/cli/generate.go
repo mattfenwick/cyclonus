@@ -12,7 +12,6 @@ import (
 )
 
 type GenerateArgs struct {
-	Mode                      string
 	AllowDNS                  bool
 	Noisy                     bool
 	IgnoreLoopback            bool
@@ -26,6 +25,8 @@ type GenerateArgs struct {
 	ServerNamespaces          []string
 	ServerPods                []string
 	CleanupNamespaces         bool
+	Include                   []string
+	Exclude                   []string
 }
 
 func SetupGenerateCommand() *cobra.Command {
@@ -41,9 +42,6 @@ func SetupGenerateCommand() *cobra.Command {
 		},
 	}
 
-	command.Flags().StringVar(&args.Mode, "mode", "", "mode used to generate network policies")
-	utils.DoOrDie(command.MarkFlagRequired("mode"))
-
 	command.Flags().StringSliceVar(&args.ServerProtocols, "server-protocol", []string{"tcp", "udp", "sctp"}, "protocols to run server on")
 	command.Flags().IntSliceVar(&args.ServerPorts, "server-port", []int{80, 81}, "ports to run server on")
 	command.Flags().StringSliceVar(&args.ServerNamespaces, "namespace", []string{"x", "y", "z"}, "namespaces to create/use pods in")
@@ -58,6 +56,9 @@ func SetupGenerateCommand() *cobra.Command {
 	command.Flags().IntVar(&args.PodCreationTimeoutSeconds, "pod-creation-timeout-seconds", 60, "number of seconds to wait for pods to create, be running and have IP addresses")
 	command.Flags().StringVar(&args.Context, "context", "", "kubernetes context to use; if empty, uses default context")
 	command.Flags().BoolVar(&args.CleanupNamespaces, "cleanup-namespaces", false, "if true, clean up namespaces after completion")
+
+	command.Flags().StringSliceVar(&args.Include, "include", []string{}, "include tests with any of these tags; if empty, all tests will be included")
+	command.Flags().StringSliceVar(&args.Exclude, "exclude", []string{generator.TagTwoPlusPeerSlice, generator.TagTwoPlusPortSlice}, "exclude tests with any of these tags")
 
 	return command
 }
@@ -81,16 +82,7 @@ func RunGenerateCommand(args *GenerateArgs) {
 	zcPod, err := resources.GetPod("z", "c")
 	utils.DoOrDie(err)
 
-	var testCaseGenerator generator.TestCaseGenerator
-	switch args.Mode {
-	case "conflicts":
-		testCaseGenerator = &generator.ConflictGenerator{
-			AllowDNS:    args.AllowDNS,
-			Source:      generator.NewNetpolTarget("x", map[string]string{"pod": "b"}, nil),
-			Destination: generator.NewNetpolTarget("y", map[string]string{"pod": "c"}, nil)}
-	default:
-		testCaseGenerator = generator.NewTestCaseGeneratorReplacement(args.AllowDNS, zcPod.IP, []string{generator.TagPathological}, args.ServerNamespaces)
-	}
+	testCaseGenerator := generator.NewTestCaseGenerator(args.AllowDNS, zcPod.IP, args.ServerNamespaces, args.Include, args.Exclude)
 
 	testCases := testCaseGenerator.GenerateTestCases()
 	fmt.Printf("testing %d cases\n\n", len(testCases))
