@@ -229,17 +229,13 @@ func DenyAllIngressByPod(source *NetpolTarget) []*Netpol {
 	}
 }
 
-type ConflictGenerator struct {
-	AllowDNS    bool
-	Source      *NetpolTarget
-	Destination *NetpolTarget
+func (t *TestCaseGenerator) ConflictTestCases() []*TestCase {
+	source := NewNetpolTarget("x", map[string]string{"pod": "b"}, nil)
+	destination := NewNetpolTarget("y", map[string]string{"pod": "c"}, nil)
+	return t.ConflictNetworkPolicies(source, destination)
 }
 
-func (c *ConflictGenerator) GenerateTestCases() []*TestCase {
-	return c.NetworkPolicies(c.Source, c.Destination)
-}
-
-func (c *ConflictGenerator) NetworkPolicies(source *NetpolTarget, dest *NetpolTarget) []*TestCase {
+func (t *TestCaseGenerator) ConflictNetworkPolicies(source *NetpolTarget, dest *NetpolTarget) []*TestCase {
 	policySlices := [][]*Netpol{
 		AllowAllIngressDenyAllEgress(source, dest),
 		AllowAllEgressDenyAllIngress(source, dest),
@@ -274,10 +270,11 @@ func (c *ConflictGenerator) NetworkPolicies(source *NetpolTarget, dest *NetpolTa
 			}
 			actions[i] = CreatePolicy(pol.NetworkPolicy())
 		}
-		if hasEgress && c.AllowDNS {
+		if hasEgress && t.AllowDNS {
 			actions = append(actions, CreatePolicy(AllowDNSPolicy(source).NetworkPolicy()))
 		}
-		testCases = append(testCases, NewSingleStepTestCase(fmt.Sprintf("allow/deny conflict %d", testCaseIndex+1), ProbeAllAvailable, actions...))
+		testCases = append(testCases,
+			NewSingleStepTestCase(fmt.Sprintf("allow/deny conflict %d", testCaseIndex+1), NewStringSet(TagConflict), ProbeAllAvailable, actions...))
 	}
 
 	return testCases

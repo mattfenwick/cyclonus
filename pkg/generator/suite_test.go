@@ -9,6 +9,6 @@ import (
 
 func TestGenerator(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunDiscreteGeneratorTests()
+	RunTestCaseGeneratorTests()
 	RunSpecs(t, "generator suite")
 }

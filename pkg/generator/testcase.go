@@ -1,48 +1,41 @@
 package generator
 
 import (
+	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"sort"
+	"strings"
 )
-
-// ProbeConfig: exactly one field must be non-null (or, in AllAvailable's case, non-false).  This
-//   models a discriminated union (sum type).
-type ProbeConfig struct {
-	AllAvailable bool
-	PortProtocol *PortProtocol
-}
-
-type TestStep struct {
-	Probe   *ProbeConfig
-	Actions []*Action
-}
-
-func NewTestStep(pp *ProbeConfig, actions ...*Action) *TestStep {
-	return &TestStep{
-		Probe:   pp,
-		Actions: actions,
-	}
-}
 
 type TestCase struct {
 	Description string
+	Tags        StringSet
 	Steps       []*TestStep
 }
 
-func NewSingleStepTestCase(description string, pp *ProbeConfig, actions ...*Action) *TestCase {
+func NewSingleStepTestCase(description string, tags StringSet, pp *ProbeConfig, actions ...*Action) *TestCase {
+	if description == "" {
+		tagSlice := tags.Keys()
+		sort.Strings(tagSlice)
+		description = strings.Join(tagSlice, ",")
+	}
 	return &TestCase{
 		Description: description,
+		Tags:        tags,
 		Steps:       []*TestStep{NewTestStep(pp, actions...)},
 	}
 }
 
-func NewTestCase(description string, steps ...*TestStep) *TestCase {
+func NewTestCase(description string, tags StringSet, steps ...*TestStep) *TestCase {
 	return &TestCase{
 		Description: description,
+		Tags:        tags,
 		Steps:       steps,
 	}
 }
 
-func (t *TestCase) traverseActions() (map[string]bool, []*networkingv1.NetworkPolicy) {
+func (t *TestCase) collectActionsAndPolicies() (map[string]bool, []*networkingv1.NetworkPolicy) {
 	features := map[string]bool{}
 	var policies []*networkingv1.NetworkPolicy
 	for _, step := range t.Steps {
@@ -79,7 +72,7 @@ func (t *TestCase) traverseActions() (map[string]bool, []*networkingv1.NetworkPo
 }
 
 func (t *TestCase) GetFeatures() ([]string, []string, []string, []string) {
-	actionSet, policies := t.traverseActions()
+	actionSet, policies := t.collectActionsAndPolicies()
 	generalSet, ingressSet, egressSet := map[string]bool{}, map[string]bool{}, map[string]bool{}
 	for _, policy := range policies {
 		parsedPolicy := NewNetpol(policy)
@@ -107,4 +100,28 @@ func mergeSets(l, r map[string]bool) map[string]bool {
 		merged[k] = true
 	}
 	return merged
+}
+
+// ProbeConfig: exactly one field must be non-null (or, in AllAvailable's case, non-false).  This
+//   models a discriminated union (sum type).
+type ProbeConfig struct {
+	AllAvailable bool
+	PortProtocol *PortProtocol
+}
+
+type PortProtocol struct {
+	Protocol v1.Protocol
+	Port     intstr.IntOrString
+}
+
+type TestStep struct {
+	Probe   *ProbeConfig
+	Actions []*Action
+}
+
+func NewTestStep(pp *ProbeConfig, actions ...*Action) *TestStep {
+	return &TestStep{
+		Probe:   pp,
+		Actions: actions,
+	}
 }

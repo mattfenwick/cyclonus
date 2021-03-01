@@ -132,3 +132,95 @@ func (r *Rule) Egress() NetworkPolicyEgressRule {
 		To:    r.Peers,
 	}
 }
+
+// Setter is used to declaratively build network policies
+type Setter func(policy *Netpol)
+
+func SetDescription(description string) Setter {
+	return func(policy *Netpol) {
+		policy.Description = description
+	}
+}
+
+func SetNamespace(ns string) Setter {
+	return func(policy *Netpol) {
+		policy.Target.Namespace = ns
+	}
+}
+
+func SetRules(isIngress bool, rules []*Rule) Setter {
+	return func(policy *Netpol) {
+		if isIngress {
+			policy.Ingress.Rules = rules
+		} else {
+			policy.Egress.Rules = rules
+		}
+	}
+}
+
+func SetPodSelector(sel metav1.LabelSelector) Setter {
+	return func(policy *Netpol) {
+		policy.Target.PodSelector = sel
+	}
+}
+
+func SetPorts(isIngress bool, ports []NetworkPolicyPort) Setter {
+	return func(policy *Netpol) {
+		if isIngress {
+			policy.Ingress.Rules[0].Ports = ports
+		} else {
+			policy.Egress.Rules[0].Ports = ports
+		}
+	}
+}
+
+func SetPeers(isIngress bool, peers []NetworkPolicyPeer) Setter {
+	return func(policy *Netpol) {
+		if isIngress {
+			policy.Ingress.Rules[0].Peers = peers
+		} else {
+			policy.Egress.Rules[0].Peers = peers
+		}
+	}
+}
+
+func BuildPolicy(setters ...Setter) *Netpol {
+	policy := baseTestPolicy()
+	for _, setter := range setters {
+		setter(policy)
+	}
+	return policy
+}
+
+func baseTestPolicy() *Netpol {
+	return &Netpol{
+		Name: "base",
+		Target: &NetpolTarget{
+			Namespace:   "x",
+			PodSelector: metav1.LabelSelector{MatchLabels: map[string]string{"pod": "a"}},
+		},
+		Ingress: &NetpolPeers{Rules: []*Rule{{
+			Ports: []NetworkPolicyPort{{
+				Port:     &port80,
+				Protocol: &tcp,
+			}},
+			Peers: []NetworkPolicyPeer{{
+				PodSelector:       podBCMatchExpressionsSelector,
+				NamespaceSelector: nsXYMatchExpressionsSelector},
+			}},
+		}},
+		Egress: &NetpolPeers{Rules: []*Rule{
+			{
+				Ports: []NetworkPolicyPort{{
+					Port:     &port80,
+					Protocol: &tcp,
+				}},
+				Peers: []NetworkPolicyPeer{{
+					PodSelector:       podABMatchExpressionsSelector,
+					NamespaceSelector: nsYZMatchExpressionsSelector},
+				},
+			},
+			AllowDNSRule,
+		}},
+	}
+}

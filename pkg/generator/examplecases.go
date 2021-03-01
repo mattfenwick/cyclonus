@@ -6,11 +6,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-type ExampleGenerator struct{}
-
-func (e *ExampleGenerator) GenerateTestCases() []*TestCase {
+func (t *TestCaseGenerator) ExampleTestCases() []*TestCase {
 	return []*TestCase{
 		NewTestCase("should allow ingress access on one named port",
+			NewStringSet(TagExample),
 			NewTestStep(ProbeAllAvailable, CreatePolicy(
 				&NetworkPolicy{
 					ObjectMeta: metav1.ObjectMeta{
