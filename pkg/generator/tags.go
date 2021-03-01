@@ -133,3 +133,11 @@ func (s StringSet) ContainsAny(slice []string) bool {
 	}
 	return false
 }
+
+var TagSet = map[string]bool{}
+
+func init() {
+	for _, tag := range AllTags {
+		TagSet[tag] = true
+	}
+}

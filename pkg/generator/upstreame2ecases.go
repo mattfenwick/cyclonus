@@ -9,7 +9,7 @@ import (
 func (t *TestCaseGenerator) UpstreamE2ETestCases() []*TestCase {
 	return []*TestCase{
 		NewSingleStepTestCase("should support a 'default-deny-ingress' policy",
-			NewStringSet(TagUpstreamE2E),
+			NewStringSet(TagUpstreamE2E, TagIngress, TagDenyAll),
 			ProbeAllAvailable,
 			CreatePolicy(&NetworkPolicy{
 				ObjectMeta: metav1.ObjectMeta{
@@ -24,11 +24,11 @@ func (t *TestCaseGenerator) UpstreamE2ETestCases() []*TestCase {
 			})),
 
 		NewSingleStepTestCase("should support a 'default-deny-all' policy",
-			NewStringSet(TagUpstreamE2E),
+			NewStringSet(TagUpstreamE2E, TagDenyAll),
 			ProbeAllAvailable,
 			CreatePolicy(&NetworkPolicy{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "deny-all-tcp-allow-dns",
+					Name:      "deny-all-allow-dns",
 					Namespace: "x",
 				},
 				Spec: NetworkPolicySpec{
@@ -112,7 +112,7 @@ func (t *TestCaseGenerator) UpstreamE2ETestCases() []*TestCase {
 					}}))),
 
 		NewTestCase("should support allow-all policy",
-			NewStringSet(TagUpstreamE2E),
+			NewStringSet(TagUpstreamE2E, TagAllowAll),
 			NewTestStep(ProbeAllAvailable, CreatePolicy(
 				&NetworkPolicy{
 					ObjectMeta: metav1.ObjectMeta{
@@ -129,7 +129,7 @@ func (t *TestCaseGenerator) UpstreamE2ETestCases() []*TestCase {
 			NewTestStep(ProbeAllAvailable)),
 
 		NewTestCase("should allow ingress access on one named port",
-			NewStringSet(TagUpstreamE2E),
+			NewStringSet(TagUpstreamE2E, TagIngress, TagNamedPort),
 			NewTestStep(probePortServe81TCP, CreatePolicy(
 				&NetworkPolicy{
 					ObjectMeta: metav1.ObjectMeta{
@@ -270,7 +270,7 @@ func (t *TestCaseGenerator) UpstreamE2ETestCases() []*TestCase {
 			NewTestStep(ProbeAllAvailable)),
 
 		NewTestCase("should support denying of egress traffic on the client side (even if the server explicitly allows this traffic)",
-			NewStringSet(TagUpstreamE2E),
+			NewStringSet(TagUpstreamE2E, TagConflict),
 			NewTestStep(ProbeAllAvailable,
 				CreatePolicy(
 					&NetworkPolicy{
@@ -332,7 +332,7 @@ func (t *TestCaseGenerator) UpstreamE2ETestCases() []*TestCase {
 					}))),
 
 		NewTestCase("should stop enforcing policies after they are deleted",
-			NewStringSet(TagUpstreamE2E),
+			NewStringSet(TagUpstreamE2E, TagDenyAll, TagDeletePolicy),
 			NewTestStep(ProbeAllAvailable, CreatePolicy(
 				&NetworkPolicy{
 					ObjectMeta: metav1.ObjectMeta{

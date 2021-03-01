@@ -115,22 +115,47 @@ func (t *TestCaseGenerator) SinglePortProtocolTestCases() []*TestCase {
 }
 
 func (t *TestCaseGenerator) TwoPortProtocolTestCases() []*TestCase {
+	// TODO better way to handle this?  this generates too many, and most don't seem helpful ... but
+	//var cases []*TestCase
+	//for _, isIngress := range []bool{false, true} {
+	//	for i, ports1 := range networkPolicyPorts() {
+	//		for j, ports2 := range networkPolicyPorts() {
+	//			if i < j {
+	//				tags := NewStringSet(
+	//					TagTwoPlusPortSlice,
+	//					describeDirectionality(isIngress),
+	//					describePort(ports1.Port),
+	//					describeProtocol(ports1.Protocol),
+	//					describePort(ports2.Port),
+	//					describeProtocol(ports2.Protocol))
+	//				cases = append(cases, NewSingleStepTestCase("", tags, ProbeAllAvailable,
+	//					CreatePolicy(BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{ports1, ports2})).NetworkPolicy())))
+	//			}
+	//		}
+	//	}
+	//}
+	//return cases
+	// all/all, implicit/explicit protocol, all ports, numbered port, named port
+	nppPairs := [][]NetworkPolicyPort{
+		{{}, {Port: &port80}},
+		{{}, {Port: &portServe80TCP}},
+		{{}, {Protocol: &udp}},
+		{{Port: &port80}, {Port: &port81}},
+		{{Port: &port80}, {Port: &portServe81TCP}},
+		{{Port: &port80}, {Protocol: &udp, Port: &portServe81UDP}},
+		{{Protocol: &udp, Port: &port80}, {Protocol: &udp, Port: &portServe81UDP}},
+	}
 	var cases []*TestCase
 	for _, isIngress := range []bool{false, true} {
-		for i, ports1 := range networkPolicyPorts() {
-			for j, ports2 := range networkPolicyPorts() {
-				if i < j {
-					tags := NewStringSet(
-						TagTwoPlusPortSlice,
-						describeDirectionality(isIngress),
-						describePort(ports1.Port),
-						describeProtocol(ports1.Protocol),
-						describePort(ports2.Port),
-						describeProtocol(ports2.Protocol))
-					cases = append(cases, NewSingleStepTestCase("", tags, ProbeAllAvailable,
-						CreatePolicy(BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{ports1, ports2})).NetworkPolicy())))
-				}
+		dir := describeDirectionality(isIngress)
+		for _, nppSlice := range nppPairs {
+			tags := NewStringSet(TagTwoPlusPortSlice, dir)
+			for _, pp := range nppSlice {
+				tags[describeProtocol(pp.Protocol)] = true
+				tags[describePort(pp.Port)] = true
 			}
+			cases = append(cases, NewSingleStepTestCase("", tags, ProbeAllAvailable,
+				CreatePolicy(BuildPolicy(SetPorts(isIngress, nppSlice)).NetworkPolicy())))
 		}
 	}
 	return cases

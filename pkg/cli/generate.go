@@ -58,13 +58,20 @@ func SetupGenerateCommand() *cobra.Command {
 	command.Flags().BoolVar(&args.CleanupNamespaces, "cleanup-namespaces", false, "if true, clean up namespaces after completion")
 
 	command.Flags().StringSliceVar(&args.Include, "include", []string{}, "include tests with any of these tags; if empty, all tests will be included")
-	command.Flags().StringSliceVar(&args.Exclude, "exclude", []string{generator.TagTwoPlusPeerSlice, generator.TagTwoPlusPortSlice, generator.TagExample}, "exclude tests with any of these tags")
+	command.Flags().StringSliceVar(&args.Exclude, "exclude", []string{generator.TagTwoPlusPeerSlice, generator.TagExample}, "exclude tests with any of these tags")
 
 	return command
 }
 
 func RunGenerateCommand(args *GenerateArgs) {
 	RunVersionCommand()
+
+	// validate tags
+	for _, tag := range append(args.Include, args.Exclude...) {
+		if _, ok := generator.TagSet[tag]; !ok {
+			logrus.Fatalf("invalid tag: %s", tag)
+		}
+	}
 
 	externalIPs := []string{} // "http://www.google.com"} // TODO make these be IPs?  or not?
 
