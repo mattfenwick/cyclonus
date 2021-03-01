@@ -1,0 +1,16 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cyclonus
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - command:
+            - ./cyclonus
+            - generate
+          name: cyclonus
+          imagePullPolicy: IfNotPresent
+          image: mfenwick100/cyclonus:latest
+      serviceAccount: cyclonus

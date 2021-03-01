@@ -64,6 +64,8 @@ func SetupGenerateCommand() *cobra.Command {
 }
 
 func RunGenerateCommand(args *GenerateArgs) {
+	RunVersionCommand()
+
 	externalIPs := []string{} // "http://www.google.com"} // TODO make these be IPs?  or not?
 
 	kubernetes, err := kube.NewKubernetesForContext(args.Context)
