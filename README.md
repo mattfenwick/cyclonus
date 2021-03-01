@@ -9,6 +9,49 @@ policies that suit your needs!
 
 Grab the [latest release](https://github.com/mattfenwick/cyclonus/releases) to get started using Cyclonus.
 
+## Run as a kubernetes job
+
+Create file cyclonus-job.yaml:
+
+```
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cyclonus
+  namespace: kube-system
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - command:
+        - ./cyclonus
+        - generate
+        - --mode=simple-fragments
+        name: cyclonus
+        imagePullPolicy: IfNotPresent
+        image: mfenwick100/cyclonus:latest
+      serviceAccount: cyclonus
+```
+
+Then create kubernetes resources:
+```
+kubectl create clusterrolebinding cyclonus --clusterrole=cluster-admin --serviceaccount=kube-system:cyclonus
+kubectl create sa cyclonus -n kube-system
+
+kubectl create -f cyclonus-job.yaml
+```
+
+Pull the logs from the job!
+
+## Docker images
+
+Images are available at [mfenwick100/cyclonus](https://hub.docker.com/r/mfenwick100/cyclonus/tags?page=1&ordering=last_updated):
+
+```
+docker pull docker.io/mfenwick100/cyclonus:latest
+```
+
 ## Integrations
 
 ### krew plugin
@@ -23,6 +66,10 @@ Cyclonus is available as a [krew/kubectl plugin](https://github.com/mattfenwick/
 
 Cyclonus runs network policy tests for Antrea on a daily basis;
 [check it out on github](https://github.com/vmware-tanzu/antrea/actions/workflows/netpol_cyclonus.yml).
+
+### Cilium testing (in progress)
+
+[Cyclonus will run network policy tests for Cilium on a daily basis](https://github.com/cilium/cilium/pull/14889).
 
 ## Probe
 
@@ -131,7 +178,7 @@ This takes the previous command a step further: it combines the rules from all t
 to a pod. 
 
 ```
-cylonus analyze \
+cyclonus analyze \
   --explain=false \
   --policy-path ./networkpolicies/simple-example/ \
   --target-pod-path ./examples/targets.json
