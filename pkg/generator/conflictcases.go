@@ -68,13 +68,9 @@ var (
 	}
 
 	DenyAllByIPRule = &Rule{
-		Peers: []networkingv1.NetworkPolicyPeer{
-			{
-				IPBlock: &networkingv1.IPBlock{
-					CIDR: "0.0.0.0/31",
-				},
-			},
-		},
+		Peers: []networkingv1.NetworkPolicyPeer{{
+			IPBlock: &networkingv1.IPBlock{CIDR: "0.0.0.0/31"},
+		}},
 	}
 
 	DenyAllByIP = &NetpolPeers{
@@ -82,14 +78,11 @@ var (
 	}
 
 	DenyAllByPodRule = &Rule{
-		Peers: []networkingv1.NetworkPolicyPeer{
-			{
-				PodSelector: nil,
-				NamespaceSelector: &metav1.LabelSelector{
-					MatchLabels: map[string]string{"this-will-never-happen": "qrs123"},
-				},
+		Peers: []networkingv1.NetworkPolicyPeer{{
+			NamespaceSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"this-will-never-happen": "qrs123"},
 			},
-		},
+		}},
 	}
 
 	DenyAllByPod = &NetpolPeers{
@@ -99,46 +92,22 @@ var (
 
 func AllowAllIngressDenyAllEgress(source *NetpolTarget, dest *NetpolTarget) []*Netpol {
 	return []*Netpol{
-		{
-			Name:   "deny-all-egress",
-			Target: source,
-			Egress: DenyAll,
-		},
-		{
-			Name:    "allow-all-ingress",
-			Target:  dest,
-			Ingress: ExplicitAllowAll,
-		},
+		{Name: "deny-all-egress", Target: source, Egress: DenyAll},
+		{Name: "allow-all-ingress", Target: dest, Ingress: ExplicitAllowAll},
 	}
 }
 
 func AllowAllEgressDenyAllIngress(source *NetpolTarget, dest *NetpolTarget) []*Netpol {
 	return []*Netpol{
-		{
-			Name:   "allow-all-egress",
-			Target: source,
-			Egress: ExplicitAllowAll,
-		},
-		{
-			Name:    "deny-all-ingress",
-			Target:  dest,
-			Ingress: DenyAll,
-		},
+		{Name: "allow-all-egress", Target: source, Egress: ExplicitAllowAll},
+		{Name: "deny-all-ingress", Target: dest, Ingress: DenyAll},
 	}
 }
 
 func DenyAllEgressAllowAllEgress(source *NetpolTarget) []*Netpol {
 	return []*Netpol{
-		{
-			Name:   "deny-all-egress",
-			Target: source,
-			Egress: DenyAll,
-		},
-		{
-			Name:   "allow-all-egress",
-			Target: source,
-			Egress: ExplicitAllowAll,
-		},
+		{Name: "deny-all-egress", Target: source, Egress: DenyAll},
+		{Name: "allow-all-egress", Target: source, Egress: ExplicitAllowAll},
 	}
 }
 
