@@ -22,6 +22,16 @@ type Printer struct {
 }
 
 func (t *Printer) PrintSummary() {
+	summary := (&CombinedResults{Results: t.Results}).Summary(t.IgnoreLoopback)
+
+	t.printTestSummary(summary.Tests)
+	for primary, counts := range summary.TagCounts {
+		fmt.Println(passFailTable(primary, counts, nil, nil))
+	}
+	fmt.Println(protocolPassFailTable(summary.ProtocolCounts))
+}
+
+func (t *Printer) printTestSummary(rows [][]string) {
 	tableString := &strings.Builder{}
 	tableString.WriteString("Summary:\n")
 	table := tablewriter.NewWriter(tableString)
@@ -29,92 +39,10 @@ func (t *Printer) PrintSummary() {
 
 	table.SetHeader([]string{"Test", "Result", "Step/Try", "Wrong", "Right", "Ignored", "TCP", "SCTP", "UDP"})
 
-	passedTotal, failedTotal := 0, 0
-	// TODO restore these
-	//generalPassFailCounts := map[bool]map[string]int{false: {}, true: {}}
-	//ingressPassFailCounts := map[bool]map[string]int{false: {}, true: {}}
-	//egressPassFailCounts := map[bool]map[string]int{false: {}, true: {}}
-	//actionPassFailCounts := map[bool]map[string]int{false: {}, true: {}}
-	protocolCounts := map[v1.Protocol]map[Comparison]int{v1.ProtocolTCP: {}, v1.ProtocolSCTP: {}, v1.ProtocolUDP: {}}
-	tagCounts := map[string]map[bool]map[string]int{}
-
-	for testNumber, result := range t.Results {
-		// preprocess to figure out whether it passed or failed
-		passed := true
-		for _, step := range result.Steps {
-			if step.LastComparison().ValueCounts(t.IgnoreLoopback)[DifferentComparison] > 0 {
-				passed = false
-			}
-		}
-
-		//general, ingress, egress, actions := result.Features()
-		//incrementCounts(generalPassFailCounts, passed, general)
-		//incrementCounts(ingressPassFailCounts, passed, ingress)
-		//incrementCounts(egressPassFailCounts, passed, egress)
-		//incrementCounts(actionPassFailCounts, passed, actions)
-		groupedTags := result.TestCase.Tags.GroupTags()
-		for primary, subs := range groupedTags {
-			if _, ok := tagCounts[primary]; !ok {
-				tagCounts[primary] = map[bool]map[string]int{true: {}, false: {}}
-			}
-			incrementCounts(tagCounts[primary], passed, subs)
-		}
-
-		var testResult string
-		if passed {
-			testResult = "passed"
-			passedTotal++
-		} else {
-			testResult = "failed"
-			failedTotal++
-		}
-
-		table.Append([]string{
-			fmt.Sprintf("%d: %s", testNumber+1, result.TestCase.Description),
-			testResult, "", "", "", "",
-			"", "", "",
-		})
-
-		for stepNumber, step := range result.Steps {
-			for tryNumber := range step.KubeProbes {
-				counts := step.Comparison(tryNumber).ValueCounts(t.IgnoreLoopback)
-				tryProtocolCounts := step.Comparison(tryNumber).ValueCountsByProtocol(t.IgnoreLoopback)
-				tcp := tryProtocolCounts[v1.ProtocolTCP]
-				sctp := tryProtocolCounts[v1.ProtocolSCTP]
-				udp := tryProtocolCounts[v1.ProtocolUDP]
-				table.Append([]string{
-					"",
-					"",
-					fmt.Sprintf("Step %d, try %d", stepNumber+1, tryNumber+1),
-					intToString(counts[DifferentComparison]),
-					intToString(counts[SameComparison]),
-					intToString(counts[IgnoredComparison]),
-					protocolResult(tcp[SameComparison], tcp[DifferentComparison]),
-					protocolResult(sctp[SameComparison], sctp[DifferentComparison]),
-					protocolResult(udp[SameComparison], udp[DifferentComparison]),
-				})
-
-				protocolCounts[v1.ProtocolTCP][SameComparison] += tcp[SameComparison]
-				protocolCounts[v1.ProtocolTCP][DifferentComparison] += tcp[DifferentComparison]
-				protocolCounts[v1.ProtocolSCTP][SameComparison] += sctp[SameComparison]
-				protocolCounts[v1.ProtocolSCTP][DifferentComparison] += sctp[DifferentComparison]
-				protocolCounts[v1.ProtocolUDP][SameComparison] += udp[SameComparison]
-				protocolCounts[v1.ProtocolUDP][DifferentComparison] += udp[DifferentComparison]
-			}
-		}
-	}
+	table.AppendBulk(rows)
 
 	table.Render()
 	fmt.Println(tableString.String())
-
-	//fmt.Println(passFailTable("general", generalPassFailCounts, &passedTotal, &failedTotal))
-	//fmt.Println(passFailTable("ingress", ingressPassFailCounts, nil, nil))
-	//fmt.Println(passFailTable("egress", egressPassFailCounts, nil, nil))
-	//fmt.Println(passFailTable("actions", actionPassFailCounts, nil, nil))
-	for primary, counts := range tagCounts {
-		fmt.Println(passFailTable(primary, counts, nil, nil))
-	}
-	fmt.Println(protocolPassFailTable(protocolCounts))
 }
 
 func incrementCounts(dict map[bool]map[string]int, b bool, keys []string) {
