@@ -21,6 +21,10 @@ func NewSimulatedRunner(policies *matcher.Policy) *Runner {
 	return &Runner{JobRunner: &SimulatedJobRunner{Policies: policies}}
 }
 
+func NewMockAlwaysAllowSimulatedRunner() *Runner {
+	return NewSimulatedRunner(matcher.NewPolicy())
+}
+
 func NewKubeRunner(kubernetes *kube.Kubernetes, workers int) *Runner {
 	return &Runner{JobRunner: &KubeJobRunner{Kubernetes: kubernetes, Workers: workers}}
 }

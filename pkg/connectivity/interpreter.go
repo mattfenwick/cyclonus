@@ -12,13 +12,6 @@ import (
 	"time"
 )
 
-const (
-	defaultWorkersCount = 15
-
-	// 9 = 3 namespaces x 3 pods
-	defaultBatchWorkersCount = 9
-)
-
 type Interpreter struct {
 	kubernetes                       *kube.Kubernetes
 	resources                        *probe.Resources
@@ -29,15 +22,8 @@ type Interpreter struct {
 	kubeRunner                       *probe.Runner
 }
 
-func NewInterpreter(kubernetes *kube.Kubernetes, resources *probe.Resources, resetClusterBeforeTestCase bool, kubeProbeRetries int, perturbationWaitSeconds int, verifyClusterStateBeforeTestCase bool, batchJobs bool) *Interpreter {
+func NewInterpreter(kubernetes *kube.Kubernetes, resources *probe.Resources, resetClusterBeforeTestCase bool, kubeProbeRetries int, perturbationWaitSeconds int, verifyClusterStateBeforeTestCase bool, kubeRunner *probe.Runner) *Interpreter {
 	fmt.Printf("resources:\n%s\n", resources.RenderTable())
-
-	var kubeRunner *probe.Runner
-	if batchJobs {
-		kubeRunner = probe.NewKubeBatchRunner(kubernetes, defaultBatchWorkersCount)
-	} else {
-		kubeRunner = probe.NewKubeRunner(kubernetes, defaultWorkersCount)
-	}
 
 	return &Interpreter{
 		kubernetes:                       kubernetes,

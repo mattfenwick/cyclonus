@@ -12,6 +12,13 @@ import (
 	"strings"
 )
 
+const (
+	defaultWorkersCount = 15
+
+	// 9 = 3 namespaces x 3 pods
+	defaultBatchWorkersCount = 9
+)
+
 type GenerateArgs struct {
 	AllowDNS                  bool
 	Noisy                     bool
@@ -28,6 +35,7 @@ type GenerateArgs struct {
 	CleanupNamespaces         bool
 	Include                   []string
 	Exclude                   []string
+	Mock                      bool
 }
 
 func SetupGenerateCommand() *cobra.Command {
@@ -58,8 +66,10 @@ func SetupGenerateCommand() *cobra.Command {
 	command.Flags().StringVar(&args.Context, "context", "", "kubernetes context to use; if empty, uses default context")
 	command.Flags().BoolVar(&args.CleanupNamespaces, "cleanup-namespaces", false, "if true, clean up namespaces after completion")
 
-	command.Flags().StringSliceVar(&args.Include, "include", []string{}, "include tests with any of these tags; if empty, all tests will be included.  Valid tags:\n" + strings.Join(generator.TagSlice, "\n"))
+	command.Flags().StringSliceVar(&args.Include, "include", []string{}, "include tests with any of these tags; if empty, all tests will be included.  Valid tags:\n"+strings.Join(generator.TagSlice, "\n"))
 	command.Flags().StringSliceVar(&args.Exclude, "exclude", []string{generator.TagTwoPlusPeerSlice, generator.TagExample}, "exclude tests with any of these tags.  See 'include' field for valid tags")
+
+	command.Flags().BoolVar(&args.Mock, "mock", false, "if true, use a mock kube runner (i.e. don't actually run tests against kubernetes; instead, product fake results")
 
 	return command
 }
@@ -78,7 +88,17 @@ func RunGenerateCommand(args *GenerateArgs) {
 
 	resources, err := probe.NewDefaultResources(kubernetes, args.ServerNamespaces, args.ServerPods, args.ServerPorts, serverProtocols, externalIPs, args.PodCreationTimeoutSeconds, args.BatchJobs)
 	utils.DoOrDie(err)
-	interpreter := connectivity.NewInterpreter(kubernetes, resources, true, args.Retries, args.PerturbationWaitSeconds, true, args.BatchJobs)
+	var kubeRunner *probe.Runner
+	if args.Mock {
+		kubeRunner = probe.NewMockAlwaysAllowSimulatedRunner()
+	} else {
+		if args.BatchJobs {
+			kubeRunner = probe.NewKubeBatchRunner(kubernetes, defaultBatchWorkersCount)
+		} else {
+			kubeRunner = probe.NewKubeRunner(kubernetes, defaultWorkersCount)
+		}
+	}
+	interpreter := connectivity.NewInterpreter(kubernetes, resources, true, args.Retries, args.PerturbationWaitSeconds, true, kubeRunner)
 	printer := &connectivity.Printer{
 		Noisy:          args.Noisy,
 		IgnoreLoopback: args.IgnoreLoopback,
