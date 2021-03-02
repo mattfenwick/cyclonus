@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	. "k8s.io/api/networking/v1"
@@ -17,7 +18,7 @@ func describeDirectionality(isIngress bool) string {
 
 func describePort(port *intstr.IntOrString) string {
 	if port == nil {
-		return TagNilPort
+		return TagAnyPort
 	}
 	switch port.Type {
 	case intstr.Int:
@@ -27,27 +28,30 @@ func describePort(port *intstr.IntOrString) string {
 	}
 }
 
-func describeProtocol(protocol *v1.Protocol) string {
+func describeProtocol(protocol *v1.Protocol) *string {
 	if protocol == nil {
-		return TagNilProtocol
+		return nil
 	}
+	var tag string
 	switch *protocol {
 	case v1.ProtocolTCP:
-		return TagTCPProtocol
+		tag = TagTCPProtocol
 	case v1.ProtocolUDP:
-		return TagUDPProtocol
+		tag = TagUDPProtocol
 	case v1.ProtocolSCTP:
-		return TagSCTPProtocol
+		tag = TagSCTPProtocol
 	default:
 		panic(errors.Errorf("invalid protocol %s", *protocol))
 	}
+	return &tag
 }
 
 func (t *TestCaseGenerator) ZeroPortProtocolTestCases() []*TestCase {
 	var cases []*TestCase
 	for _, isIngress := range []bool{false, true} {
-		tags := NewStringSet(describeDirectionality(isIngress), TagEmptyPortSlice)
-		cases = append(cases, NewSingleStepTestCase("", tags, ProbeAllAvailable,
+		dir := describeDirectionality(isIngress)
+		tags := NewStringSet(dir, TagAnyPortProtocol)
+		cases = append(cases, NewSingleStepTestCase(fmt.Sprintf("%s: empty port/protocol", dir), tags, ProbeAllAvailable,
 			CreatePolicy(BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{})).NetworkPolicy())))
 	}
 	return cases
@@ -87,11 +91,12 @@ func (t *TestCaseGenerator) SinglePortProtocolTestCases() []*TestCase {
 		dir := describeDirectionality(isIngress)
 		for _, npp := range networkPolicyPorts() {
 			tags := NewStringSet(
-				TagSinglePortSlice,
 				dir,
 				describePort(npp.Port),
-				describeProtocol(npp.Protocol),
 			)
+			if tag := describeProtocol(npp.Protocol); tag != nil {
+				tags.Add(*tag)
+			}
 			cases = append(cases, NewSingleStepTestCase("", tags, ProbeAllAvailable,
 				CreatePolicy(BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{npp})).NetworkPolicy())))
 		}
@@ -99,15 +104,15 @@ func (t *TestCaseGenerator) SinglePortProtocolTestCases() []*TestCase {
 		// pathological cases
 		cases = append(cases,
 			NewSingleStepTestCase("open a named port that doesn't match its protocol",
-				NewStringSet(TagSinglePortSlice, TagPathological, dir, describePort(&portServe81UDP), describeProtocol(&tcp)),
+				NewStringSet(TagPathological, dir, describePort(&portServe81UDP), TagTCPProtocol),
 				ProbeAllAvailable,
 				CreatePolicy(BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &tcp, Port: &portServe81UDP}})).NetworkPolicy())),
 			NewSingleStepTestCase("open a named port that isn't served",
-				NewStringSet(TagSinglePortSlice, TagPathological, dir, describePort(&portServe7981UDP), describeProtocol(&tcp)),
+				NewStringSet(TagPathological, dir, describePort(&portServe7981UDP), TagTCPProtocol),
 				ProbeAllAvailable,
 				CreatePolicy(BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &tcp, Port: &portServe7981UDP}})).NetworkPolicy())),
 			NewSingleStepTestCase("open a numbered port that isn't served",
-				NewStringSet(TagSinglePortSlice, TagPathological, dir, describePort(&port7981), describeProtocol(&tcp)),
+				NewStringSet(TagPathological, dir, describePort(&port7981), TagTCPProtocol),
 				ProbeAllAvailable,
 				CreatePolicy(BuildPolicy(SetPorts(isIngress, []NetworkPolicyPort{{Protocol: &tcp, Port: &port7981}})).NetworkPolicy())))
 	}
@@ -149,10 +154,12 @@ func (t *TestCaseGenerator) TwoPortProtocolTestCases() []*TestCase {
 	for _, isIngress := range []bool{false, true} {
 		dir := describeDirectionality(isIngress)
 		for _, nppSlice := range nppPairs {
-			tags := NewStringSet(TagTwoPlusPortSlice, dir)
+			tags := NewStringSet(TagMultiPortProtocol, dir)
 			for _, pp := range nppSlice {
-				tags[describeProtocol(pp.Protocol)] = true
-				tags[describePort(pp.Port)] = true
+				if tag := describeProtocol(pp.Protocol); tag != nil {
+					tags.Add(*tag)
+				}
+				tags.Add(describePort(pp.Port))
 			}
 			cases = append(cases, NewSingleStepTestCase("", tags, ProbeAllAvailable,
 				CreatePolicy(BuildPolicy(SetPorts(isIngress, nppSlice)).NetworkPolicy())))

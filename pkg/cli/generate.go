@@ -67,7 +67,7 @@ func SetupGenerateCommand() *cobra.Command {
 	command.Flags().BoolVar(&args.CleanupNamespaces, "cleanup-namespaces", false, "if true, clean up namespaces after completion")
 
 	command.Flags().StringSliceVar(&args.Include, "include", []string{}, "include tests with any of these tags; if empty, all tests will be included.  Valid tags:\n"+strings.Join(generator.TagSlice, "\n"))
-	command.Flags().StringSliceVar(&args.Exclude, "exclude", []string{generator.TagTwoPlusPeerSlice, generator.TagExample}, "exclude tests with any of these tags.  See 'include' field for valid tags")
+	command.Flags().StringSliceVar(&args.Exclude, "exclude", []string{generator.TagMultiPeer, generator.TagUpstreamE2E, generator.TagExample}, "exclude tests with any of these tags.  See 'include' field for valid tags")
 
 	command.Flags().BoolVar(&args.Mock, "mock", false, "if true, use a mock kube runner (i.e. don't actually run tests against kubernetes; instead, product fake results")
 

@@ -21,10 +21,9 @@ func (t *TestCaseGenerator) TargetTestCases() []*TestCase {
 	}
 
 	for _, selector := range []metav1.LabelSelector{*emptySelector, *podAMatchLabelsSelector, *podABMatchExpressionsSelector} {
-		tags := NewStringSet(TagTargetPodSelector)
 		cases = append(cases, NewSingleStepTestCase(
 			fmt.Sprintf("set pod selector to %s", kube.SerializeLabelSelector(selector)),
-			tags,
+			NewStringSet(TagTargetPodSelector),
 			ProbeAllAvailable,
 			CreatePolicy(BuildPolicy(SetPodSelector(selector)).NetworkPolicy())))
 	}

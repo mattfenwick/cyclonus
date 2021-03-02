@@ -12,10 +12,10 @@ const (
 	TagDirection     = "direction"
 	TagPolicyStack   = "policy-stack"
 	TagRule          = "rule"
-	TagRuleProtocol  = "rule-protocol"
-	TagRulePort      = "rule-port"
-	TagRuleIPBlock   = "rule-ipblock"
-	TagRulePods      = "rule-pods"
+	TagProtocol      = "protocol"
+	TagPort          = "port"
+	TagPeerIPBlock   = "peer-ipblock"
+	TagPeerPods      = "peer-pods"
 	TagMiscellaneous = "miscellaneous"
 )
 
@@ -42,23 +42,20 @@ const (
 )
 
 const (
-	TagDenyAll          = "deny-all"
-	TagAllowAll         = "allow-all"
-	TagEmptyPeerSlice   = "empty-peer-slice"
-	TagSinglePeerSlice  = "single-peer-slice"
-	TagTwoPlusPeerSlice = "two-or-more-peer-slice"
-	TagEmptyPortSlice   = "empty-port-slice"
-	TagSinglePortSlice  = "single-port-slice"
-	TagTwoPlusPortSlice = "two-or-more-port-slice"
+	TagDenyAll           = "deny-all"
+	TagAllowAll          = "allow-all"
+	TagAnyPeer           = "any-peer"
+	TagAnyPortProtocol   = "any-port-protocol"
+	TagMultiPeer         = "multi-peer"
+	TagMultiPortProtocol = "multi-port/protocol"
 )
 
 const (
-	TagAllPodsNilSelector   = "all-pods-nil-selector"
-	TagAllPodsEmptySelector = "all-pods-empty-selector"
-	TagPodsByLabel          = "pods-by-label"
-	TagAllNamespaces        = "all-namespaces"
-	TagNamespacesByLabel    = "namespaces-by-label"
-	TagPolicyNamespace      = "policy-namespace"
+	TagAllPods           = "all-pods"
+	TagPodsByLabel       = "pods-by-label"
+	TagAllNamespaces     = "all-namespaces"
+	TagNamespacesByLabel = "namespaces-by-label"
+	TagPolicyNamespace   = "policy-namespace"
 )
 
 const (
@@ -67,16 +64,15 @@ const (
 )
 
 const (
-	TagNilPort      = "nil-port"
+	TagAnyPort      = "any-port"
 	TagNumberedPort = "numbered-port"
 	TagNamedPort    = "named-port"
 )
 
 const (
-	TagNilProtocol  = "nil-protocol"
-	TagTCPProtocol  = "TCP-protocol"
-	TagUDPProtocol  = "UDP-protocol"
-	TagSCTPProtocol = "SCTP-protocol"
+	TagTCPProtocol  = "tcp"
+	TagUDPProtocol  = "udp"
+	TagSCTPProtocol = "sctp"
 )
 
 const (
@@ -110,32 +106,28 @@ var AllTags = map[string][]string{
 	TagRule: {
 		TagDenyAll,
 		TagAllowAll,
-		TagEmptyPeerSlice,
-		TagSinglePeerSlice,
-		TagTwoPlusPeerSlice,
-		TagEmptyPortSlice,
-		TagSinglePortSlice,
-		TagTwoPlusPortSlice,
+		TagAnyPeer,
+		TagAnyPortProtocol,
+		TagMultiPeer,
+		TagMultiPortProtocol,
 	},
-	TagRulePods: {
-		TagAllPodsNilSelector,
-		TagAllPodsEmptySelector,
+	TagPeerPods: {
+		TagAllPods,
 		TagPodsByLabel,
 		TagAllNamespaces,
 		TagNamespacesByLabel,
 		TagPolicyNamespace,
 	},
-	TagRuleIPBlock: {
+	TagPeerIPBlock: {
 		TagIPBlockNoExcept,
 		TagIPBlockWithExcept,
 	},
-	TagRulePort: {
-		TagNilPort,
+	TagPort: {
+		TagAnyPort,
 		TagNumberedPort,
 		TagNamedPort,
 	},
-	TagRuleProtocol: {
-		TagNilProtocol,
+	TagProtocol: {
 		TagTCPProtocol,
 		TagUDPProtocol,
 		TagSCTPProtocol,
@@ -205,12 +197,16 @@ func MustGetPrimaryTag(subordinateTag string) string {
 type StringSet map[string]bool
 
 func NewStringSet(elems ...string) StringSet {
-	dict := map[string]bool{}
+	dict := StringSet(map[string]bool{})
 	for _, e := range elems {
-		dict[e] = true
-		dict[MustGetPrimaryTag(e)] = true
+		dict.Add(e)
 	}
 	return dict
+}
+
+func (s StringSet) Add(key string) {
+	s[key] = true
+	s[MustGetPrimaryTag(key)] = true
 }
 
 func (s StringSet) GroupTags() map[string][]string {
