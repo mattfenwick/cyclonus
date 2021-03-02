@@ -84,7 +84,7 @@ func (t *TestCaseGenerator) ZeroPeersTestCases() []*TestCase {
 func describePeer(peer NetworkPolicyPeer) []string {
 	if peer.IPBlock != nil {
 		if len(peer.IPBlock.Except) == 0 {
-			return []string{TagIPBlock}
+			return []string{TagIPBlockNoExcept}
 		}
 		return []string{TagIPBlockWithExcept}
 	}

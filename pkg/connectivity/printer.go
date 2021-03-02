@@ -30,11 +30,13 @@ func (t *Printer) PrintSummary() {
 	table.SetHeader([]string{"Test", "Result", "Step/Try", "Wrong", "Right", "Ignored", "TCP", "SCTP", "UDP"})
 
 	passedTotal, failedTotal := 0, 0
-	generalPassFailCounts := map[bool]map[string]int{false: {}, true: {}}
-	ingressPassFailCounts := map[bool]map[string]int{false: {}, true: {}}
-	egressPassFailCounts := map[bool]map[string]int{false: {}, true: {}}
-	actionPassFailCounts := map[bool]map[string]int{false: {}, true: {}}
+	// TODO restore these
+	//generalPassFailCounts := map[bool]map[string]int{false: {}, true: {}}
+	//ingressPassFailCounts := map[bool]map[string]int{false: {}, true: {}}
+	//egressPassFailCounts := map[bool]map[string]int{false: {}, true: {}}
+	//actionPassFailCounts := map[bool]map[string]int{false: {}, true: {}}
 	protocolCounts := map[v1.Protocol]map[Comparison]int{v1.ProtocolTCP: {}, v1.ProtocolSCTP: {}, v1.ProtocolUDP: {}}
+	tagCounts := map[string]map[bool]map[string]int{}
 
 	for testNumber, result := range t.Results {
 		// preprocess to figure out whether it passed or failed
@@ -45,11 +47,18 @@ func (t *Printer) PrintSummary() {
 			}
 		}
 
-		general, ingress, egress, actions := result.Features()
-		incrementCounts(generalPassFailCounts, passed, general)
-		incrementCounts(ingressPassFailCounts, passed, ingress)
-		incrementCounts(egressPassFailCounts, passed, egress)
-		incrementCounts(actionPassFailCounts, passed, actions)
+		//general, ingress, egress, actions := result.Features()
+		//incrementCounts(generalPassFailCounts, passed, general)
+		//incrementCounts(ingressPassFailCounts, passed, ingress)
+		//incrementCounts(egressPassFailCounts, passed, egress)
+		//incrementCounts(actionPassFailCounts, passed, actions)
+		groupedTags := result.TestCase.Tags.GroupTags()
+		for primary, subs := range groupedTags {
+			if _, ok := tagCounts[primary]; !ok {
+				tagCounts[primary] = map[bool]map[string]int{true: {}, false: {}}
+			}
+			incrementCounts(tagCounts[primary], passed, subs)
+		}
 
 		var testResult string
 		if passed {
@@ -98,10 +107,13 @@ func (t *Printer) PrintSummary() {
 	table.Render()
 	fmt.Println(tableString.String())
 
-	fmt.Println(passFailTable("general", generalPassFailCounts, &passedTotal, &failedTotal))
-	fmt.Println(passFailTable("ingress", ingressPassFailCounts, nil, nil))
-	fmt.Println(passFailTable("egress", egressPassFailCounts, nil, nil))
-	fmt.Println(passFailTable("actions", actionPassFailCounts, nil, nil))
+	//fmt.Println(passFailTable("general", generalPassFailCounts, &passedTotal, &failedTotal))
+	//fmt.Println(passFailTable("ingress", ingressPassFailCounts, nil, nil))
+	//fmt.Println(passFailTable("egress", egressPassFailCounts, nil, nil))
+	//fmt.Println(passFailTable("actions", actionPassFailCounts, nil, nil))
+	for primary, counts := range tagCounts {
+		fmt.Println(passFailTable(primary, counts, nil, nil))
+	}
 	fmt.Println(protocolPassFailTable(protocolCounts))
 }
 
