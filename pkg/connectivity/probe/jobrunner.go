@@ -21,15 +21,11 @@ func NewSimulatedRunner(policies *matcher.Policy) *Runner {
 	return &Runner{JobRunner: &SimulatedJobRunner{Policies: policies}}
 }
 
-func NewMockAlwaysAllowSimulatedRunner() *Runner {
-	return NewSimulatedRunner(matcher.NewPolicy())
-}
-
-func NewKubeRunner(kubernetes *kube.Kubernetes, workers int) *Runner {
+func NewKubeRunner(kubernetes kube.IKubernetes, workers int) *Runner {
 	return &Runner{JobRunner: &KubeJobRunner{Kubernetes: kubernetes, Workers: workers}}
 }
 
-func NewKubeBatchRunner(kubernetes *kube.Kubernetes, workers int) *Runner {
+func NewKubeBatchRunner(kubernetes kube.IKubernetes, workers int) *Runner {
 	return &Runner{JobRunner: NewKubeBatchJobRunner(kubernetes, workers)}
 }
 
@@ -112,7 +108,7 @@ func (s *SimulatedJobRunner) RunJob(job *Job) *JobResult {
 }
 
 type KubeJobRunner struct {
-	Kubernetes *kube.Kubernetes
+	Kubernetes kube.IKubernetes
 	Workers    int
 }
 
@@ -149,7 +145,7 @@ func (k *KubeJobRunner) worker(jobs <-chan *Job, results chan<- *JobResult) {
 	}
 }
 
-func probeConnectivity(k8s *kube.Kubernetes, job *Job) (Connectivity, string) {
+func probeConnectivity(k8s kube.IKubernetes, job *Job) (Connectivity, string) {
 	commandDebugString := strings.Join(job.KubeExecCommand(), " ")
 	stdout, stderr, commandErr, err := k8s.ExecuteRemoteCommand(job.FromNamespace, job.FromPod, job.FromContainer, job.ClientCommand())
 	logrus.Debugf("stdout, stderr from %s: \n%s\n%s", commandDebugString, stdout, stderr)
@@ -169,7 +165,7 @@ type KubeBatchJobRunner struct {
 	Workers int
 }
 
-func NewKubeBatchJobRunner(k8s *kube.Kubernetes, workers int) *KubeBatchJobRunner {
+func NewKubeBatchJobRunner(k8s kube.IKubernetes, workers int) *KubeBatchJobRunner {
 	return &KubeBatchJobRunner{Client: &worker.Client{Kubernetes: k8s}, Workers: workers}
 }
 

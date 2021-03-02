@@ -47,6 +47,27 @@ type Pod struct {
 	Containers []*Container
 }
 
+func (p *Pod) IsEqualToKubePod(kubePod v1.Pod) bool {
+	kubeConts := kubePod.Spec.Containers
+	if len(kubeConts) != len(p.Containers) {
+		return false
+	}
+	for i, kubeCont := range kubeConts {
+		cont := p.Containers[i]
+		if len(kubeCont.Ports) != 1 {
+			return false
+		}
+		if int(kubeCont.Ports[0].ContainerPort) != cont.Port {
+			return false
+		}
+		if kubeCont.Ports[0].Protocol != cont.Protocol {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (p *Pod) ServiceName() string {
 	return fmt.Sprintf("s-%s-%s", p.Namespace, p.Name)
 }

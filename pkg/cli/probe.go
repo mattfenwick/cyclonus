@@ -80,8 +80,8 @@ func RunProbeCommand(args *ProbeArgs) {
 
 	resources, err := probe.NewDefaultResources(kubernetes, args.ServerNamespaces, args.ServerPods, args.ServerPorts, serverProtocols, externalIPs, args.PodCreationTimeoutSeconds, false)
 	utils.DoOrDie(err)
-	kubeRunner := probe.NewKubeRunner(kubernetes, defaultWorkersCount)
-	interpreter := connectivity.NewInterpreter(kubernetes, resources, false, 0, args.PerturbationWaitSeconds, false, kubeRunner)
+
+	interpreter := connectivity.NewInterpreter(kubernetes, resources, false, 0, args.PerturbationWaitSeconds, false, false)
 
 	actions := []*generator.Action{generator.ReadNetworkPolicies(args.ServerNamespaces)}
 

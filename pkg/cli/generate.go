@@ -12,13 +12,6 @@ import (
 	"strings"
 )
 
-const (
-	defaultWorkersCount = 15
-
-	// 9 = 3 namespaces x 3 pods
-	defaultBatchWorkersCount = 9
-)
-
 type GenerateArgs struct {
 	AllowDNS                  bool
 	Noisy                     bool
@@ -81,25 +74,22 @@ func RunGenerateCommand(args *GenerateArgs) {
 
 	externalIPs := []string{} // "http://www.google.com"} // TODO make these be IPs?  or not?
 
-	kubernetes, err := kube.NewKubernetesForContext(args.Context)
+	var kubernetes kube.IKubernetes
+	var err error
+	if args.Mock {
+		kubernetes = kube.NewMockKubernetes()
+	} else {
+		kubernetes, err = kube.NewKubernetesForContext(args.Context)
+	}
 	utils.DoOrDie(err)
 
 	serverProtocols := parseProtocols(args.ServerProtocols)
 
 	resources, err := probe.NewDefaultResources(kubernetes, args.ServerNamespaces, args.ServerPods, args.ServerPorts, serverProtocols, externalIPs, args.PodCreationTimeoutSeconds, args.BatchJobs)
 	utils.DoOrDie(err)
-	var kubeRunner *probe.Runner
-	if args.Mock {
-		kubeRunner = probe.NewMockAlwaysAllowSimulatedRunner()
-	} else {
-		if args.BatchJobs {
-			kubeRunner = probe.NewKubeBatchRunner(kubernetes, defaultBatchWorkersCount)
-		} else {
-			kubeRunner = probe.NewKubeRunner(kubernetes, defaultWorkersCount)
-		}
-	}
-	reset, verify := true, true
-	interpreter := connectivity.NewInterpreter(kubernetes, resources, reset, args.Retries, args.PerturbationWaitSeconds, verify, kubeRunner)
+
+	reset, verify := true, false
+	interpreter := connectivity.NewInterpreter(kubernetes, resources, reset, args.Retries, args.PerturbationWaitSeconds, verify, args.BatchJobs)
 	printer := &connectivity.Printer{
 		Noisy:          args.Noisy,
 		IgnoreLoopback: args.IgnoreLoopback,

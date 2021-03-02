@@ -12,8 +12,15 @@ import (
 	"time"
 )
 
+const (
+	defaultWorkersCount = 15
+
+	// 9 = 3 namespaces x 3 pods
+	defaultBatchWorkersCount = 9
+)
+
 type Interpreter struct {
-	kubernetes                       *kube.Kubernetes
+	kubernetes                       kube.IKubernetes
 	resources                        *probe.Resources
 	kubeProbeRetries                 int
 	perturbationWaitDuration         time.Duration
@@ -22,8 +29,15 @@ type Interpreter struct {
 	kubeRunner                       *probe.Runner
 }
 
-func NewInterpreter(kubernetes *kube.Kubernetes, resources *probe.Resources, resetClusterBeforeTestCase bool, kubeProbeRetries int, perturbationWaitSeconds int, verifyClusterStateBeforeTestCase bool, kubeRunner *probe.Runner) *Interpreter {
+func NewInterpreter(kubernetes kube.IKubernetes, resources *probe.Resources, resetClusterBeforeTestCase bool, kubeProbeRetries int, perturbationWaitSeconds int, verifyClusterStateBeforeTestCase bool, batchJobs bool) *Interpreter {
 	fmt.Printf("resources:\n%s\n", resources.RenderTable())
+
+	var kubeRunner *probe.Runner
+	if batchJobs {
+		kubeRunner = probe.NewKubeBatchRunner(kubernetes, defaultBatchWorkersCount)
+	} else {
+		kubeRunner = probe.NewKubeRunner(kubernetes, defaultWorkersCount)
+	}
 
 	return &Interpreter{
 		kubernetes:                       kubernetes,
@@ -40,8 +54,15 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 	result := &Result{InitialResources: t.resources, TestCase: testCase}
 	var err error
 
+	// keep track of what's in the cluster, so that we can correctly simulate expected results
+	testCaseState := &TestCaseState{
+		Kubernetes: t.kubernetes,
+		Resources:  t.resources,
+		Policies:   []*networkingv1.NetworkPolicy{},
+	}
+
 	if t.resetClusterBeforeTestCase {
-		err = t.resetClusterState()
+		err = testCaseState.ResetClusterState()
 		if err != nil {
 			result.Err = err
 			return result
@@ -50,19 +71,12 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 	}
 
 	if t.verifyClusterStateBeforeTestCase {
-		err = t.verifyClusterState()
+		err = testCaseState.VerifyClusterState()
 		if err != nil {
 			result.Err = err
 			return result
 		}
 		logrus.Info("cluster state verified")
-	}
-
-	// keep track of what's in the cluster, so that we can correctly simulate expected results
-	testCaseState := &TestCaseState{
-		Kubernetes: t.kubernetes,
-		Resources:  t.resources,
-		Policies:   []*networkingv1.NetworkPolicy{},
 	}
 
 	// perform perturbations one at a time, and run a probe after each change
@@ -132,29 +146,4 @@ func (t *Interpreter) runProbe(testCaseState *TestCaseState, probeConfig *genera
 	}
 
 	return stepResult
-}
-
-func (t *Interpreter) resetClusterState() error {
-	err := t.kubernetes.DeleteAllNetworkPoliciesInNamespaces(t.resources.NamespacesSlice())
-	if err != nil {
-		return err
-	}
-
-	return t.resources.ResetLabelsInKube(t.kubernetes)
-}
-
-func (t *Interpreter) verifyClusterState() error {
-	err := t.resources.VerifyClusterState(t.kubernetes)
-	if err != nil {
-		return err
-	}
-
-	policies, err := t.kubernetes.GetNetworkPoliciesInNamespaces(t.resources.NamespacesSlice())
-	if err != nil {
-		return err
-	}
-	if len(policies) > 0 {
-		return errors.Errorf("expected 0 policies in namespaces %+v, found %d", t.resources.NamespacesSlice(), len(policies))
-	}
-	return nil
 }
