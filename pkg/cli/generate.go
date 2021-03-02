@@ -98,7 +98,8 @@ func RunGenerateCommand(args *GenerateArgs) {
 			kubeRunner = probe.NewKubeRunner(kubernetes, defaultWorkersCount)
 		}
 	}
-	interpreter := connectivity.NewInterpreter(kubernetes, resources, true, args.Retries, args.PerturbationWaitSeconds, true, kubeRunner)
+	reset, verify := true, true
+	interpreter := connectivity.NewInterpreter(kubernetes, resources, reset, args.Retries, args.PerturbationWaitSeconds, verify, kubeRunner)
 	printer := &connectivity.Printer{
 		Noisy:          args.Noisy,
 		IgnoreLoopback: args.IgnoreLoopback,
