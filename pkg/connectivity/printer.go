@@ -30,7 +30,8 @@ func (t *Printer) PrintSummary() {
 	}
 	fmt.Println(protocolPassFailTable(summary.ProtocolCounts))
 
-	t.printMarkdownFeatureTable(summary)
+	fmt.Printf("Feature results:\n%s\n\n", t.printMarkdownFeatureTable(summary.FeaturePrimaryCounts, summary.FeatureCounts))
+	fmt.Printf("Tag results:\n%s\n", t.printMarkdownFeatureTable(summary.TagPrimaryCounts, summary.TagCounts))
 }
 
 const (
@@ -61,29 +62,26 @@ func (m *markdownRow) symbol() string {
 
 func (m *markdownRow) GetResult() string {
 	total := m.Pass + m.Fail
-	return fmt.Sprintf("%d / %d = %.0f %s", m.Pass, total, percentage(m.Pass, total), m.symbol())
+	return fmt.Sprintf("%d / %d = %.0f%% %s", m.Pass, total, percentage(m.Pass, total), m.symbol())
 }
 
-func (t *Printer) printMarkdownFeatureTable(summary *Summary) {
+func (t *Printer) printMarkdownFeatureTable(primaryCounts map[string]map[bool]int, tagCounts map[string]map[string]map[bool]int) string {
 	var primaries []string
-	for primary := range summary.TagCounts {
+	for primary := range tagCounts {
 		primaries = append(primaries, primary)
 	}
 	sort.Strings(primaries)
 
 	var rows []*markdownRow
 	for _, primary := range primaries {
-		pass, fail := 0, 0
 		var subs []string
-		for sub, counts := range summary.TagCounts[primary] {
-			pass += counts[true]
-			fail += counts[false]
+		for sub := range tagCounts[primary] {
 			subs = append(subs, sub)
 		}
 		sort.Strings(subs)
-		rows = append(rows, &markdownRow{Name: primary, IsPrimary: true, Pass: pass, Fail: fail})
+		rows = append(rows, &markdownRow{Name: primary, IsPrimary: true, Pass: primaryCounts[primary][true], Fail: primaryCounts[primary][false]})
 		for _, sub := range subs {
-			counts := summary.TagCounts[primary][sub]
+			counts := tagCounts[primary][sub]
 			rows = append(rows, &markdownRow{
 				Name:      sub,
 				IsPrimary: false,
@@ -98,7 +96,7 @@ func (t *Printer) printMarkdownFeatureTable(summary *Summary) {
 		lines = append(lines, fmt.Sprintf("| %s | %s |", row.GetName(), row.GetResult()))
 	}
 
-	fmt.Printf("Tag results:\n%s\n", strings.Join(lines, "\n"))
+	return strings.Join(lines, "\n")
 }
 
 func (t *Printer) printTestSummary(rows [][]string) {

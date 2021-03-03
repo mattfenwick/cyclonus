@@ -27,7 +27,7 @@ func (r *Result) ResultsByProtocol() map[bool]map[v1.Protocol]int {
 	return counts
 }
 
-func (r *Result) Features() ([]string, []string, []string, []string) {
+func (r *Result) Features() map[string][]string {
 	return r.TestCase.GetFeatures()
 }
 
@@ -36,28 +36,28 @@ type CombinedResults struct {
 }
 
 type Summary struct {
-	Tests          [][]string
-	Passed         int
-	Failed         int
-	ProtocolCounts map[v1.Protocol]map[Comparison]int
-	TagCounts      map[string]map[string]map[bool]int
-	//FeatureCounts map[string]map[bool]map[string]int
+	Tests                [][]string
+	Passed               int
+	Failed               int
+	ProtocolCounts       map[v1.Protocol]map[Comparison]int
+	TagCounts            map[string]map[string]map[bool]int
+	TagPrimaryCounts     map[string]map[bool]int
+	FeatureCounts        map[string]map[string]map[bool]int
+	FeaturePrimaryCounts map[string]map[bool]int
 }
 
 func (c *CombinedResults) Summary(ignoreLoopback bool) *Summary {
 	summary := &Summary{
-		Tests:          nil,
-		Passed:         0,
-		Failed:         0,
-		ProtocolCounts: map[v1.Protocol]map[Comparison]int{v1.ProtocolTCP: {}, v1.ProtocolSCTP: {}, v1.ProtocolUDP: {}},
-		TagCounts:      map[string]map[string]map[bool]int{},
+		Tests:                nil,
+		Passed:               0,
+		Failed:               0,
+		ProtocolCounts:       map[v1.Protocol]map[Comparison]int{v1.ProtocolTCP: {}, v1.ProtocolSCTP: {}, v1.ProtocolUDP: {}},
+		TagCounts:            map[string]map[string]map[bool]int{},
+		TagPrimaryCounts:     map[string]map[bool]int{},
+		FeatureCounts:        map[string]map[string]map[bool]int{},
+		FeaturePrimaryCounts: map[string]map[bool]int{},
 	}
 	passedTotal, failedTotal := 0, 0
-	// TODO restore these
-	//generalPassFailCounts := map[bool]map[string]int{false: {}, true: {}}
-	//ingressPassFailCounts := map[bool]map[string]int{false: {}, true: {}}
-	//egressPassFailCounts := map[bool]map[string]int{false: {}, true: {}}
-	//actionPassFailCounts := map[bool]map[string]int{false: {}, true: {}}
 
 	for testNumber, result := range c.Results {
 		// preprocess to figure out whether it passed or failed
@@ -68,17 +68,21 @@ func (c *CombinedResults) Summary(ignoreLoopback bool) *Summary {
 			}
 		}
 
-		//general, ingress, egress, actions := result.Features()
-		//incrementCounts(generalPassFailCounts, passed, general)
-		//incrementCounts(ingressPassFailCounts, passed, ingress)
-		//incrementCounts(egressPassFailCounts, passed, egress)
-		//incrementCounts(actionPassFailCounts, passed, actions)
+		for primary, subs := range result.Features() {
+			if _, ok := summary.FeatureCounts[primary]; !ok {
+				summary.FeatureCounts[primary] = map[string]map[bool]int{}
+			}
+			incrementCounts(summary.FeatureCounts[primary], subs, passed)
+			incrementCounts(summary.FeaturePrimaryCounts, []string{primary}, passed)
+		}
+
 		groupedTags := result.TestCase.Tags.GroupTags()
 		for primary, subs := range groupedTags {
 			if _, ok := summary.TagCounts[primary]; !ok {
 				summary.TagCounts[primary] = map[string]map[bool]int{}
 			}
 			incrementCounts(summary.TagCounts[primary], subs, passed)
+			incrementCounts(summary.TagPrimaryCounts, []string{primary}, passed)
 		}
 
 		var testResult string
@@ -127,11 +131,6 @@ func (c *CombinedResults) Summary(ignoreLoopback bool) *Summary {
 
 	summary.Passed = passedTotal
 	summary.Failed = failedTotal
-
-	//fmt.Println(passFailTable("general", generalPassFailCounts, &passedTotal, &failedTotal))
-	//fmt.Println(passFailTable("ingress", ingressPassFailCounts, nil, nil))
-	//fmt.Println(passFailTable("egress", egressPassFailCounts, nil, nil))
-	//fmt.Println(passFailTable("actions", actionPassFailCounts, nil, nil))
 
 	return summary
 }

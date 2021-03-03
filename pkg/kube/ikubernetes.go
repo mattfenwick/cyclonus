@@ -43,14 +43,14 @@ type MockNamespace struct {
 
 type MockKubernetes struct {
 	Namespaces map[string]*MockNamespace
-	passRate float64
+	passRate   float64
 	podID      int
 }
 
 func NewMockKubernetes(passRate float64) *MockKubernetes {
 	return &MockKubernetes{
 		Namespaces: map[string]*MockNamespace{},
-		passRate:passRate,
+		passRate:   passRate,
 		podID:      1,
 	}
 }

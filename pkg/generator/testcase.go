@@ -71,7 +71,7 @@ func (t *TestCase) collectActionsAndPolicies() (map[string]bool, []*networkingv1
 	return features, policies
 }
 
-func (t *TestCase) GetFeatures() ([]string, []string, []string, []string) {
+func (t *TestCase) GetFeatures() map[string][]string {
 	actionSet, policies := t.collectActionsAndPolicies()
 	generalSet, ingressSet, egressSet := map[string]bool{}, map[string]bool{}, map[string]bool{}
 	for _, policy := range policies {
@@ -80,7 +80,12 @@ func (t *TestCase) GetFeatures() ([]string, []string, []string, []string) {
 		ingressSet = mergeSets(ingressSet, IngressNetpolTraverser.Traverse(parsedPolicy))
 		egressSet = mergeSets(egressSet, EgressNetpolTraverser.Traverse(parsedPolicy))
 	}
-	return setToSlice(generalSet), setToSlice(ingressSet), setToSlice(egressSet), setToSlice(actionSet)
+	return map[string][]string{
+		"general": setToSlice(generalSet),
+		"ingress": setToSlice(ingressSet),
+		"egress":  setToSlice(egressSet),
+		"action":  setToSlice(actionSet),
+	}
 }
 
 func setToSlice(set map[string]bool) []string {
