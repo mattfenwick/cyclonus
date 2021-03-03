@@ -40,7 +40,7 @@ type Summary struct {
 	Passed         int
 	Failed         int
 	ProtocolCounts map[v1.Protocol]map[Comparison]int
-	TagCounts      map[string]map[bool]map[string]int
+	TagCounts      map[string]map[string]map[bool]int
 	//FeatureCounts map[string]map[bool]map[string]int
 }
 
@@ -50,7 +50,7 @@ func (c *CombinedResults) Summary(ignoreLoopback bool) *Summary {
 		Passed:         0,
 		Failed:         0,
 		ProtocolCounts: map[v1.Protocol]map[Comparison]int{v1.ProtocolTCP: {}, v1.ProtocolSCTP: {}, v1.ProtocolUDP: {}},
-		TagCounts:      map[string]map[bool]map[string]int{},
+		TagCounts:      map[string]map[string]map[bool]int{},
 	}
 	passedTotal, failedTotal := 0, 0
 	// TODO restore these
@@ -76,9 +76,9 @@ func (c *CombinedResults) Summary(ignoreLoopback bool) *Summary {
 		groupedTags := result.TestCase.Tags.GroupTags()
 		for primary, subs := range groupedTags {
 			if _, ok := summary.TagCounts[primary]; !ok {
-				summary.TagCounts[primary] = map[bool]map[string]int{true: {}, false: {}}
+				summary.TagCounts[primary] = map[string]map[bool]int{}
 			}
-			incrementCounts(summary.TagCounts[primary], passed, subs)
+			incrementCounts(summary.TagCounts[primary], subs, passed)
 		}
 
 		var testResult string
@@ -134,4 +134,21 @@ func (c *CombinedResults) Summary(ignoreLoopback bool) *Summary {
 	//fmt.Println(passFailTable("actions", actionPassFailCounts, nil, nil))
 
 	return summary
+}
+
+func incrementCounts(dict map[string]map[bool]int, keys []string, b bool) {
+	for _, k := range keys {
+		if _, ok := dict[k]; !ok {
+			dict[k] = map[bool]int{}
+		}
+		dict[k][b]++
+	}
+}
+
+func protocolResult(passed int, failed int) string {
+	total := passed + failed
+	if total == 0 {
+		return "-"
+	}
+	return fmt.Sprintf("%d / %d (%.0f%%)", passed, total, percentage(passed, total))
 }

@@ -43,12 +43,14 @@ type MockNamespace struct {
 
 type MockKubernetes struct {
 	Namespaces map[string]*MockNamespace
+	passRate float64
 	podID      int
 }
 
-func NewMockKubernetes() *MockKubernetes {
+func NewMockKubernetes(passRate float64) *MockKubernetes {
 	return &MockKubernetes{
 		Namespaces: map[string]*MockNamespace{},
+		passRate:passRate,
 		podID:      1,
 	}
 }
@@ -287,7 +289,7 @@ func (m *MockKubernetes) ExecuteRemoteCommand(namespace string, pod string, cont
 
 	// TODO could look at netpols, pods, etc. to determine if this resolves?
 
-	if (rand.Int() % 100) > 50 {
+	if rand.Float64() > m.passRate {
 		return "", "", errors.Errorf("mock call randomly failed"), nil
 	}
 	return "", "", nil, nil

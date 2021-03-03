@@ -77,7 +77,7 @@ func RunGenerateCommand(args *GenerateArgs) {
 	var kubernetes kube.IKubernetes
 	var err error
 	if args.Mock {
-		kubernetes = kube.NewMockKubernetes()
+		kubernetes = kube.NewMockKubernetes(1.0)
 	} else {
 		kubernetes, err = kube.NewKubernetesForContext(args.Context)
 	}

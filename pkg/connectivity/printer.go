@@ -29,6 +29,72 @@ func (t *Printer) PrintSummary() {
 		fmt.Println(passFailTable(primary, counts, nil, nil))
 	}
 	fmt.Println(protocolPassFailTable(summary.ProtocolCounts))
+
+	t.printMarkdownFeatureTable(summary)
+}
+
+const (
+	passSymbol = "\u2705"
+	failSymbol = "\u274c"
+)
+
+type markdownRow struct {
+	Name      string
+	IsPrimary bool
+	Pass      int
+	Fail      int
+}
+
+func (m *markdownRow) GetName() string {
+	if m.IsPrimary {
+		return m.Name
+	}
+	return " - " + m.Name
+}
+
+func (m *markdownRow) symbol() string {
+	if m.Fail == 0 {
+		return passSymbol
+	}
+	return failSymbol
+}
+
+func (m *markdownRow) GetResult() string {
+	total := m.Pass + m.Fail
+	return fmt.Sprintf("%d / %d = %.0f %s", m.Pass, total, percentage(m.Pass, total), m.symbol())
+}
+
+func (t *Printer) printMarkdownFeatureTable(summary *Summary) {
+	var primaries []string
+	for primary := range summary.TagCounts {
+		primaries = append(primaries, primary)
+	}
+	sort.Strings(primaries)
+
+	var rows []*markdownRow
+	for _, primary := range primaries {
+		pass, fail := 0, 0
+		for _, counts := range summary.TagCounts[primary] {
+			pass += counts[true]
+			fail += counts[false]
+		}
+		rows = append(rows, &markdownRow{Name: primary, IsPrimary: true, Pass: pass, Fail: fail})
+		for sub, counts := range summary.TagCounts[primary] {
+			rows = append(rows, &markdownRow{
+				Name:      sub,
+				IsPrimary: false,
+				Pass:      counts[true],
+				Fail:      counts[false],
+			})
+		}
+	}
+
+	lines := []string{"| Tag | Result |", "| --- | --- |"}
+	for _, row := range rows {
+		lines = append(lines, fmt.Sprintf("| %s | %s |", row.GetName(), row.GetResult()))
+	}
+
+	fmt.Printf("Tag results:\n%s\n", strings.Join(lines, "\n"))
 }
 
 func (t *Printer) printTestSummary(rows [][]string) {
@@ -45,20 +111,6 @@ func (t *Printer) printTestSummary(rows [][]string) {
 	fmt.Println(tableString.String())
 }
 
-func incrementCounts(dict map[bool]map[string]int, b bool, keys []string) {
-	for _, k := range keys {
-		dict[b][k]++
-	}
-}
-
-func protocolResult(passed int, failed int) string {
-	total := passed + failed
-	if total == 0 {
-		return "-"
-	}
-	return fmt.Sprintf("%d / %d (%.0f%%)", passed, total, percentage(passed, total))
-}
-
 type passFailRow struct {
 	Feature string
 	Passed  int
@@ -69,7 +121,7 @@ func (p *passFailRow) PassedPercentage() float64 {
 	return percentage(p.Passed, p.Passed+p.Failed)
 }
 
-func passFailTable(caption string, passFailCounts map[bool]map[string]int, passedTotal *int, failedTotal *int) string {
+func passFailTable(caption string, passFailCounts map[string]map[bool]int, passedTotal *int, failedTotal *int) string {
 	str := &strings.Builder{}
 	table := tablewriter.NewWriter(str)
 	table.SetAutoWrapText(false)
@@ -77,19 +129,12 @@ func passFailTable(caption string, passFailCounts map[bool]map[string]int, passe
 
 	table.SetHeader([]string{"Feature", "Passed", "Failed", "Passed %"})
 
-	allFeatures := map[string]bool{}
-	for _, t := range []bool{false, true} {
-		for f := range passFailCounts[t] {
-			allFeatures[f] = true
-		}
-	}
-
 	var rows []*passFailRow
-	for feature := range allFeatures {
+	for feature := range passFailCounts {
 		rows = append(rows, &passFailRow{
 			Feature: feature,
-			Passed:  passFailCounts[true][feature],
-			Failed:  passFailCounts[false][feature],
+			Passed:  passFailCounts[feature][true],
+			Failed:  passFailCounts[feature][false],
 		})
 	}
 
@@ -137,7 +182,7 @@ func percentage(i int, total int) float64 {
 	if i+total == 0 {
 		return 0
 	}
-	return math.Round(100 * float64(i) / float64(total))
+	return math.Floor(100 * float64(i) / float64(total))
 }
 
 func intToString(i int) string {
