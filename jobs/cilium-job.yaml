@@ -10,6 +10,7 @@ spec:
         - command:
             - ./cyclonus
             - generate
+            - --ignore-loopback=true
             - --server-protocol=tcp,udp
           name: cyclonus
           imagePullPolicy: IfNotPresent
