@@ -74,12 +74,16 @@ func (t *Printer) printMarkdownFeatureTable(summary *Summary) {
 	var rows []*markdownRow
 	for _, primary := range primaries {
 		pass, fail := 0, 0
-		for _, counts := range summary.TagCounts[primary] {
+		var subs []string
+		for sub, counts := range summary.TagCounts[primary] {
 			pass += counts[true]
 			fail += counts[false]
+			subs = append(subs, sub)
 		}
+		sort.Strings(subs)
 		rows = append(rows, &markdownRow{Name: primary, IsPrimary: true, Pass: pass, Fail: fail})
-		for sub, counts := range summary.TagCounts[primary] {
+		for _, sub := range subs {
+			counts := summary.TagCounts[primary][sub]
 			rows = append(rows, &markdownRow{
 				Name:      sub,
 				IsPrimary: false,
