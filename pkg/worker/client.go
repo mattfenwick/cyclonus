@@ -8,7 +8,7 @@ import (
 )
 
 type Client struct {
-	Kubernetes *kube.Kubernetes
+	Kubernetes kube.IKubernetes
 }
 
 func (c *Client) Batch(b *Batch) ([]*Result, error) {

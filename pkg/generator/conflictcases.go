@@ -1,7 +1,6 @@
 package generator
 
 import (
-	"fmt"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -90,112 +89,165 @@ var (
 	}
 )
 
-func AllowAllIngressDenyAllEgress(source *NetpolTarget, dest *NetpolTarget) []*Netpol {
-	return []*Netpol{
-		{Name: "deny-all-egress", Target: source, Egress: DenyAll},
-		{Name: "allow-all-ingress", Target: dest, Ingress: ExplicitAllowAll},
-	}
+type conflictCase struct {
+	Description string
+	Tags        []string
+	Policies    []*Netpol
 }
 
-func AllowAllEgressDenyAllIngress(source *NetpolTarget, dest *NetpolTarget) []*Netpol {
-	return []*Netpol{
-		{Name: "allow-all-egress", Target: source, Egress: ExplicitAllowAll},
-		{Name: "deny-all-ingress", Target: dest, Ingress: DenyAll},
-	}
+func AllowAllIngressDenyAllEgress(source *NetpolTarget, dest *NetpolTarget) *conflictCase {
+	return &conflictCase{
+		Description: "deny all from source, allow all to dest",
+		Tags:        []string{TagDenyAll, TagAllowAll, TagIngress, TagEgress},
+		Policies: []*Netpol{
+			{Name: "deny-all-egress", Target: source, Egress: DenyAll},
+			{Name: "allow-all-ingress", Target: dest, Ingress: ExplicitAllowAll}}}
 }
 
-func DenyAllEgressAllowAllEgress(source *NetpolTarget) []*Netpol {
-	return []*Netpol{
-		{Name: "deny-all-egress", Target: source, Egress: DenyAll},
-		{Name: "allow-all-egress", Target: source, Egress: ExplicitAllowAll},
-	}
+func AllowAllEgressDenyAllIngress(source *NetpolTarget, dest *NetpolTarget) *conflictCase {
+	return &conflictCase{
+		Description: "allow all from source, deny all to dest",
+		Tags:        []string{TagDenyAll, TagAllowAll, TagIngress, TagEgress},
+		Policies: []*Netpol{
+			{Name: "allow-all-egress", Target: source, Egress: ExplicitAllowAll},
+			{Name: "deny-all-ingress", Target: dest, Ingress: DenyAll},
+		}}
 }
 
-func DenyAllIngressAllowAllIngress(dest *NetpolTarget) []*Netpol {
-	return []*Netpol{
-		{Name: "deny-all-ingress", Target: dest, Ingress: DenyAll},
-		{Name: "allow-all-ingress", Target: dest, Ingress: ExplicitAllowAll},
-	}
+func DenyAllEgressAllowAllEgress(source *NetpolTarget) *conflictCase {
+	return &conflictCase{
+		Description: "deny all + allow all from same source",
+		Tags:        []string{TagDenyAll, TagAllowAll, TagEgress},
+		Policies: []*Netpol{
+			{Name: "deny-all-egress", Target: source, Egress: DenyAll},
+			{Name: "allow-all-egress", Target: source, Egress: ExplicitAllowAll},
+		}}
 }
 
-func DenyAllEgressAllowAllEgressByPod(source *NetpolTarget) []*Netpol {
-	return []*Netpol{
-		{Name: "deny-all-egress", Target: source, Egress: DenyAll},
-		{Name: "allow-all-egress-by-pod", Target: source, Egress: AllowAllByPod},
-	}
+func DenyAllIngressAllowAllIngress(dest *NetpolTarget) *conflictCase {
+	return &conflictCase{
+		Description: "deny all + allow all to same dest",
+		Tags:        []string{TagDenyAll, TagAllowAll, TagIngress},
+		Policies: []*Netpol{
+			{Name: "deny-all-ingress", Target: dest, Ingress: DenyAll},
+			{Name: "allow-all-ingress", Target: dest, Ingress: ExplicitAllowAll},
+		}}
 }
 
-func DenyAllEgressAllowAllEgressByIP(source *NetpolTarget) []*Netpol {
-	return []*Netpol{
-		{Name: "deny-all-egress", Target: source, Egress: DenyAll},
-		{Name: "allow-all-egress-by-ip", Target: source, Egress: AllowAllByIP},
-	}
+func DenyAllEgressAllowAllEgressByPod(source *NetpolTarget) *conflictCase {
+	return &conflictCase{
+		Description: "deny all + allow all by pod from same source",
+		Tags:        []string{TagDenyAll, TagAllPods, TagAllNamespaces, TagEgress},
+		Policies: []*Netpol{
+			{Name: "deny-all-egress", Target: source, Egress: DenyAll},
+			{Name: "allow-all-egress-by-pod", Target: source, Egress: AllowAllByPod},
+		}}
 }
 
-func DenyAllEgressByIPAllowAllEgressByPod(source *NetpolTarget) []*Netpol {
-	return []*Netpol{
-		{Name: "deny-all-egress-by-ip", Target: source, Egress: DenyAllByIP},
-		{Name: "allow-all-egress-by-pod", Target: source, Egress: AllowAllByPod},
-	}
+func DenyAllEgressAllowAllEgressByIP(source *NetpolTarget) *conflictCase {
+	return &conflictCase{
+		Description: "deny all + allow all by IP from same source",
+		Tags:        []string{TagDenyAll, TagEgress},
+		Policies: []*Netpol{
+			{Name: "deny-all-egress", Target: source, Egress: DenyAll},
+			{Name: "allow-all-egress-by-ip", Target: source, Egress: AllowAllByIP},
+		}}
 }
 
-func DenyAllEgressByPodAllowAllEgressByIP(source *NetpolTarget) []*Netpol {
-	return []*Netpol{
-		{Name: "deny-all-egress-by-pod", Target: source, Egress: DenyAllByPod},
-		{Name: "allow-all-egress-by-ip", Target: source, Egress: AllowAllByIP},
-	}
+func DenyAllEgressByIPAllowAllEgressByPod(source *NetpolTarget) *conflictCase {
+	return &conflictCase{
+		Description: "deny all by IP + allow all by pod from same source",
+		Tags:        []string{TagAllPods, TagAllNamespaces, TagEgress},
+		Policies: []*Netpol{
+			{Name: "deny-all-egress-by-ip", Target: source, Egress: DenyAllByIP},
+			{Name: "allow-all-egress-by-pod", Target: source, Egress: AllowAllByPod},
+		}}
 }
 
-func DenyAllIngressAllowAllIngressByPod(source *NetpolTarget) []*Netpol {
-	return []*Netpol{
-		{Name: "deny-all-ingress", Target: source, Ingress: DenyAll},
-		{Name: "allow-all-ingress-by-pod", Target: source, Ingress: AllowAllByPod},
-	}
+func DenyAllEgressByPodAllowAllEgressByIP(source *NetpolTarget) *conflictCase {
+	return &conflictCase{
+		Description: "deny all by pod + allow all by IP from same source",
+		Tags:        []string{TagEgress},
+		Policies: []*Netpol{
+			{Name: "deny-all-egress-by-pod", Target: source, Egress: DenyAllByPod},
+			{Name: "allow-all-egress-by-ip", Target: source, Egress: AllowAllByIP},
+		}}
 }
 
-func DenyAllIngressAllowAllIngressByIP(source *NetpolTarget) []*Netpol {
-	return []*Netpol{
-		{Name: "deny-all-ingress", Target: source, Ingress: DenyAll},
-		{Name: "allow-all-ingress-by-ip", Target: source, Ingress: AllowAllByIP},
-	}
+func DenyAllIngressAllowAllIngressByPod(dest *NetpolTarget) *conflictCase {
+	return &conflictCase{
+		Description: "deny all + allow all by pod to same source",
+		Tags:        []string{TagDenyAll, TagIngress, TagAllPods, TagAllNamespaces},
+		Policies: []*Netpol{
+			{Name: "deny-all-ingress", Target: dest, Ingress: DenyAll},
+			{Name: "allow-all-ingress-by-pod", Target: dest, Ingress: AllowAllByPod},
+		}}
 }
 
-func DenyAllIngressByIPAllowAllIngressByPod(source *NetpolTarget) []*Netpol {
-	return []*Netpol{
-		{Name: "deny-all-ingress-by-ip", Target: source, Ingress: DenyAllByIP},
-		{Name: "allow-all-ingress-by-pod", Target: source, Ingress: AllowAllByPod},
-	}
+func DenyAllIngressAllowAllIngressByIP(dest *NetpolTarget) *conflictCase {
+	return &conflictCase{
+		Description: "deny all + allow all by IP to same source",
+		Tags:        []string{TagDenyAll, TagIngress},
+		Policies: []*Netpol{
+			{Name: "deny-all-ingress", Target: dest, Ingress: DenyAll},
+			{Name: "allow-all-ingress-by-ip", Target: dest, Ingress: AllowAllByIP},
+		}}
 }
 
-func DenyAllIngressByPodAllowAllIngressByIP(source *NetpolTarget) []*Netpol {
-	return []*Netpol{
-		{Name: "deny-all-ingress-by-pod", Target: source, Ingress: DenyAllByPod},
-		{Name: "allow-all-ingress-by-ip", Target: source, Ingress: AllowAllByIP},
-	}
+func DenyAllIngressByIPAllowAllIngressByPod(dest *NetpolTarget) *conflictCase {
+	return &conflictCase{
+		Description: "deny all by IP + allow all by pod to same source",
+		Tags:        []string{TagIngress, TagAllPods, TagAllNamespaces},
+		Policies: []*Netpol{
+			{Name: "deny-all-ingress-by-ip", Target: dest, Ingress: DenyAllByIP},
+			{Name: "allow-all-ingress-by-pod", Target: dest, Ingress: AllowAllByPod},
+		}}
 }
 
-func DenyAllEgressByIP(source *NetpolTarget) []*Netpol {
-	return []*Netpol{
-		{Name: "deny-all-egress-by-ip", Target: source, Egress: DenyAllByIP},
-	}
+func DenyAllIngressByPodAllowAllIngressByIP(dest *NetpolTarget) *conflictCase {
+	return &conflictCase{
+		Description: "deny all by pod + allow all by IP to same source",
+		Tags:        []string{TagIngress},
+		Policies: []*Netpol{
+			{Name: "deny-all-ingress-by-pod", Target: dest, Ingress: DenyAllByPod},
+			{Name: "allow-all-ingress-by-ip", Target: dest, Ingress: AllowAllByIP},
+		}}
 }
 
-func DenyAllEgressByPod(source *NetpolTarget) []*Netpol {
-	return []*Netpol{
-		{Name: "deny-all-egress-by-ip", Target: source, Egress: DenyAllByPod},
-	}
+func DenyAllEgressByIP(source *NetpolTarget) *conflictCase {
+	return &conflictCase{
+		Description: "egress: deny all by IP",
+		Tags:        []string{TagEgress},
+		Policies: []*Netpol{
+			{Name: "deny-all-egress-by-ip", Target: source, Egress: DenyAllByIP},
+		}}
 }
 
-func DenyAllIngressByIP(source *NetpolTarget) []*Netpol {
-	return []*Netpol{
-		{Name: "deny-all-ingress-by-ip", Target: source, Ingress: DenyAllByIP},
-	}
+func DenyAllEgressByPod(source *NetpolTarget) *conflictCase {
+	return &conflictCase{
+		Description: "egress: deny all by pod",
+		Tags:        []string{TagEgress},
+		Policies: []*Netpol{
+			{Name: "deny-all-egress-by-ip", Target: source, Egress: DenyAllByPod},
+		}}
 }
 
-func DenyAllIngressByPod(source *NetpolTarget) []*Netpol {
-	return []*Netpol{
-		{Name: "deny-all-ingress-by-ip", Target: source, Ingress: DenyAllByPod},
-	}
+func DenyAllIngressByIP(dest *NetpolTarget) *conflictCase {
+	return &conflictCase{
+		Description: "ingress: deny all by IP",
+		Tags:        []string{TagIngress},
+		Policies: []*Netpol{
+			{Name: "deny-all-ingress-by-ip", Target: dest, Ingress: DenyAllByIP},
+		}}
+}
+
+func DenyAllIngressByPod(dest *NetpolTarget) *conflictCase {
+	return &conflictCase{
+		Description: "ingress: deny all by pod",
+		Tags:        []string{TagIngress},
+		Policies: []*Netpol{
+			{Name: "deny-all-ingress-by-ip", Target: dest, Ingress: DenyAllByPod},
+		}}
 }
 
 func (t *TestCaseGenerator) ConflictTestCases() []*TestCase {
@@ -205,7 +257,7 @@ func (t *TestCaseGenerator) ConflictTestCases() []*TestCase {
 }
 
 func (t *TestCaseGenerator) ConflictNetworkPolicies(source *NetpolTarget, dest *NetpolTarget) []*TestCase {
-	policySlices := [][]*Netpol{
+	policySlices := []*conflictCase{
 		AllowAllIngressDenyAllEgress(source, dest),
 		AllowAllEgressDenyAllIngress(source, dest),
 
@@ -230,10 +282,10 @@ func (t *TestCaseGenerator) ConflictNetworkPolicies(source *NetpolTarget, dest *
 	}
 
 	var testCases []*TestCase
-	for testCaseIndex, slice := range policySlices {
-		actions := make([]*Action, len(slice))
+	for _, testCase := range policySlices {
+		actions := make([]*Action, len(testCase.Policies))
 		hasEgress := false
-		for i, pol := range slice {
+		for i, pol := range testCase.Policies {
 			if pol.Egress != nil {
 				hasEgress = true
 			}
@@ -242,8 +294,10 @@ func (t *TestCaseGenerator) ConflictNetworkPolicies(source *NetpolTarget, dest *
 		if hasEgress && t.AllowDNS {
 			actions = append(actions, CreatePolicy(AllowDNSPolicy(source).NetworkPolicy()))
 		}
+		tags := NewStringSet(testCase.Tags...)
+		tags.Add(TagConflict)
 		testCases = append(testCases,
-			NewSingleStepTestCase(fmt.Sprintf("allow/deny conflict %d", testCaseIndex+1), NewStringSet(TagConflict), ProbeAllAvailable, actions...))
+			NewSingleStepTestCase(testCase.Description, tags, ProbeAllAvailable, actions...))
 	}
 
 	return testCases

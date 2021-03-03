@@ -17,7 +17,7 @@ type Resources struct {
 	//ExternalIPs []string
 }
 
-func NewDefaultResources(kubernetes *kube.Kubernetes, namespaces []string, podNames []string, ports []int, protocols []v1.Protocol, externalIPs []string, podCreationTimeoutSeconds int, batchJobs bool) (*Resources, error) {
+func NewDefaultResources(kubernetes kube.IKubernetes, namespaces []string, podNames []string, ports []int, protocols []v1.Protocol, externalIPs []string, podCreationTimeoutSeconds int, batchJobs bool) (*Resources, error) {
 	sort.Strings(externalIPs)
 	r := &Resources{
 		Namespaces: map[string]map[string]string{},
@@ -44,7 +44,7 @@ func NewDefaultResources(kubernetes *kube.Kubernetes, namespaces []string, podNa
 	return r, nil
 }
 
-func (r *Resources) waitForPodsReady(kubernetes *kube.Kubernetes, timeoutSeconds int) error {
+func (r *Resources) waitForPodsReady(kubernetes kube.IKubernetes, timeoutSeconds int) error {
 	sleep := 5
 	for i := 0; i < timeoutSeconds; i += sleep {
 		podList, err := kubernetes.GetPodsInNamespaces(r.NamespacesSlice())
@@ -62,13 +62,13 @@ func (r *Resources) waitForPodsReady(kubernetes *kube.Kubernetes, timeoutSeconds
 			return nil
 		}
 
-		logrus.Infof("waiting for pods to be running and have IP addresses")
+		logrus.Infof("waiting for %d pods to be running and have IP addresses; currently %d are ready", len(r.Pods), ready)
 		time.Sleep(time.Duration(sleep) * time.Second)
 	}
 	return errors.Errorf("pods not ready")
 }
 
-func (r *Resources) getPodIPsFromKube(kubernetes *kube.Kubernetes) error {
+func (r *Resources) getPodIPsFromKube(kubernetes kube.IKubernetes) error {
 	podList, err := kubernetes.GetPodsInNamespaces(r.NamespacesSlice())
 	if err != nil {
 		return err
@@ -231,21 +231,31 @@ func (r *Resources) NamespacesSlice() []string {
 	return nss
 }
 
-func (r *Resources) CreateResourcesInKube(kubernetes *kube.Kubernetes) error {
+func (r *Resources) CreateResourcesInKube(kubernetes kube.IKubernetes) error {
 	for ns, labels := range r.Namespaces {
-		_, err := kubernetes.CreateOrUpdateNamespace(KubeNamespace(ns, labels))
+		_, err := kubernetes.GetNamespace(ns)
 		if err != nil {
-			return err
+			_, err := kubernetes.CreateNamespace(KubeNamespace(ns, labels))
+			if err != nil {
+				return err
+			}
 		}
 	}
 	for _, pod := range r.Pods {
-		_, err := kubernetes.CreatePodIfNotExists(pod.KubePod())
+		_, err := kubernetes.GetPod(pod.Namespace, pod.Name)
 		if err != nil {
-			return err
+			_, err := kubernetes.CreatePod(pod.KubePod())
+			if err != nil {
+				return err
+			}
 		}
-		_, err = kubernetes.CreateServiceIfNotExists(pod.KubeService())
+		kubeService := pod.KubeService()
+		_, err = kubernetes.GetService(kubeService.Namespace, kubeService.Name)
 		if err != nil {
-			return err
+			_, err = kubernetes.CreateService(kubeService)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -253,121 +263,6 @@ func (r *Resources) CreateResourcesInKube(kubernetes *kube.Kubernetes) error {
 
 func KubeNamespace(ns string, labels map[string]string) *v1.Namespace {
 	return &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns, Labels: labels}}
-}
-
-func (r *Resources) VerifyClusterState(kubernetes *kube.Kubernetes) error {
-	kubePods, err := kubernetes.GetPodsInNamespaces(r.NamespacesSlice())
-	if err != nil {
-		return err
-	}
-
-	// 1. pods: labels, ips, containers, ports
-	actualPods := map[string]v1.Pod{}
-	for _, kubePod := range kubePods {
-		actualPods[NewPodString(kubePod.Namespace, kubePod.Name).String()] = kubePod
-	}
-	// are we missing any pods?
-	for _, pod := range r.Pods {
-		if actualPod, ok := actualPods[pod.PodString().String()]; ok {
-			if !areLabelsEqual(actualPod.Labels, pod.Labels) {
-				return errors.Errorf("for pod %s, expected labels %+v (found %+v)", pod.PodString().String(), pod.Labels, actualPod.Labels)
-			}
-			if actualPod.Status.PodIP != pod.IP {
-				return errors.Errorf("for pod %s, expected ip %s (found %s)", pod.PodString().String(), pod.IP, actualPod.Status.PodIP)
-			}
-			if !areContainersEqual(actualPod, pod) {
-				return errors.Errorf("for pod %s, expected containers %+v (found %+v)", pod.PodString().String(), pod.Containers, actualPod.Spec.Containers)
-			}
-		} else {
-			return errors.Errorf("missing expected pod %s", pod.PodString().String())
-		}
-	}
-
-	// 2. services: selectors, ports
-	for _, pod := range r.Pods {
-		expected := pod.KubeService()
-		svc, err := kubernetes.GetService(expected.Namespace, expected.Name)
-		if err != nil {
-			return err
-		}
-		if !areLabelsEqual(svc.Spec.Selector, pod.Labels) {
-			return errors.Errorf("for service %s/%s, expected labels %+v (found %+v)", pod.Namespace, pod.Name, pod.Labels, svc.Spec.Selector)
-		}
-		if len(expected.Spec.Ports) != len(svc.Spec.Ports) {
-			return errors.Errorf("for service %s/%s, expected %d ports (found %d)", expected.Namespace, expected.Name, len(expected.Spec.Ports), len(svc.Spec.Ports))
-		}
-		for i, port := range expected.Spec.Ports {
-			kubePort := svc.Spec.Ports[i]
-			if kubePort.Protocol != port.Protocol || kubePort.Port != port.Port {
-				return errors.Errorf("for service %s/%s, expected port %+v (found %+v)", expected.Namespace, expected.Name, port, kubePort)
-			}
-		}
-	}
-
-	// 3. namespaces: names, labels
-	for ns, labels := range r.Namespaces {
-		namespace, err := kubernetes.GetNamespace(ns)
-		if err != nil {
-			return err
-		}
-		if !areLabelsEqual(namespace.Labels, labels) {
-			return errors.Errorf("for namespace %s, expected labels %+v (found %+v)", ns, labels, namespace.Labels)
-		}
-	}
-
-	// nothing wrong: we're good to go
-	return nil
-}
-
-func areContainersEqual(kubePod v1.Pod, expectedPod *Pod) bool {
-	kubeConts := kubePod.Spec.Containers
-	if len(kubeConts) != len(expectedPod.Containers) {
-		return false
-	}
-	for i, kubeCont := range kubeConts {
-		cont := expectedPod.Containers[i]
-		if len(kubeCont.Ports) != 1 {
-			return false
-		}
-		if int(kubeCont.Ports[0].ContainerPort) != cont.Port {
-			return false
-		}
-		if kubeCont.Ports[0].Protocol != cont.Protocol {
-			return false
-		}
-	}
-
-	return true
-}
-
-func areLabelsEqual(l map[string]string, r map[string]string) bool {
-	if len(l) != len(r) {
-		return false
-	}
-	for k, lv := range l {
-		rv, ok := r[k]
-		if !ok || lv != rv {
-			return false
-		}
-	}
-	return true
-}
-
-func (r *Resources) ResetLabelsInKube(kubernetes *kube.Kubernetes) error {
-	for ns, labels := range r.Namespaces {
-		_, err := kubernetes.SetNamespaceLabels(ns, labels)
-		if err != nil {
-			return err
-		}
-	}
-
-	for _, pod := range r.Pods {
-		_, err := kubernetes.SetPodLabels(pod.Namespace, pod.Name, pod.Labels)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (r *Resources) GetJobsForNamedPortProtocol(port intstr.IntOrString, protocol v1.Protocol) *Jobs {

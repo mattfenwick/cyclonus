@@ -3,8 +3,6 @@ package kube
 import (
 	"bytes"
 	"context"
-	"fmt"
-	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -61,16 +59,9 @@ func (k *Kubernetes) DeleteNamespace(ns string) error {
 	return errors.Wrapf(err, "unable to delete namespace %s", ns)
 }
 
-func (k *Kubernetes) CreateOrUpdateNamespace(ns *v1.Namespace) (*v1.Namespace, error) {
+func (k *Kubernetes) CreateNamespace(ns *v1.Namespace) (*v1.Namespace, error) {
 	nsr, err := k.ClientSet.CoreV1().Namespaces().Create(context.TODO(), ns, metav1.CreateOptions{})
-	if err == nil {
-		log.Debugf("created namespace %s", ns)
-		return nsr, nil
-	}
-
-	log.Debugf("unable to create namespace %s, let's try updating it instead (error: %s)", ns.Name, err)
-	nsr, err = k.ClientSet.CoreV1().Namespaces().Update(context.TODO(), ns, metav1.UpdateOptions{})
-	return nsr, errors.Wrapf(err, "unable to update namespace %s", ns.Name)
+	return nsr, errors.Wrapf(err, "unable to create namespace %s", ns.Name)
 }
 
 func (k *Kubernetes) DeleteAllNetworkPoliciesInNamespace(ns string) error {
@@ -150,32 +141,6 @@ func (k *Kubernetes) DeleteService(namespace string, name string) error {
 	return errors.Wrapf(err, "unable to delete service %s/%s", namespace, name)
 }
 
-func (k *Kubernetes) CreateOrUpdateService(svc *v1.Service) (*v1.Service, error) {
-	nsr, err := k.ClientSet.CoreV1().Services(svc.Namespace).Create(context.TODO(), svc, metav1.CreateOptions{})
-	if err == nil {
-		log.Debugf("created service %s/%s", svc.Namespace, svc.Name)
-		return nsr, nil
-	}
-
-	log.Debugf("unable to create service %s/%s, let's try updating it instead (error: %s)", svc.Namespace, svc.Name, err)
-	nsr, err = k.ClientSet.CoreV1().Services(svc.Namespace).Update(context.TODO(), svc, metav1.UpdateOptions{})
-	if err != nil {
-		return nil, errors.Wrapf(err, "unable to update service %s/%s", svc.Namespace, svc.Name)
-	}
-	return nsr, nil
-}
-
-func (k *Kubernetes) CreateServiceIfNotExists(svc *v1.Service) (*v1.Service, error) {
-	created, err := k.ClientSet.CoreV1().Services(svc.Namespace).Create(context.TODO(), svc, metav1.CreateOptions{})
-	if err == nil {
-		return created, nil
-	}
-	if err.Error() == fmt.Sprintf(`services "%s" already exists`, svc.Name) {
-		return nil, nil
-	}
-	return nil, err
-}
-
 func (k *Kubernetes) GetPodsInNamespaces(namespaces []string) ([]v1.Pod, error) {
 	var pods []v1.Pod
 	for _, ns := range namespaces {
@@ -209,18 +174,6 @@ func (k *Kubernetes) CreatePod(pod *v1.Pod) (*v1.Pod, error) {
 
 	createdPod, err := k.ClientSet.CoreV1().Pods(ns).Create(context.TODO(), pod, metav1.CreateOptions{})
 	return createdPod, errors.Wrapf(err, "unable to create pod %s/%s", ns, pod.Name)
-}
-
-func (k *Kubernetes) CreatePodIfNotExists(pod *v1.Pod) (*v1.Pod, error) {
-	created, err := k.ClientSet.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
-	if err == nil {
-		return created, nil
-	}
-	log.Warnf("%+v", err)
-	if err.Error() == fmt.Sprintf(`pods "%s" already exists`, pod.Name) {
-		return nil, nil
-	}
-	return nil, errors.Wrapf(err, "unable to create pod %s/%s:\n%s", pod.Namespace, pod.Name, utils.JsonString(pod))
 }
 
 func (k *Kubernetes) DeletePod(namespace string, podName string) error {

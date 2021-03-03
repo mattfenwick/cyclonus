@@ -119,8 +119,12 @@ func (n *NetpolTraverser) Traverse(policy *Netpol) map[string]bool {
 	if n.target != nil {
 		n.target(policy.Target, features)
 	}
-	traverseIngressEgress(true, policy.Ingress, features, n.ingress, n.ingressRule, n.ingressPeers, n.ingressPeer, n.ingressPorts, n.ingressPort)
-	traverseIngressEgress(false, policy.Egress, features, n.egress, n.egressRule, n.egressPeers, n.egressPeer, n.egressPorts, n.egressPort)
+	if policy.Ingress != nil {
+		traverseIngressEgress(true, policy.Ingress, features, n.ingress, n.ingressRule, n.ingressPeers, n.ingressPeer, n.ingressPorts, n.ingressPort)
+	}
+	if policy.Egress != nil {
+		traverseIngressEgress(false, policy.Egress, features, n.egress, n.egressRule, n.egressPeers, n.egressPeer, n.egressPorts, n.egressPort)
+	}
 	return features
 }
 

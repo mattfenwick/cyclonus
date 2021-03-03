@@ -4,12 +4,13 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"time"
 )
 
 type TestCaseState struct {
-	Kubernetes *kube.Kubernetes
+	Kubernetes kube.IKubernetes
 	Resources  *probe.Resources
 	Policies   []*networkingv1.NetworkPolicy
 }
@@ -53,7 +54,7 @@ func (t *TestCaseState) CreateNamespace(ns string, labels map[string]string) err
 		return err
 	}
 	t.Resources = newResources
-	_, err = t.Kubernetes.CreateOrUpdateNamespace(probe.KubeNamespace(ns, labels))
+	_, err = t.Kubernetes.CreateNamespace(probe.KubeNamespace(ns, labels))
 	return err
 }
 
@@ -96,7 +97,6 @@ func (t *TestCaseState) CreatePod(ns string, pod string, labels map[string]strin
 	}
 	// wait for ready, get ip
 	for i := 0; i < 12; i++ {
-		time.Sleep(5 * time.Second)
 		kubePod, err := t.Kubernetes.GetPod(ns, pod)
 		if err != nil {
 			return err
@@ -105,6 +105,7 @@ func (t *TestCaseState) CreatePod(ns string, pod string, labels map[string]strin
 			newPod.IP = kubePod.Status.PodIP
 			return nil
 		}
+		time.Sleep(5 * time.Second)
 	}
 	return errors.Errorf("unable to wait for running or get pod ip for %s/%s after creation", ns, pod)
 }
@@ -176,4 +177,123 @@ func getSliceOfPointers(netpols []networkingv1.NetworkPolicy) []*networkingv1.Ne
 		netpolPointers[i] = &netpols[i]
 	}
 	return netpolPointers
+}
+
+func (t *TestCaseState) verifyClusterStateHelper() error {
+	kubePods, err := t.Kubernetes.GetPodsInNamespaces(t.Resources.NamespacesSlice())
+	if err != nil {
+		return err
+	}
+
+	// 1. pods: labels, ips, containers, ports
+	actualPods := map[string]v1.Pod{}
+	for _, kubePod := range kubePods {
+		actualPods[probe.NewPodString(kubePod.Namespace, kubePod.Name).String()] = kubePod
+	}
+	// are we missing any pods?
+	for _, pod := range t.Resources.Pods {
+		if actualPod, ok := actualPods[pod.PodString().String()]; ok {
+			if !areLabelsEqual(actualPod.Labels, pod.Labels) {
+				return errors.Errorf("for pod %s, expected labels %+v (found %+v)", pod.PodString().String(), pod.Labels, actualPod.Labels)
+			}
+			if actualPod.Status.PodIP != pod.IP {
+				return errors.Errorf("for pod %s, expected ip %s (found %s)", pod.PodString().String(), pod.IP, actualPod.Status.PodIP)
+			}
+			if !pod.IsEqualToKubePod(actualPod) {
+				return errors.Errorf("for pod %s, expected containers %+v (found %+v)", pod.PodString().String(), pod.Containers, actualPod.Spec.Containers)
+			}
+		} else {
+			return errors.Errorf("missing expected pod %s", pod.PodString().String())
+		}
+	}
+
+	// 2. services: selectors, ports
+	for _, pod := range t.Resources.Pods {
+		expected := pod.KubeService()
+		svc, err := t.Kubernetes.GetService(expected.Namespace, expected.Name)
+		if err != nil {
+			return err
+		}
+		if !areLabelsEqual(svc.Spec.Selector, pod.Labels) {
+			return errors.Errorf("for service %s/%s, expected labels %+v (found %+v)", pod.Namespace, pod.Name, pod.Labels, svc.Spec.Selector)
+		}
+		if len(expected.Spec.Ports) != len(svc.Spec.Ports) {
+			return errors.Errorf("for service %s/%s, expected %d ports (found %d)", expected.Namespace, expected.Name, len(expected.Spec.Ports), len(svc.Spec.Ports))
+		}
+		for i, port := range expected.Spec.Ports {
+			kubePort := svc.Spec.Ports[i]
+			if kubePort.Protocol != port.Protocol || kubePort.Port != port.Port {
+				return errors.Errorf("for service %s/%s, expected port %+v (found %+v)", expected.Namespace, expected.Name, port, kubePort)
+			}
+		}
+	}
+
+	// 3. namespaces: names, labels
+	for ns, labels := range t.Resources.Namespaces {
+		namespace, err := t.Kubernetes.GetNamespace(ns)
+		if err != nil {
+			return err
+		}
+		if !areLabelsEqual(namespace.Labels, labels) {
+			return errors.Errorf("for namespace %s, expected labels %+v (found %+v)", ns, labels, namespace.Labels)
+		}
+	}
+
+	// nothing wrong: we're good to go
+	return nil
+}
+
+func areLabelsEqual(l map[string]string, r map[string]string) bool {
+	if len(l) != len(r) {
+		return false
+	}
+	for k, lv := range l {
+		rv, ok := r[k]
+		if !ok || lv != rv {
+			return false
+		}
+	}
+	return true
+}
+
+func (t *TestCaseState) resetLabelsInKubeHelper() error {
+	for ns, labels := range t.Resources.Namespaces {
+		_, err := t.Kubernetes.SetNamespaceLabels(ns, labels)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, pod := range t.Resources.Pods {
+		_, err := t.Kubernetes.SetPodLabels(pod.Namespace, pod.Name, pod.Labels)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *TestCaseState) ResetClusterState() error {
+	err := t.Kubernetes.DeleteAllNetworkPoliciesInNamespaces(t.Resources.NamespacesSlice())
+	if err != nil {
+		return err
+	}
+
+	return t.resetLabelsInKubeHelper()
+}
+
+func (t *TestCaseState) VerifyClusterState() error {
+	err := t.verifyClusterStateHelper()
+	if err != nil {
+		return err
+	}
+
+	policies, err := t.Kubernetes.GetNetworkPoliciesInNamespaces(t.Resources.NamespacesSlice())
+	if err != nil {
+		return err
+	}
+	if len(policies) > 0 {
+		return errors.Errorf("expected 0 policies in namespaces %+v, found %d", t.Resources.NamespacesSlice(), len(policies))
+	}
+	return nil
 }

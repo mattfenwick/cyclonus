@@ -9,6 +9,7 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"strings"
 )
 
 type GenerateArgs struct {
@@ -27,6 +28,7 @@ type GenerateArgs struct {
 	CleanupNamespaces         bool
 	Include                   []string
 	Exclude                   []string
+	Mock                      bool
 }
 
 func SetupGenerateCommand() *cobra.Command {
@@ -57,8 +59,10 @@ func SetupGenerateCommand() *cobra.Command {
 	command.Flags().StringVar(&args.Context, "context", "", "kubernetes context to use; if empty, uses default context")
 	command.Flags().BoolVar(&args.CleanupNamespaces, "cleanup-namespaces", false, "if true, clean up namespaces after completion")
 
-	command.Flags().StringSliceVar(&args.Include, "include", []string{}, "include tests with any of these tags; if empty, all tests will be included")
-	command.Flags().StringSliceVar(&args.Exclude, "exclude", []string{generator.TagTwoPlusPeerSlice, generator.TagExample}, "exclude tests with any of these tags")
+	command.Flags().StringSliceVar(&args.Include, "include", []string{}, "include tests with any of these tags; if empty, all tests will be included.  Valid tags:\n"+strings.Join(generator.TagSlice, "\n"))
+	command.Flags().StringSliceVar(&args.Exclude, "exclude", []string{generator.TagMultiPeer, generator.TagUpstreamE2E, generator.TagExample}, "exclude tests with any of these tags.  See 'include' field for valid tags")
+
+	command.Flags().BoolVar(&args.Mock, "mock", false, "if true, use a mock kube runner (i.e. don't actually run tests against kubernetes; instead, product fake results")
 
 	return command
 }
@@ -66,23 +70,26 @@ func SetupGenerateCommand() *cobra.Command {
 func RunGenerateCommand(args *GenerateArgs) {
 	RunVersionCommand()
 
-	// validate tags
-	for _, tag := range append(args.Include, args.Exclude...) {
-		if _, ok := generator.TagSet[tag]; !ok {
-			logrus.Fatalf("invalid tag: %s", tag)
-		}
-	}
+	utils.DoOrDie(generator.ValidateTags(append(args.Include, args.Exclude...)))
 
 	externalIPs := []string{} // "http://www.google.com"} // TODO make these be IPs?  or not?
 
-	kubernetes, err := kube.NewKubernetesForContext(args.Context)
+	var kubernetes kube.IKubernetes
+	var err error
+	if args.Mock {
+		kubernetes = kube.NewMockKubernetes(1.0)
+	} else {
+		kubernetes, err = kube.NewKubernetesForContext(args.Context)
+	}
 	utils.DoOrDie(err)
 
 	serverProtocols := parseProtocols(args.ServerProtocols)
 
 	resources, err := probe.NewDefaultResources(kubernetes, args.ServerNamespaces, args.ServerPods, args.ServerPorts, serverProtocols, externalIPs, args.PodCreationTimeoutSeconds, args.BatchJobs)
 	utils.DoOrDie(err)
-	interpreter := connectivity.NewInterpreter(kubernetes, resources, true, args.Retries, args.PerturbationWaitSeconds, true, args.BatchJobs)
+
+	reset, verify := true, false
+	interpreter := connectivity.NewInterpreter(kubernetes, resources, reset, args.Retries, args.PerturbationWaitSeconds, verify, args.BatchJobs)
 	printer := &connectivity.Printer{
 		Noisy:          args.Noisy,
 		IgnoreLoopback: args.IgnoreLoopback,
