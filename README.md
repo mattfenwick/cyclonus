@@ -11,37 +11,34 @@ Grab the [latest release](https://github.com/mattfenwick/cyclonus/releases) to g
 
 ## Run as a kubernetes job
 
-Create file cyclonus-job.yaml:
+Take a look at the [jobs directory](./jobs):
 
 ```
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: cyclonus
-  namespace: kube-system
-spec:
-  template:
-    spec:
-      restartPolicy: Never
-      containers:
-      - command:
-        - ./cyclonus
-        - generate
-        name: cyclonus
-        imagePullPolicy: IfNotPresent
-        image: mfenwick100/cyclonus:latest
-      serviceAccount: cyclonus
+tree jobs
+jobs
+├── antrea-job.yaml
+├── calico-job.yaml
+├── cilium-job.yaml
+└── run-kube-job.sh
 ```
 
-Then create kubernetes resources:
-```
-kubectl create clusterrolebinding cyclonus --clusterrole=cluster-admin --serviceaccount=kube-system:cyclonus
-kubectl create sa cyclonus -n kube-system
+Choose the right job for your CNI, then run:
 
-kubectl create -f cyclonus-job.yaml
+```
+cd jobs
+./run-kube-job.sh calico-job.yaml
 ```
 
-Pull the logs from the job!
+This will:
+
+ - create a namespace, service account, and cluster role binding for cyclonus
+ - create a cyclonus job
+
+Pull the logs from the job:
+
+```
+kubectl logs -f -n netpol cyclonus-abcde
+```
 
 ## Docker images
 
