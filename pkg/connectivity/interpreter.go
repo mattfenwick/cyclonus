@@ -19,6 +19,15 @@ const (
 	defaultBatchWorkersCount = 9
 )
 
+type InterpreterConfig struct {
+	ResetClusterBeforeTestCase       bool
+	KubeProbeRetries                 int
+	PerturbationWaitSeconds          int
+	VerifyClusterStateBeforeTestCase bool
+	BatchJobs                        bool
+	IgnoreLoopback                   bool
+}
+
 type Interpreter struct {
 	kubernetes                       kube.IKubernetes
 	resources                        *probe.Resources
@@ -27,13 +36,14 @@ type Interpreter struct {
 	resetClusterBeforeTestCase       bool
 	verifyClusterStateBeforeTestCase bool
 	kubeRunner                       *probe.Runner
+	ignoreLoopback                   bool
 }
 
-func NewInterpreter(kubernetes kube.IKubernetes, resources *probe.Resources, resetClusterBeforeTestCase bool, kubeProbeRetries int, perturbationWaitSeconds int, verifyClusterStateBeforeTestCase bool, batchJobs bool) *Interpreter {
+func NewInterpreter(kubernetes kube.IKubernetes, resources *probe.Resources, config *InterpreterConfig) *Interpreter {
 	fmt.Printf("resources:\n%s\n", resources.RenderTable())
 
 	var kubeRunner *probe.Runner
-	if batchJobs {
+	if config.BatchJobs {
 		kubeRunner = probe.NewKubeBatchRunner(kubernetes, defaultBatchWorkersCount)
 	} else {
 		kubeRunner = probe.NewKubeRunner(kubernetes, defaultWorkersCount)
@@ -42,11 +52,12 @@ func NewInterpreter(kubernetes kube.IKubernetes, resources *probe.Resources, res
 	return &Interpreter{
 		kubernetes:                       kubernetes,
 		resources:                        resources,
-		kubeProbeRetries:                 kubeProbeRetries,
-		perturbationWaitDuration:         time.Duration(perturbationWaitSeconds) * time.Second,
-		resetClusterBeforeTestCase:       resetClusterBeforeTestCase,
-		verifyClusterStateBeforeTestCase: verifyClusterStateBeforeTestCase,
+		kubeProbeRetries:                 config.KubeProbeRetries,
+		perturbationWaitDuration:         time.Duration(config.PerturbationWaitSeconds) * time.Second,
+		resetClusterBeforeTestCase:       config.ResetClusterBeforeTestCase,
+		verifyClusterStateBeforeTestCase: config.VerifyClusterStateBeforeTestCase,
 		kubeRunner:                       kubeRunner,
+		ignoreLoopback:                   config.IgnoreLoopback,
 	}
 }
 
@@ -140,7 +151,7 @@ func (t *Interpreter) runProbe(testCaseState *TestCaseState, probeConfig *genera
 		logrus.Infof("running kube probe on try %d", i+1)
 		stepResult.AddKubeProbe(t.kubeRunner.RunProbeForConfig(probeConfig, testCaseState.Resources))
 		// no differences between synthetic and kube probes?  then we can stop
-		if stepResult.LastComparison().ValueCounts(false)[DifferentComparison] == 0 {
+		if stepResult.LastComparison().ValueCounts(t.ignoreLoopback)[DifferentComparison] == 0 {
 			break
 		}
 	}

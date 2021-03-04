@@ -88,8 +88,15 @@ func RunGenerateCommand(args *GenerateArgs) {
 	resources, err := probe.NewDefaultResources(kubernetes, args.ServerNamespaces, args.ServerPods, args.ServerPorts, serverProtocols, externalIPs, args.PodCreationTimeoutSeconds, args.BatchJobs)
 	utils.DoOrDie(err)
 
-	reset, verify := true, false
-	interpreter := connectivity.NewInterpreter(kubernetes, resources, reset, args.Retries, args.PerturbationWaitSeconds, verify, args.BatchJobs)
+	interpreterConfig := &connectivity.InterpreterConfig{
+		ResetClusterBeforeTestCase:       true,
+		KubeProbeRetries:                 args.Retries,
+		PerturbationWaitSeconds:          args.PerturbationWaitSeconds,
+		VerifyClusterStateBeforeTestCase: true,
+		BatchJobs:                        args.BatchJobs,
+		IgnoreLoopback:                   args.IgnoreLoopback,
+	}
+	interpreter := connectivity.NewInterpreter(kubernetes, resources, interpreterConfig)
 	printer := &connectivity.Printer{
 		Noisy:          args.Noisy,
 		IgnoreLoopback: args.IgnoreLoopback,

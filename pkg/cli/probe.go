@@ -81,7 +81,15 @@ func RunProbeCommand(args *ProbeArgs) {
 	resources, err := probe.NewDefaultResources(kubernetes, args.ServerNamespaces, args.ServerPods, args.ServerPorts, serverProtocols, externalIPs, args.PodCreationTimeoutSeconds, false)
 	utils.DoOrDie(err)
 
-	interpreter := connectivity.NewInterpreter(kubernetes, resources, false, 0, args.PerturbationWaitSeconds, false, false)
+	interpreterConfig := &connectivity.InterpreterConfig{
+		ResetClusterBeforeTestCase:       false,
+		KubeProbeRetries:                 0,
+		PerturbationWaitSeconds:          args.PerturbationWaitSeconds,
+		VerifyClusterStateBeforeTestCase: false,
+		BatchJobs:                        false,
+		IgnoreLoopback:                   args.IgnoreLoopback,
+	}
+	interpreter := connectivity.NewInterpreter(kubernetes, resources, interpreterConfig)
 
 	actions := []*generator.Action{generator.ReadNetworkPolicies(args.ServerNamespaces)}
 
