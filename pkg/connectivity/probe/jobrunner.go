@@ -51,10 +51,12 @@ func (p *Runner) runProbe(jobs *Jobs) []*JobResult {
 	resultSlice := p.JobRunner.RunJobs(jobs.Valid)
 
 	invalidPP := ConnectivityInvalidPortProtocol
+	unknown := ConnectivityUnknown
 	for _, j := range jobs.BadPortProtocol {
 		resultSlice = append(resultSlice, &JobResult{
 			Job:      j,
 			Ingress:  &invalidPP,
+			Egress:   &unknown,
 			Combined: ConnectivityInvalidPortProtocol,
 		})
 	}
@@ -64,6 +66,7 @@ func (p *Runner) runProbe(jobs *Jobs) []*JobResult {
 		resultSlice = append(resultSlice, &JobResult{
 			Job:      j,
 			Ingress:  &invalidNamedPort,
+			Egress:   &unknown,
 			Combined: ConnectivityInvalidNamedPort,
 		})
 	}

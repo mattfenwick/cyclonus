@@ -44,6 +44,11 @@ func (k *Kubernetes) GetNamespace(namespace string) (*v1.Namespace, error) {
 	return ns, errors.Wrapf(err, "unable to get namespace %s", namespace)
 }
 
+func (k *Kubernetes) GetAllNamespaces() (*v1.NamespaceList, error) {
+	nsList, err := k.ClientSet.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
+	return nsList, errors.Wrapf(err, "unable to list namespaces")
+}
+
 func (k *Kubernetes) SetNamespaceLabels(namespace string, labels map[string]string) (*v1.Namespace, error) {
 	ns, err := k.GetNamespace(namespace)
 	if err != nil {
@@ -98,11 +103,11 @@ func (k *Kubernetes) DeleteNetworkPolicy(ns string, name string) error {
 func (k *Kubernetes) GetNetworkPoliciesInNamespaces(namespaces []string) ([]networkingv1.NetworkPolicy, error) {
 	var netpols []networkingv1.NetworkPolicy
 	for _, ns := range namespaces {
-		podList, err := k.ClientSet.NetworkingV1().NetworkPolicies(ns).List(context.TODO(), metav1.ListOptions{})
+		netpolList, err := k.ClientSet.NetworkingV1().NetworkPolicies(ns).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return nil, errors.Wrapf(err, "unable to get netpols in namespace %s", ns)
 		}
-		netpols = append(netpols, podList.Items...)
+		netpols = append(netpols, netpolList.Items...)
 	}
 	return netpols, nil
 }

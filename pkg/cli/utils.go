@@ -1,13 +1,11 @@
 package cli
 
 import (
-	"context"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"path/filepath"
 	"sigs.k8s.io/yaml"
@@ -62,15 +60,11 @@ func readPoliciesFromPath(policyPath string) ([]*networkingv1.NetworkPolicy, err
 }
 
 func readPoliciesFromKube(kubeClient *kube.Kubernetes, namespaces []string) ([]*networkingv1.NetworkPolicy, error) {
-	var list []*networkingv1.NetworkPolicy
-	for _, ns := range namespaces {
-		nsList, err := kubeClient.ClientSet.NetworkingV1().NetworkPolicies(ns).List(context.TODO(), metav1.ListOptions{})
-		if err != nil {
-			return nil, errors.Wrapf(err, "unable to list netpols in namespace %s", ns)
-		}
-		list = append(list, refNetpolList(nsList.Items)...)
+	netpols, err := kubeClient.GetNetworkPoliciesInNamespaces(namespaces)
+	if err != nil {
+		return nil, err
 	}
-	return list, nil
+	return refNetpolList(netpols), nil
 }
 
 func refNetpolList(refs []networkingv1.NetworkPolicy) []*networkingv1.NetworkPolicy {
