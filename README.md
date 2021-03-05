@@ -99,31 +99,37 @@ Kube results for:
 
 ## Policy generator
 
-Generate network policies, install the policies one at a time in kubernetes, and compare actual measured connectivity
-to expected connectivity using a truth table.
+For CNI conformance testing.
+
+Generate network policy test scenarios, install the scenarios one at a time in kubernetes,
+and compare actual measured connectivity to expected connectivity using a truth table.
 
 ```
 cyclonus generate \
   --mode simple-fragments \
-  --netpol-creation-wait-seconds 15
+  --include conflict,peer-ipblock \
+  --ignore-loopback \
+  --perturbation-wait-seconds 15
 
-... 
-Synthetic vs combined:
-+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
-|  -  | X/A | X/B | X/C | Y/A | Y/B | Y/C | Z/A | Z/B | Z/C |
-+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
-| x/a | X   | .   | .   | .   | .   | .   | .   | .   | .   |
-| x/b | X   | .   | .   | .   | .   | .   | .   | .   | .   |
-| x/c | X   | .   | .   | .   | .   | .   | .   | .   | .   |
-| y/a | X   | .   | .   | .   | .   | .   | .   | .   | .   |
-| y/b | X   | .   | .   | .   | .   | .   | .   | .   | .   |
-| y/c | X   | .   | .   | .   | .   | .   | .   | .   | .   |
-| z/a | X   | .   | .   | .   | .   | .   | .   | .   | .   |
-| z/b | X   | .   | .   | .   | .   | .   | .   | .   | .   |
-| z/c | X   | .   | .   | .   | .   | .   | .   | .   | .   |
-+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
-... 
+...
+Tag results:
 ```
+| Tag | Result |
+| --- | --- |
+| direction | 10 / 20 = 50% ❌ |
+|  - egress | 5 / 11 = 45% ❌ |
+|  - ingress | 5 / 11 = 45% ❌ |
+| miscellaneous | 10 / 16 = 62% ❌ |
+|  - conflict | 10 / 16 = 62% ❌ |
+| peer-ipblock | 0 / 4 = 0% ❌ |
+|  - IP-block-no-except | 0 / 2 = 0% ❌ |
+|  - IP-block-with-except | 0 / 2 = 0% ❌ |
+| peer-pods | 4 / 4 = 100% ✅ |
+|  - all-namespaces | 4 / 4 = 100% ✅ |
+|  - all-pods | 4 / 4 = 100% ✅ |
+| rule | 6 / 8 = 75% ❌ |
+|  - allow-all | 2 / 4 = 50% ❌ |
+|  - deny-all | 6 / 8 = 75% ❌ |
 
 ## Policy analysis
 
@@ -134,6 +140,7 @@ policies.  This clarifies the interactions between "denies" and "allows" from mu
 
 ```
 cyclonus analyze \
+  --mode explain \
   --policy-path ./networkpolicies/simple-example/
 
 +---------+---------------+------------------------+---------------------+--------------------------+
@@ -175,11 +182,11 @@ to a pod.
 
 ```
 cyclonus analyze \
-  --explain=false \
+  --mode query-target \
   --policy-path ./networkpolicies/simple-example/ \
   --target-pod-path ./examples/targets.json
 
-Combined rules for pod {Namespace:y Labels:map[pod:a]}:
+pod in ns y with labels map[pod:a]:
 +---------+---------------+-----------------------------+---------------------+--------------------------+
 |  TYPE   |    TARGET     |        SOURCE RULES         |        PEER         |      PORT/PROTOCOL       |
 +---------+---------------+-----------------------------+---------------------+--------------------------+
@@ -207,7 +214,7 @@ this command parses network policies and determines if the traffic is allowed or
 
 ```
 cyclonus analyze \
-  --explain=false \
+  --mode query-traffic \
   --policy-path ./networkpolicies/simple-example/ \
   --traffic-path ./examples/traffic.json
 
@@ -246,7 +253,7 @@ Runs a simulated connectivity probe against a set of network policies, without u
 
 ```
 cyclonus analyze \
-  --explain=false \
+  --mode probe \
   --policy-path ./networkpolicies/simple-example/ \
   --probe-path ./examples/probe.json
 
@@ -272,8 +279,7 @@ Checks network policies for common problems.
 
 ```
 cyclonus analyze \
-  --explain=false \
-  --lint=true \
+  --mode lint \
   --policy-path ./networkpolicies/simple-example
 
 +-----------------+------------------------------+-------------------+-----------------------------+
