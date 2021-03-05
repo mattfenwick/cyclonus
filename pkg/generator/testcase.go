@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -119,6 +120,18 @@ var AllProbeModes = []string{
 	ProbeModeServiceName,
 	ProbeModeServiceIP,
 	ProbeModePodIP,
+}
+
+func ParseProbeMode(mode string) (ProbeMode, error) {
+	switch mode {
+	case ProbeModeServiceName:
+		return ProbeModeServiceName, nil
+	case ProbeModeServiceIP:
+		return ProbeModeServiceIP, nil
+	case ProbeModePodIP:
+		return ProbeModePodIP, nil
+	}
+	return "", errors.Errorf("invalid probe mode %s", mode)
 }
 
 // ProbeConfig: exactly one field must be non-null (or, in AllAvailable's case, non-false).  This

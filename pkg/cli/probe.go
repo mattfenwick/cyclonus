@@ -12,7 +12,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"log"
 	"sigs.k8s.io/yaml"
 	"strings"
 )
@@ -114,15 +113,8 @@ func RunProbeCommand(args *ProbeArgs) {
 		IgnoreLoopback: args.IgnoreLoopback,
 	}
 
-	var mode generator.ProbeMode
-	for _, m := range generator.AllProbeModes {
-		if m == args.ProbeMode {
-			mode = generator.ProbeMode(m)
-		}
-	}
-	if mode == "" {
-		log.Fatalf("invalid ProbeMode %s", args.ProbeMode)
-	}
+	mode, err := generator.ParseProbeMode(args.ProbeMode)
+	utils.DoOrDie(err)
 
 	if args.ProbeAllAvailable {
 		result := interpreter.ExecuteTestCase(generator.NewSingleStepTestCase("all available one-off probe", generator.NewStringSet(), generator.NewAllAvailable(mode), actions...))
