@@ -43,6 +43,7 @@ type Pod struct {
 	Namespace  string
 	Name       string
 	Labels     map[string]string
+	ServiceIP  string
 	IP         string
 	Containers []*Container
 }

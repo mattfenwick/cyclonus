@@ -85,31 +85,17 @@ func (k *Kubernetes) DeleteAllNetworkPoliciesInNamespace(ns string) error {
 	return nil
 }
 
-func (k *Kubernetes) DeleteAllNetworkPoliciesInNamespaces(nss []string) error {
-	for _, ns := range nss {
-		err := k.DeleteAllNetworkPoliciesInNamespace(ns)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (k *Kubernetes) DeleteNetworkPolicy(ns string, name string) error {
 	err := k.ClientSet.NetworkingV1().NetworkPolicies(ns).Delete(context.TODO(), name, metav1.DeleteOptions{})
 	return errors.Wrapf(err, "unable to delete network policy %s/%s", ns, name)
 }
 
-func (k *Kubernetes) GetNetworkPoliciesInNamespaces(namespaces []string) ([]networkingv1.NetworkPolicy, error) {
-	var netpols []networkingv1.NetworkPolicy
-	for _, ns := range namespaces {
-		netpolList, err := k.ClientSet.NetworkingV1().NetworkPolicies(ns).List(context.TODO(), metav1.ListOptions{})
-		if err != nil {
-			return nil, errors.Wrapf(err, "unable to get netpols in namespace %s", ns)
-		}
-		netpols = append(netpols, netpolList.Items...)
+func (k *Kubernetes) GetNetworkPoliciesInNamespace(namespace string) ([]networkingv1.NetworkPolicy, error) {
+	netpolList, err := k.ClientSet.NetworkingV1().NetworkPolicies(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to get netpols in namespace %s", namespace)
 	}
-	return netpols, nil
+	return netpolList.Items, nil
 }
 
 func (k *Kubernetes) UpdateNetworkPolicy(policy *networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error) {
@@ -146,16 +132,20 @@ func (k *Kubernetes) DeleteService(namespace string, name string) error {
 	return errors.Wrapf(err, "unable to delete service %s/%s", namespace, name)
 }
 
-func (k *Kubernetes) GetPodsInNamespaces(namespaces []string) ([]v1.Pod, error) {
-	var pods []v1.Pod
-	for _, ns := range namespaces {
-		podList, err := k.ClientSet.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
-		if err != nil {
-			return nil, errors.Wrapf(err, "unable to get pods in namespace %s", ns)
-		}
-		pods = append(pods, podList.Items...)
+func (k *Kubernetes) GetServicesInNamespace(namespace string) ([]v1.Service, error) {
+	serviceList, err := k.ClientSet.CoreV1().Services(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to get services in namespace %s", namespace)
 	}
-	return pods, nil
+	return serviceList.Items, nil
+}
+
+func (k *Kubernetes) GetPodsInNamespace(namespace string) ([]v1.Pod, error) {
+	podList, err := k.ClientSet.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to get pods in namespace %s", namespace)
+	}
+	return podList.Items, nil
 }
 
 func (k *Kubernetes) GetPod(namespace string, podName string) (*v1.Pod, error) {

@@ -35,13 +35,13 @@ var (
 )
 
 var (
-	ProbeAllAvailable = &ProbeConfig{AllAvailable: true}
+	ProbeAllAvailable = &ProbeConfig{AllAvailable: true, Mode: ProbeModeServiceName}
 
-	probePort80TCP = &ProbeConfig{PortProtocol: &PortProtocol{Port: port80, Protocol: tcp}}
-	probePort81TCP = &ProbeConfig{PortProtocol: &PortProtocol{Port: port81, Protocol: tcp}}
+	probePort80TCP = NewProbeConfig(port80, tcp, ProbeModeServiceName)
+	probePort81TCP = NewProbeConfig(port81, tcp, ProbeModeServiceName)
 
-	probePortServe80TCP = &ProbeConfig{PortProtocol: &PortProtocol{Port: portServe80TCP, Protocol: tcp}}
-	probePortServe81TCP = &ProbeConfig{PortProtocol: &PortProtocol{Port: portServe81TCP, Protocol: tcp}}
+	probePortServe80TCP = NewProbeConfig(portServe80TCP, tcp, ProbeModeServiceName)
+	probePortServe81TCP = NewProbeConfig(portServe81TCP, tcp, ProbeModeServiceName)
 )
 
 var (

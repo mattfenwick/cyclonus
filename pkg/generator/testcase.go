@@ -107,11 +107,34 @@ func mergeSets(l, r map[string]bool) map[string]bool {
 	return merged
 }
 
+type ProbeMode string
+
+const (
+	ProbeModeServiceName = "service-name"
+	ProbeModeServiceIP   = "service-ip"
+	ProbeModePodIP       = "pod-ip"
+)
+
+var AllProbeModes = []string{
+	ProbeModeServiceName,
+	ProbeModeServiceIP,
+	ProbeModePodIP,
+}
+
 // ProbeConfig: exactly one field must be non-null (or, in AllAvailable's case, non-false).  This
 //   models a discriminated union (sum type).
 type ProbeConfig struct {
 	AllAvailable bool
 	PortProtocol *PortProtocol
+	Mode         ProbeMode
+}
+
+func NewAllAvailable(mode ProbeMode) *ProbeConfig {
+	return &ProbeConfig{AllAvailable: true, Mode: mode}
+}
+
+func NewProbeConfig(port intstr.IntOrString, protocol v1.Protocol, mode ProbeMode) *ProbeConfig {
+	return &ProbeConfig{PortProtocol: &PortProtocol{Protocol: protocol, Port: port}, Mode: mode}
 }
 
 type PortProtocol struct {

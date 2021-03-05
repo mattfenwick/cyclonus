@@ -3,6 +3,7 @@ package recipes
 import (
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
+	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	v1 "k8s.io/api/core/v1"
@@ -31,7 +32,7 @@ func (r *Recipe) Policies() []*networkingv1.NetworkPolicy {
 
 func (r *Recipe) RunProbe() *probe.Table {
 	runner := probe.NewSimulatedRunner(matcher.BuildNetworkPolicies(r.Policies()))
-	return runner.RunProbeFixedPortProtocol(r.Resources, intstr.FromInt(r.Port), r.Protocol)
+	return runner.RunProbeForConfig(generator.NewProbeConfig(intstr.FromInt(r.Port), r.Protocol, generator.ProbeModeServiceName), r.Resources)
 }
 
 var AllRecipes = []*Recipe{
