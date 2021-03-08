@@ -285,17 +285,6 @@ func (r *Resources) GetJobsForNamedPortProtocol(port intstr.IntOrString, protoco
 	jobs := &Jobs{}
 	for _, podFrom := range r.Pods {
 		for _, podTo := range r.Pods {
-			var toHost string
-			switch mode {
-			case generator.ProbeModeServiceName:
-				toHost = kube.QualifiedServiceAddress(podTo.ServiceName(), podTo.Namespace)
-			case generator.ProbeModePodIP:
-				toHost = podTo.IP
-			case generator.ProbeModeServiceIP:
-				toHost = podTo.ServiceIP
-			default:
-				panic(errors.Errorf("invalid mode %s", mode))
-			}
 			job := &Job{
 				FromKey:             podFrom.PodString().String(),
 				FromNamespace:       podFrom.Namespace,
@@ -305,7 +294,7 @@ func (r *Resources) GetJobsForNamedPortProtocol(port intstr.IntOrString, protoco
 				FromContainer:       podFrom.Containers[0].Name,
 				FromIP:              podFrom.IP,
 				ToKey:               podTo.PodString().String(),
-				ToHost:              toHost,
+				ToHost:              podTo.Host(mode),
 				ToNamespace:         podTo.Namespace,
 				ToNamespaceLabels:   r.Namespaces[podTo.Namespace],
 				ToPodLabels:         podTo.Labels,
@@ -349,17 +338,6 @@ func (r *Resources) GetJobsAllAvailableServers(mode generator.ProbeMode) *Jobs {
 	for _, podFrom := range r.Pods {
 		for _, podTo := range r.Pods {
 			for _, contTo := range podTo.Containers {
-				var toHost string
-				switch mode {
-				case generator.ProbeModeServiceName:
-					toHost = kube.QualifiedServiceAddress(podTo.ServiceName(), podTo.Namespace)
-				case generator.ProbeModePodIP:
-					toHost = podTo.IP
-				case generator.ProbeModeServiceIP:
-					toHost = podTo.ServiceIP
-				default:
-					panic(errors.Errorf("invalid mode %s", mode))
-				}
 				jobs = append(jobs, &Job{
 					FromKey:             podFrom.PodString().String(),
 					FromNamespace:       podFrom.Namespace,
@@ -369,7 +347,7 @@ func (r *Resources) GetJobsAllAvailableServers(mode generator.ProbeMode) *Jobs {
 					FromContainer:       podFrom.Containers[0].Name,
 					FromIP:              podFrom.IP,
 					ToKey:               podTo.PodString().String(),
-					ToHost:              toHost,
+					ToHost:              podTo.Host(mode),
 					ToNamespace:         podTo.Namespace,
 					ToNamespaceLabels:   r.Namespaces[podTo.Namespace],
 					ToPodLabels:         podTo.Labels,

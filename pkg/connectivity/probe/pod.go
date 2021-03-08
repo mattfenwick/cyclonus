@@ -2,6 +2,8 @@ package probe
 
 import (
 	"fmt"
+	"github.com/mattfenwick/cyclonus/pkg/generator"
+	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,6 +48,19 @@ type Pod struct {
 	ServiceIP  string
 	IP         string
 	Containers []*Container
+}
+
+func (p *Pod) Host(probeMode generator.ProbeMode) string {
+	switch probeMode {
+	case generator.ProbeModeServiceName:
+		return kube.QualifiedServiceAddress(p.ServiceName(), p.Namespace)
+	case generator.ProbeModePodIP:
+		return p.IP
+	case generator.ProbeModeServiceIP:
+		return p.ServiceIP
+	default:
+		panic(errors.Errorf("invalid mode %s", probeMode))
+	}
 }
 
 func (p *Pod) IsEqualToKubePod(kubePod v1.Pod) bool {
