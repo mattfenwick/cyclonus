@@ -26,6 +26,26 @@ helm install cilium cilium/cilium \
   --set nodeinit.enabled=true \
   --set kubeProxyReplacement=partial \
   --set hostServices.enabled=false \
+  
+# Fedora 33 Issue report
+#-----------------------------
+# coredns, local path storage containers stuck in CreatingContainer status forever with no
+# endpoint available. 
+#
+# Workaround:
+# 1) COMMENT LINE ABOVE (--set hostServices.enabled=false)
+# 2) UNCOMMENT the line below
+#  --set hostServices.enabled=true \
+#  
+# NOTE: The issue might affect others distros with kernel > 5.10
+#
+# Tested with:
+#   - Fedora 33, Kernel: 5.10.19-200.fc33.x86_64
+#
+# See also: 
+# https://github.com/cilium/cilium/issues/14960
+# https://github.com/cilium/cilium/pull/14951
+  
   --set externalIPs.enabled=true \
   --set nodePort.enabled=true \
   --set hostPort.enabled=true \
