@@ -4,7 +4,7 @@ set -e
 set -xv
 
 CLUSTER=${CLUSTER:-netpol-cilium}
-CILIUM_VERSION="1.9.1"
+CILIUM_VERSION="1.9.4"
 
 kind create cluster --name="$CLUSTER" --config=conf.yaml
 until kubectl cluster-info; do
