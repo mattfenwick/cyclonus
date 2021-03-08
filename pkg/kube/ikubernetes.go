@@ -9,29 +9,75 @@ import (
 )
 
 type IKubernetes interface {
+	CreateNamespace(kubeNamespace *v1.Namespace) (*v1.Namespace, error)
 	GetNamespace(namespace string) (*v1.Namespace, error)
 	SetNamespaceLabels(namespace string, labels map[string]string) (*v1.Namespace, error)
-	DeleteNamespace(ns string) error
-	CreateNamespace(ns *v1.Namespace) (*v1.Namespace, error)
+	DeleteNamespace(namespace string) error
 
-	DeleteAllNetworkPoliciesInNamespace(ns string) error
-	DeleteAllNetworkPoliciesInNamespaces(nss []string) error
-	DeleteNetworkPolicy(ns string, name string) error
-	GetNetworkPoliciesInNamespaces(namespaces []string) ([]networkingv1.NetworkPolicy, error)
-	UpdateNetworkPolicy(policy *networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error)
-	CreateNetworkPolicy(policy *networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error)
+	CreateNetworkPolicy(kubePolicy *networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error)
+	GetNetworkPoliciesInNamespace(namespace string) ([]networkingv1.NetworkPolicy, error)
+	UpdateNetworkPolicy(kubePolicy *networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error)
+	DeleteNetworkPolicy(namespace string, name string) error
+	DeleteAllNetworkPoliciesInNamespace(namespace string) error
 
+	CreateService(kubeService *v1.Service) (*v1.Service, error)
 	GetService(namespace string, name string) (*v1.Service, error)
-	CreateService(svc *v1.Service) (*v1.Service, error)
 	DeleteService(namespace string, name string) error
+	GetServicesInNamespace(namespace string) ([]v1.Service, error)
 
-	GetPodsInNamespaces(namespaces []string) ([]v1.Pod, error)
-	GetPod(namespace string, podName string) (*v1.Pod, error)
-	SetPodLabels(namespace string, podName string, labels map[string]string) (*v1.Pod, error)
-	CreatePod(pod *v1.Pod) (*v1.Pod, error)
-	DeletePod(namespace string, podName string) error
+	CreatePod(kubePod *v1.Pod) (*v1.Pod, error)
+	GetPod(namespace string, pod string) (*v1.Pod, error)
+	DeletePod(namespace string, pod string) error
+	SetPodLabels(namespace string, pod string, labels map[string]string) (*v1.Pod, error)
+	GetPodsInNamespace(namespace string) ([]v1.Pod, error)
 
 	ExecuteRemoteCommand(namespace string, pod string, container string, command []string) (string, string, error, error)
+}
+
+func GetNetworkPoliciesInNamespaces(kubernetes IKubernetes, namespaces []string) ([]networkingv1.NetworkPolicy, error) {
+	var allNetpols []networkingv1.NetworkPolicy
+	for _, ns := range namespaces {
+		netpols, err := kubernetes.GetNetworkPoliciesInNamespace(ns)
+		if err != nil {
+			return nil, err
+		}
+		allNetpols = append(allNetpols, netpols...)
+	}
+	return allNetpols, nil
+}
+
+func DeleteAllNetworkPoliciesInNamespaces(kubernetes IKubernetes, namespaces []string) error {
+	for _, ns := range namespaces {
+		err := kubernetes.DeleteAllNetworkPoliciesInNamespace(ns)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func GetPodsInNamespaces(kubernetes IKubernetes, namespaces []string) ([]v1.Pod, error) {
+	var allPods []v1.Pod
+	for _, ns := range namespaces {
+		pods, err := kubernetes.GetPodsInNamespace(ns)
+		if err != nil {
+			return nil, err
+		}
+		allPods = append(allPods, pods...)
+	}
+	return allPods, nil
+}
+
+func GetServicesInNamespaces(kubernetes IKubernetes, namespaces []string) ([]v1.Service, error) {
+	var allServices []v1.Service
+	for _, ns := range namespaces {
+		svcs, err := kubernetes.GetServicesInNamespace(ns)
+		if err != nil {
+			return nil, err
+		}
+		allServices = append(allServices, svcs...)
+	}
+	return allServices, nil
 }
 
 type MockNamespace struct {
@@ -108,16 +154,6 @@ func (m *MockKubernetes) DeleteAllNetworkPoliciesInNamespace(ns string) error {
 	return nil
 }
 
-func (m *MockKubernetes) DeleteAllNetworkPoliciesInNamespaces(nss []string) error {
-	for _, ns := range nss {
-		err := m.DeleteAllNetworkPoliciesInNamespace(ns)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (m *MockKubernetes) DeleteNetworkPolicy(ns string, name string) error {
 	nsObject, err := m.getNamespaceObject(ns)
 	if err != nil {
@@ -130,16 +166,14 @@ func (m *MockKubernetes) DeleteNetworkPolicy(ns string, name string) error {
 	return nil
 }
 
-func (m *MockKubernetes) GetNetworkPoliciesInNamespaces(namespaces []string) ([]networkingv1.NetworkPolicy, error) {
+func (m *MockKubernetes) GetNetworkPoliciesInNamespace(namespace string) ([]networkingv1.NetworkPolicy, error) {
+	nsObject, err := m.getNamespaceObject(namespace)
+	if err != nil {
+		return nil, err
+	}
 	var netpols []networkingv1.NetworkPolicy
-	for _, ns := range namespaces {
-		nsObject, err := m.getNamespaceObject(ns)
-		if err != nil {
-			return nil, err
-		}
-		for _, netpol := range nsObject.Netpols {
-			netpols = append(netpols, *netpol)
-		}
+	for _, netpol := range nsObject.Netpols {
+		netpols = append(netpols, *netpol)
 	}
 	return netpols, nil
 }
@@ -203,16 +237,26 @@ func (m *MockKubernetes) DeleteService(namespace string, name string) error {
 	return nil
 }
 
-func (m *MockKubernetes) GetPodsInNamespaces(namespaces []string) ([]v1.Pod, error) {
+func (m *MockKubernetes) GetServicesInNamespace(namespace string) ([]v1.Service, error) {
+	nsObject, err := m.getNamespaceObject(namespace)
+	if err != nil {
+		return nil, err
+	}
+	var services []v1.Service
+	for _, svc := range nsObject.Services {
+		services = append(services, *svc)
+	}
+	return services, nil
+}
+
+func (m *MockKubernetes) GetPodsInNamespace(namespace string) ([]v1.Pod, error) {
 	var pods []v1.Pod
-	for _, ns := range namespaces {
-		nsObject, err := m.getNamespaceObject(ns)
-		if err != nil {
-			return nil, err
-		}
-		for _, pod := range nsObject.Pods {
-			pods = append(pods, *pod)
-		}
+	nsObject, err := m.getNamespaceObject(namespace)
+	if err != nil {
+		return nil, err
+	}
+	for _, pod := range nsObject.Pods {
+		pods = append(pods, *pod)
 	}
 	return pods, nil
 }

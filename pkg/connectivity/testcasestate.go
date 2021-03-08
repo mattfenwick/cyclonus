@@ -138,7 +138,7 @@ func (t *TestCaseState) DeletePod(ns string, pod string) error {
 }
 
 func (t *TestCaseState) ReadPolicies(namespaces []string) error {
-	policies, err := t.Kubernetes.GetNetworkPoliciesInNamespaces(namespaces)
+	policies, err := kube.GetNetworkPoliciesInNamespaces(t.Kubernetes, namespaces)
 	if err != nil {
 		return err
 	}
@@ -180,7 +180,7 @@ func getSliceOfPointers(netpols []networkingv1.NetworkPolicy) []*networkingv1.Ne
 }
 
 func (t *TestCaseState) verifyClusterStateHelper() error {
-	kubePods, err := t.Kubernetes.GetPodsInNamespaces(t.Resources.NamespacesSlice())
+	kubePods, err := kube.GetPodsInNamespaces(t.Kubernetes, t.Resources.NamespacesSlice())
 	if err != nil {
 		return err
 	}
@@ -274,7 +274,7 @@ func (t *TestCaseState) resetLabelsInKubeHelper() error {
 }
 
 func (t *TestCaseState) ResetClusterState() error {
-	err := t.Kubernetes.DeleteAllNetworkPoliciesInNamespaces(t.Resources.NamespacesSlice())
+	err := kube.DeleteAllNetworkPoliciesInNamespaces(t.Kubernetes, t.Resources.NamespacesSlice())
 	if err != nil {
 		return err
 	}
@@ -288,7 +288,7 @@ func (t *TestCaseState) VerifyClusterState() error {
 		return err
 	}
 
-	policies, err := t.Kubernetes.GetNetworkPoliciesInNamespaces(t.Resources.NamespacesSlice())
+	policies, err := kube.GetNetworkPoliciesInNamespaces(t.Kubernetes, t.Resources.NamespacesSlice())
 	if err != nil {
 		return err
 	}

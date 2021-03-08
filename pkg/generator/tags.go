@@ -59,8 +59,8 @@ const (
 )
 
 const (
-	TagIPBlockNoExcept   = "IP-block-no-except"
-	TagIPBlockWithExcept = "IP-block-with-except"
+	TagIPBlockNoExcept   = "ip-block-no-except"
+	TagIPBlockWithExcept = "ip-block-with-except"
 )
 
 const (

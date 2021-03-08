@@ -1,6 +1,7 @@
 package probe
 
 import (
+	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -47,7 +48,7 @@ func NewDefaultResources(kubernetes kube.IKubernetes, namespaces []string, podNa
 func (r *Resources) waitForPodsReady(kubernetes kube.IKubernetes, timeoutSeconds int) error {
 	sleep := 5
 	for i := 0; i < timeoutSeconds; i += sleep {
-		podList, err := kubernetes.GetPodsInNamespaces(r.NamespacesSlice())
+		podList, err := kube.GetPodsInNamespaces(kubernetes, r.NamespacesSlice())
 		if err != nil {
 			return err
 		}
@@ -69,7 +70,7 @@ func (r *Resources) waitForPodsReady(kubernetes kube.IKubernetes, timeoutSeconds
 }
 
 func (r *Resources) getPodIPsFromKube(kubernetes kube.IKubernetes) error {
-	podList, err := kubernetes.GetPodsInNamespaces(r.NamespacesSlice())
+	podList, err := kube.GetPodsInNamespaces(kubernetes, r.NamespacesSlice())
 	if err != nil {
 		return err
 	}
@@ -84,6 +85,11 @@ func (r *Resources) getPodIPsFromKube(kubernetes kube.IKubernetes) error {
 			return errors.Errorf("unable to find pod %s/%s in resources", kubePod.Namespace, kubePod.Name)
 		}
 		pod.IP = kubePod.Status.PodIP
+		kubeService, err := kubernetes.GetService(pod.Namespace, pod.ServiceName())
+		if err != nil {
+			return err
+		}
+		pod.ServiceIP = kubeService.Spec.ClusterIP
 
 		logrus.Debugf("ip for pod %s/%s: %s", pod.Namespace, pod.Name, pod.IP)
 	}
@@ -265,7 +271,17 @@ func KubeNamespace(ns string, labels map[string]string) *v1.Namespace {
 	return &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns, Labels: labels}}
 }
 
-func (r *Resources) GetJobsForNamedPortProtocol(port intstr.IntOrString, protocol v1.Protocol) *Jobs {
+func (r *Resources) GetJobsForProbeConfig(config *generator.ProbeConfig) *Jobs {
+	if config.AllAvailable {
+		return r.GetJobsAllAvailableServers(config.Mode)
+	} else if config.PortProtocol != nil {
+		return r.GetJobsForNamedPortProtocol(config.PortProtocol.Port, config.PortProtocol.Protocol, config.Mode)
+	} else {
+		panic(errors.Errorf("invalid ProbeConfig %+v", config))
+	}
+}
+
+func (r *Resources) GetJobsForNamedPortProtocol(port intstr.IntOrString, protocol v1.Protocol, mode generator.ProbeMode) *Jobs {
 	jobs := &Jobs{}
 	for _, podFrom := range r.Pods {
 		for _, podTo := range r.Pods {
@@ -278,7 +294,7 @@ func (r *Resources) GetJobsForNamedPortProtocol(port intstr.IntOrString, protoco
 				FromContainer:       podFrom.Containers[0].Name,
 				FromIP:              podFrom.IP,
 				ToKey:               podTo.PodString().String(),
-				ToHost:              kube.QualifiedServiceAddress(podTo.ServiceName(), podTo.Namespace),
+				ToHost:              podTo.Host(mode),
 				ToNamespace:         podTo.Namespace,
 				ToNamespaceLabels:   r.Namespaces[podTo.Namespace],
 				ToPodLabels:         podTo.Labels,
@@ -317,7 +333,7 @@ func (r *Resources) GetJobsForNamedPortProtocol(port intstr.IntOrString, protoco
 	return jobs
 }
 
-func (r *Resources) GetJobsAllAvailableServers() *Jobs {
+func (r *Resources) GetJobsAllAvailableServers(mode generator.ProbeMode) *Jobs {
 	var jobs []*Job
 	for _, podFrom := range r.Pods {
 		for _, podTo := range r.Pods {
@@ -331,7 +347,7 @@ func (r *Resources) GetJobsAllAvailableServers() *Jobs {
 					FromContainer:       podFrom.Containers[0].Name,
 					FromIP:              podFrom.IP,
 					ToKey:               podTo.PodString().String(),
-					ToHost:              kube.QualifiedServiceAddress(podTo.ServiceName(), podTo.Namespace),
+					ToHost:              podTo.Host(mode),
 					ToNamespace:         podTo.Namespace,
 					ToNamespaceLabels:   r.Namespaces[podTo.Namespace],
 					ToPodLabels:         podTo.Labels,

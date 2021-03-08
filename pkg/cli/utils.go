@@ -60,7 +60,7 @@ func readPoliciesFromPath(policyPath string) ([]*networkingv1.NetworkPolicy, err
 }
 
 func readPoliciesFromKube(kubeClient *kube.Kubernetes, namespaces []string) ([]*networkingv1.NetworkPolicy, error) {
-	netpols, err := kubeClient.GetNetworkPoliciesInNamespaces(namespaces)
+	netpols, err := kube.GetNetworkPoliciesInNamespaces(kubeClient, namespaces)
 	if err != nil {
 		return nil, err
 	}

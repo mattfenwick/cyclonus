@@ -12,7 +12,7 @@ func (r *Resources) RenderTable() string {
 	tableString := &strings.Builder{}
 	table := tablewriter.NewWriter(tableString)
 
-	table.SetHeader([]string{"Namespace", "NS Labels", "Pod", "Pod Labels", "Pod IP", "Containers/Ports"})
+	table.SetHeader([]string{"Namespace", "NS Labels", "Pod", "Pod Labels", "IPs", "Containers/Ports"})
 	table.SetAutoMergeCells(true)
 	table.SetRowLine(true)
 
@@ -42,7 +42,7 @@ func (r *Resources) RenderTable() string {
 					labelsToLines(labels),
 					pod.Name,
 					labelsToLines(pod.Labels),
-					pod.IP,
+					fmt.Sprintf("pod: %s\nservice: %s", pod.IP, pod.ServiceIP),
 					fmt.Sprintf("%s, port %s: %d on %s", cont.Name, cont.PortName, cont.Port, cont.Protocol),
 				})
 			}

@@ -13,6 +13,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/yaml"
+	"strings"
 )
 
 type ProbeArgs struct {
@@ -22,6 +23,7 @@ type ProbeArgs struct {
 	PerturbationWaitSeconds   int
 	PodCreationTimeoutSeconds int
 	PolicyPath                string
+	ProbeMode                 string
 
 	// what to probe on
 	ProbeAllAvailable bool
@@ -55,6 +57,8 @@ func SetupProbeCommand() *cobra.Command {
 	command.Flags().BoolVar(&args.ProbeAllAvailable, "all-available", false, "if true, probe all available ports and protocols on each pod")
 	command.Flags().StringSliceVar(&args.Ports, "port", []string{"80"}, "ports to run probes on; may be named port or numbered port")
 	command.Flags().StringSliceVar(&args.Protocols, "protocol", []string{"tcp"}, "protocols to run probes on")
+
+	command.Flags().StringVar(&args.ProbeMode, "probe-mode", generator.ProbeModeServiceName, "probe mode to use, must be one of "+strings.Join(generator.AllProbeModes, ", "))
 
 	command.Flags().BoolVar(&args.Noisy, "noisy", false, "if true, print all results")
 	command.Flags().BoolVar(&args.IgnoreLoopback, "ignore-loopback", false, "if true, ignore loopback for truthtable correctness verification")
@@ -109,18 +113,16 @@ func RunProbeCommand(args *ProbeArgs) {
 		IgnoreLoopback: args.IgnoreLoopback,
 	}
 
+	mode, err := generator.ParseProbeMode(args.ProbeMode)
+	utils.DoOrDie(err)
+
 	if args.ProbeAllAvailable {
-		result := interpreter.ExecuteTestCase(generator.NewSingleStepTestCase("all available one-off probe", generator.NewStringSet(), &generator.ProbeConfig{AllAvailable: true}, actions...))
+		result := interpreter.ExecuteTestCase(generator.NewSingleStepTestCase("all available one-off probe", generator.NewStringSet(), generator.NewAllAvailable(mode), actions...))
 		printer.PrintTestCaseResult(result)
 	} else {
 		for _, port := range args.Ports {
 			for _, protocol := range protocols {
-				parsedPort := intstr.Parse(port)
-				pp := &generator.PortProtocol{
-					Protocol: protocol,
-					Port:     parsedPort,
-				}
-				probeConfig := &generator.ProbeConfig{PortProtocol: pp}
+				probeConfig := generator.NewProbeConfig(intstr.Parse(port), protocol, mode)
 				result := interpreter.ExecuteTestCase(generator.NewSingleStepTestCase("specific port/protocol one-off probe", generator.NewStringSet(), probeConfig, actions...))
 
 				printer.PrintTestCaseResult(result)

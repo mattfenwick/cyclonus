@@ -6,10 +6,7 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/mattfenwick/cyclonus/pkg/worker"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"strings"
 )
 
@@ -30,21 +27,7 @@ func NewKubeBatchRunner(kubernetes kube.IKubernetes, workers int) *Runner {
 }
 
 func (p *Runner) RunProbeForConfig(probeConfig *generator.ProbeConfig, resources *Resources) *Table {
-	if probeConfig.AllAvailable {
-		return p.RunAllAvailablePortsProbe(resources)
-	} else if probeConfig.PortProtocol != nil {
-		return p.RunProbeFixedPortProtocol(resources, probeConfig.PortProtocol.Port, probeConfig.PortProtocol.Protocol)
-	} else {
-		panic(errors.Errorf("invalid ProbeConfig value %+v", probeConfig))
-	}
-}
-
-func (p *Runner) RunAllAvailablePortsProbe(resources *Resources) *Table {
-	return NewTableFromJobResults(resources, p.runProbe(resources.GetJobsAllAvailableServers()))
-}
-
-func (p *Runner) RunProbeFixedPortProtocol(resources *Resources, port intstr.IntOrString, protocol v1.Protocol) *Table {
-	return NewTableFromJobResults(resources, p.runProbe(resources.GetJobsForNamedPortProtocol(port, protocol)))
+	return NewTableFromJobResults(resources, p.runProbe(resources.GetJobsForProbeConfig(probeConfig)))
 }
 
 func (p *Runner) runProbe(jobs *Jobs) []*JobResult {

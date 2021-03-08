@@ -100,7 +100,7 @@ func RunAnalyzeCommand(args *AnalyzeArgs) {
 			namespaces = []string{v1.NamespaceAll}
 		}
 		kubePolicies, err = readPoliciesFromKube(kubeClient, namespaces)
-		kubePods, err = kubeClient.GetPodsInNamespaces(namespaces)
+		kubePods, err = kube.GetPodsInNamespaces(kubeClient, namespaces)
 	}
 	// 2. read policies from file
 	if args.PolicyPath != "" {
@@ -233,7 +233,7 @@ func ProbeSyntheticConnectivity(explainedPolicies *matcher.Policy, modelPath str
 		// run probes
 		for _, probeConfig := range config.Probes {
 			probeResult := probe.NewSimulatedRunner(explainedPolicies).
-				RunProbeFixedPortProtocol(config.Resources, probeConfig.Port, probeConfig.Protocol)
+				RunProbeForConfig(generator.NewProbeConfig(probeConfig.Port, probeConfig.Protocol, generator.ProbeModeServiceName), config.Resources)
 
 			logrus.Infof("probe on port %s, protocol %s", probeConfig.Port.String(), probeConfig.Protocol)
 

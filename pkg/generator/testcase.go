@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -107,11 +108,46 @@ func mergeSets(l, r map[string]bool) map[string]bool {
 	return merged
 }
 
+type ProbeMode string
+
+const (
+	ProbeModeServiceName = "service-name"
+	ProbeModeServiceIP   = "service-ip"
+	ProbeModePodIP       = "pod-ip"
+)
+
+var AllProbeModes = []string{
+	ProbeModeServiceName,
+	ProbeModeServiceIP,
+	ProbeModePodIP,
+}
+
+func ParseProbeMode(mode string) (ProbeMode, error) {
+	switch mode {
+	case ProbeModeServiceName:
+		return ProbeModeServiceName, nil
+	case ProbeModeServiceIP:
+		return ProbeModeServiceIP, nil
+	case ProbeModePodIP:
+		return ProbeModePodIP, nil
+	}
+	return "", errors.Errorf("invalid probe mode %s", mode)
+}
+
 // ProbeConfig: exactly one field must be non-null (or, in AllAvailable's case, non-false).  This
 //   models a discriminated union (sum type).
 type ProbeConfig struct {
 	AllAvailable bool
 	PortProtocol *PortProtocol
+	Mode         ProbeMode
+}
+
+func NewAllAvailable(mode ProbeMode) *ProbeConfig {
+	return &ProbeConfig{AllAvailable: true, Mode: mode}
+}
+
+func NewProbeConfig(port intstr.IntOrString, protocol v1.Protocol, mode ProbeMode) *ProbeConfig {
+	return &ProbeConfig{PortProtocol: &PortProtocol{Protocol: protocol, Port: port}, Mode: mode}
 }
 
 type PortProtocol struct {
