@@ -1,0 +1,3 @@
+Flannel is only focused on networking. For network policy, use other projects such as Calico, Antrea, Cilium, etc
+
+More info: https://github.com/flannel-io/flannel
