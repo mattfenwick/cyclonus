@@ -21,7 +21,7 @@ jobs:
           sudo apt-get clean
           df -h
       - uses: actions/checkout@v2
-      - run: make
+#      - run: make
       - name: Install Kind
         run: |
           curl -Lo ./kind https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-$(uname)-amd64
