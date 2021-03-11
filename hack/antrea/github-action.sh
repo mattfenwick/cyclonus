@@ -6,17 +6,18 @@ set -xv
 WAIT_TIMEOUT=240m
 JOB_NAME=job.batch/cyclonus
 JOB_NS=netpol
+CLUSTER_NAME=kind-antrea
 
-./setup-kind.sh
+CLUSTER=$CLUSTER_NAME ./setup-kind.sh
 
 # preload images
 # kind load docker-image projects.registry.vmware.com/antrea/antrea-ubuntu:latest
 #
 docker pull mfenwick100/cyclonus:latest
-kind load docker-image mfenwick100/cyclonus:latest
+kind load docker-image mfenwick100/cyclonus:latest --name $CLUSTER_NAME
 #
 docker pull k8s.gcr.io/e2e-test-images/agnhost:2.28
-kind load docker-image k8s.gcr.io/e2e-test-images/agnhost:2.28
+kind load docker-image k8s.gcr.io/e2e-test-images/agnhost:2.28 --name $CLUSTER_NAME
 
 # get some debug info
 kubectl get nodes
