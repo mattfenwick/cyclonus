@@ -6,7 +6,7 @@ set -xv
 CLUSTER_NAME=${CLUSTER_NAME:-netpol-calico}
 
 
-kind create cluster --name "$CLUSTER_NAME" --config conf.yaml
+kind create cluster --name "$CLUSTER_NAME" --config kind-config.yaml
 until kubectl cluster-info;  do
     echo "$(date)waiting for cluster..."
     sleep 2
