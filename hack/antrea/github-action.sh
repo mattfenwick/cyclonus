@@ -10,7 +10,7 @@ JOB_NS=netpol
 ./setup-kind.sh
 
 # preload images
-kind load docker-image projects.registry.vmware.com/antrea/antrea-ubuntu:latest
+# kind load docker-image projects.registry.vmware.com/antrea/antrea-ubuntu:latest
 #
 docker pull mfenwick100/cyclonus:latest
 kind load docker-image mfenwick100/cyclonus:latest
@@ -22,9 +22,15 @@ kind load docker-image k8s.gcr.io/e2e-test-images/agnhost:2.28
 kubectl get nodes
 kubectl get pods -A
 
-../run-cyclonus-job.sh ./cyclonus-job.yaml
+echo 'DEBUG 1 TODO: remove me $?'
+
+../run-cyclonus-job.sh ./cyclonus-job-github-action.yaml
+
+echo 'DEBUG 2 TODO: remove me $?'
 
 time kubectl wait --for=condition=complete --timeout=$WAIT_TIMEOUT -n $JOB_NS $JOB_NAME
+
+echo 'DEBUG 3 TODO: remove me $?'
 
 echo "===> Checking cyclonus results <==="
 

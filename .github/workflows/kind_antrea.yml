@@ -29,4 +29,4 @@ jobs:
           sudo mv kind /usr/local/bin
       - name: Run cyclonus tests
         working-directory: hack/antrea
-        run: ./setup-and-run.sh
+        run: ./github-action.sh
