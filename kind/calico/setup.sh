@@ -1,25 +1,22 @@
 #!/usr/bin/env bash
 
-set -o errexit -o nounset -o pipefail
-set -xv
+source ../lib/common.sh
+source ../lib/calico.sh
 
-CLUSTER_NAME=${CLUSTER_NAME:-netpol-calico}
+trap calico_cleanup_cluster INT TERM
 
+calico_create_cluster $(pwd)/conf.yaml
 
-kind create cluster --name "$CLUSTER_NAME" --config conf.yaml
-until kubectl cluster-info;  do
-    echo "$(date)waiting for cluster..."
-    sleep 2
-done
+calico_apply_manifests
+calico_set_node_options
 
+echo "Waiting for calico to start running now... "
+wait_all_pods_status_running 5
 
-kubectl get pods
-kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
-kubectl -n kube-system set env daemonset/calico-node FELIX_IGNORELOOSERPF=true
-kubectl -n kube-system set env daemonset/calico-node FELIX_XDPENABLED=false
-sleep 5 ; kubectl -n kube-system get pods | grep calico-node
-echo "will wait for calico to start running now... "
-while true ; do
-    kubectl -n kube-system get pods
-    sleep 3
-done
+calico_download_client $(pwd)/calicoctl
+
+# Show information about client and server
+echo -e "\n==========================="
+echo -e "\e[1m\e[32mCalico client output\e[0m"
+echo -e "==========================="
+./calicoctl version
