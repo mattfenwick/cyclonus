@@ -3,10 +3,10 @@
 set -o errexit -o nounset -o pipefail
 set -xv
 
-CLUSTER_NAME=${CLUSTER_NAME:-netpol-calico}
+CLUSTER=${CLUSTER:-netpol-calico}
 
 
-kind create cluster --name "$CLUSTER_NAME" --config kind-config.yaml
+kind create cluster --name "$CLUSTER" --config kind-config.yaml
 until kubectl cluster-info;  do
     echo "$(date)waiting for cluster..."
     sleep 2
