@@ -6,13 +6,10 @@ set -xv
 WAIT_TIMEOUT=240m
 JOB_NAME=job.batch/cyclonus
 JOB_NS=netpol
-CLUSTER_NAME=kind-antrea
+CLUSTER_NAME=kind-cilium
 
 CLUSTER=$CLUSTER_NAME ./setup-kind.sh
 
-# preload images
-# kind load docker-image projects.registry.vmware.com/antrea/antrea-ubuntu:latest
-#
 docker pull mfenwick100/cyclonus:latest
 kind load docker-image mfenwick100/cyclonus:latest --name $CLUSTER_NAME
 #

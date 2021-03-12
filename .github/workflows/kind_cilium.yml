@@ -1,18 +1,18 @@
-name: Kind Calico Cyclonus
+name: Kind Cilium Cyclonus
 on:
-#  push:
-#  pull_request:
-  schedule:
-    # run once a day at 2 AM
-    - cron: '0 2 * * *'
+  push:
+  pull_request:
+#  schedule:
+#    # run once a day at 4 AM
+#    - cron: '0 4 * * *'
 
 env:
   KIND_VERSION: v0.9.0
 
 jobs:
 
-  test-kind-calico:
-    name: Run Cyclonus on KinD/Calico
+  test-kind-cilium:
+    name: Run Cyclonus on KinD/Cilium
     runs-on: [ubuntu-18.04]
     steps:
       - name: Free disk space
@@ -28,5 +28,5 @@ jobs:
           chmod +x ./kind
           sudo mv kind /usr/local/bin
       - name: Run cyclonus tests
-        working-directory: hack/calico
+        working-directory: hack/cilium
         run: ./github-action.sh

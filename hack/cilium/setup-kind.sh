@@ -7,7 +7,7 @@ CLUSTER=${CLUSTER:-netpol-cilium}
 CILIUM_VERSION=${CILIUM_VERSION:-"1.9.4"}
 IMAGE=quay.io/cilium/cilium:v${CILIUM_VERSION}
 
-kind create cluster --name="$CLUSTER" --config=conf.yaml
+kind create cluster --name="$CLUSTER" --config=kind-config.yaml
 until kubectl cluster-info; do
     echo "$(date) waiting for cluster..."
     sleep 2
