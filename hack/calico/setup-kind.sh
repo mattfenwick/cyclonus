@@ -13,10 +13,12 @@ until kubectl cluster-info;  do
 done
 
 
-kubectl get pods
+kubectl get pods -A
+
 kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
 kubectl -n kube-system set env daemonset/calico-node FELIX_IGNORELOOSERPF=true
 kubectl -n kube-system set env daemonset/calico-node FELIX_XDPENABLED=false
 
+kubectl get all -A
 
 kubectl wait --for=condition=ready pod -l k8s-app=calico-node -n kube-system
