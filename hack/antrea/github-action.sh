@@ -30,6 +30,6 @@ kubectl get pods -n netpol
 sleep 5
 kubectl get pods -n netpol
 
-kubectl wait --for=condition=ready pod -l job-name=cyclonus -n netpol
+kubectl wait --for=condition=ready pod -l job-name=cyclonus -n netpol --timeout=5m
 
 kubectl logs -f -n $JOB_NS $JOB_NAME
