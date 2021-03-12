@@ -4,7 +4,7 @@ set -xv
 set -e
 
 CLUSTER=${CLUSTER:-netpol-antrea}
-VERSION=${VERSION:-v0.12.0}
+VERSION=${VERSION:-v0.12.2}
 ANTREA_DIR=antrea-repo
 
 if [[ ! -d $ANTREA_DIR ]] ; then
