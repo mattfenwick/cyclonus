@@ -22,16 +22,6 @@ kubectl get pods -A
 
 ../run-cyclonus-job.sh ./cyclonus-job-github-action.yaml
 
-time kubectl wait --for=condition=complete --timeout=$WAIT_TIMEOUT -n $JOB_NS $JOB_NAME
+kubectl wait --for=condition=ready pod -l job-name=cyclonus -n netpol
 
-echo "===> Checking cyclonus results <==="
-
-LOG_FILE=$(mktemp)
-kubectl logs -n $JOB_NS $JOB_NAME > "$LOG_FILE"
-cat "$LOG_FILE"
-
-rc=0
-cat "$LOG_FILE" | grep "failure" > /dev/null 2>&1 || rc=$?
-if [ $rc -eq 0 ]; then
-    exit 1
-fi
+kubectl logs -f -n $JOB_NS $JOB_NAME

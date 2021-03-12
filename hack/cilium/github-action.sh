@@ -22,4 +22,6 @@ kubectl get pods -A
 
 ../run-cyclonus-job.sh ./cyclonus-job-github-action.yaml
 
+kubectl wait --for=condition=ready pod -l job-name=cyclonus -n netpol
+
 kubectl logs -f -n $JOB_NS $JOB_NAME
