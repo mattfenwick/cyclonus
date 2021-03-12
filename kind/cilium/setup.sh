@@ -4,8 +4,8 @@ set -e
 set -xv
 
 CLUSTER=${CLUSTER:-netpol-cilium}
-CILIUM_VERSION=${CILIUM_VERSION:-"1.9.4"}
-IMAGE=quay.io/cilium/cilium:v${CILIUM_VERSION}
+CILIUM_VERSION=${CILIUM_VERSION:-"v1.9.5"}
+IMAGE=quay.io/cilium/cilium:${CILIUM_VERSION}
 
 kind create cluster --name="$CLUSTER" --config=conf.yaml
 until kubectl cluster-info; do
