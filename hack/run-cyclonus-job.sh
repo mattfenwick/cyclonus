@@ -3,7 +3,6 @@
 set -euo pipefail
 set -xv
 
-JOB_YAML=$1
 JOB_NAME=job.batch/cyclonus
 JOB_NS=netpol
 
