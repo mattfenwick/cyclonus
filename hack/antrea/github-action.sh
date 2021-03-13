@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 
-set -eo pipefail
+set -eou pipefail
 set -xv
 
-WAIT_TIMEOUT=240m
 JOB_NAME=job.batch/cyclonus
 JOB_NS=netpol
 CLUSTER_NAME=kind-antrea
@@ -26,9 +25,8 @@ kubectl get pods -A
 ../run-cyclonus-job.sh ./cyclonus-job-github-action.yaml
 
 # wait for job to come up
-kubectl get pods -n netpol
 sleep 5
-kubectl get pods -n netpol
+kubectl get all -A
 
 kubectl wait --for=condition=ready pod -l job-name=cyclonus -n netpol --timeout=5m
 
