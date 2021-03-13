@@ -21,8 +21,9 @@ kubectl get pods -A
 
 ../run-cyclonus-job.sh ./cyclonus-job-github-action.yaml
 
-# wait for job to come up
-sleep 5
+# wait for job to start running
+# TODO there's got to be a better way to do this
+sleep 30
 kubectl get all -A
 
 kubectl wait --for=condition=ready pod -l job-name=cyclonus -n netpol --timeout=5m
