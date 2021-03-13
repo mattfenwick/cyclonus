@@ -1,0 +1,32 @@
+name: Kind Calico Cyclonus
+on:
+#  push:
+#  pull_request:
+  schedule:
+    # run once a day at 2 AM
+    - cron: '0 2 * * *'
+
+env:
+  KIND_VERSION: v0.9.0
+
+jobs:
+
+  test-kind-calico:
+    name: Run Cyclonus on KinD/Calico
+    runs-on: [ubuntu-18.04]
+    steps:
+      - name: Free disk space
+        # https://github.com/actions/virtual-environments/issues/709
+        run: |
+          sudo apt-get clean
+          df -h
+      - uses: actions/checkout@v2
+      #      - run: make
+      - name: Install Kind
+        run: |
+          curl -Lo ./kind https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-$(uname)-amd64
+          chmod +x ./kind
+          sudo mv kind /usr/local/bin
+      - name: Run cyclonus tests
+        working-directory: hack/calico
+        run: ./github-action.sh
