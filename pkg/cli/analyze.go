@@ -22,6 +22,7 @@ import (
 )
 
 const (
+	ParseMode        = "parse"
 	ExplainMode      = "explain"
 	LintMode         = "lint"
 	QueryTrafficMode = "query-traffic"
@@ -30,6 +31,7 @@ const (
 )
 
 var AllModes = []string{
+	ParseMode,
 	ExplainMode,
 	LintMode,
 	QueryTrafficMode,
@@ -115,13 +117,12 @@ func RunAnalyzeCommand(args *AnalyzeArgs) {
 
 	logrus.Debugf("parsed policies:\n%s", utils.JsonString(kubePolicies))
 
-	// 4. consume policies
-	explainedPolicies := matcher.BuildNetworkPolicies(kubePolicies)
-
 	for _, mode := range args.Modes {
 		switch mode {
+		case ParseMode:
+			ParsePolicies(kubePolicies)
 		case ExplainMode:
-			ExplainPolicies(explainedPolicies)
+			ExplainPolicies(matcher.BuildNetworkPolicies(kubePolicies))
 		case LintMode:
 			Lint(kubePolicies)
 		case QueryTargetMode:
@@ -132,15 +133,19 @@ func RunAnalyzeCommand(args *AnalyzeArgs) {
 					Labels:    p.Labels,
 				}
 			}
-			QueryTargets(explainedPolicies, args.TargetPodPath, pods)
+			QueryTargets(matcher.BuildNetworkPolicies(kubePolicies), args.TargetPodPath, pods)
 		case QueryTrafficMode:
-			QueryTraffic(explainedPolicies, args.TrafficPath)
+			QueryTraffic(matcher.BuildNetworkPolicies(kubePolicies), args.TrafficPath)
 		case ProbeMode:
-			ProbeSyntheticConnectivity(explainedPolicies, args.ProbePath, kubePods, kubeNamespaces)
+			ProbeSyntheticConnectivity(matcher.BuildNetworkPolicies(kubePolicies), args.ProbePath, kubePods, kubeNamespaces)
 		default:
 			panic(errors.Errorf("unrecognized mode %s", mode))
 		}
 	}
+}
+
+func ParsePolicies(kubePolicies []*networkingv1.NetworkPolicy) {
+	fmt.Println(kube.NetworkPoliciesToTable(kubePolicies))
 }
 
 func ExplainPolicies(explainedPolicies *matcher.Policy) {
