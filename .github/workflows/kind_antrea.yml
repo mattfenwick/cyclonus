@@ -3,9 +3,9 @@ on:
 #  push:
 #  pull_request:
   schedule:
-    # See https://crontab.guru/#0_0_*_*_0-5/2:
-    #   At 00:00 on every 2nd day-of-week from Sunday through Friday.
-    - cron: '0 0 * * 0-5/2'
+    # See https://crontab.guru/#0_0_*_*_0:
+    #   At 00:00 on Sunday.
+    - cron: '0 0 * * 0'
 #    # run once a day at midnight
 #    - cron: '0 0 * * *'
 
