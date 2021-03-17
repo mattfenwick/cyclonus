@@ -10,7 +10,6 @@ spec:
         - command:
             - ./cyclonus
             - generate
-            - --include=conflict
           name: cyclonus
           imagePullPolicy: IfNotPresent
           image: mfenwick100/cyclonus:latest

@@ -1,7 +1,7 @@
 name: Kind Ovn Cyclonus
 on:
 #  push:
-  pull_request:
+#  pull_request:
   workflow_dispatch:
   schedule:
     # See https://crontab.guru/#0_2_*_*_0:
@@ -15,7 +15,7 @@ jobs:
 
   test-kind-ovn-kubernetes:
     name: Run Cyclonus on KinD/Ovn
-    timeout-minutes: 200
+    timeout-minutes: 250
     runs-on: [ubuntu-18.04]
     steps:
       - name: Free disk space
