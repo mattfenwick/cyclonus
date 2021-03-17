@@ -12,6 +12,9 @@ kind load docker-image mfenwick100/cyclonus:latest --name "$CLUSTER_NAME"
 docker pull k8s.gcr.io/e2e-test-images/agnhost:2.28
 kind load docker-image k8s.gcr.io/e2e-test-images/agnhost:2.28 --name "$CLUSTER_NAME"
 
+kind get clusters
+kind export kubeconfig --name ovn
+
 # get some debug info
 kubectl get nodes
 kubectl get pods -A
