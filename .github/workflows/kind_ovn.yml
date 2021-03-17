@@ -1,7 +1,7 @@
 name: Kind Ovn Cyclonus
 on:
 #  push:
-#  pull_request:
+  pull_request:
   workflow_dispatch:
   schedule:
     # See https://crontab.guru/#0_2_*_*_0:
