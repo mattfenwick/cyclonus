@@ -3,7 +3,7 @@
 set -xv
 set -eou pipefail
 
-CLUSTER="netpol-ovn-kubernetes"
+CLUSTER="ovn"
 OVN_DIR="ovn-kubernetes-repo"
 PATCH_PATH="patch-fedora33-cg0-enabled.patch"
 

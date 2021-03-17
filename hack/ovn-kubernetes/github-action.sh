@@ -3,7 +3,7 @@
 set -eou pipefail
 set -xv
 
-CLUSTER_NAME=netpol-ovn-kubernetes
+CLUSTER_NAME=ovn
 
 CLUSTER=$CLUSTER_NAME ./setup-kind.sh
 
