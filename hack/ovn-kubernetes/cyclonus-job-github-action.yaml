@@ -10,6 +10,7 @@ spec:
         - command:
             - ./cyclonus
             - generate
+            - --ignore-loopback=true
           name: cyclonus
           imagePullPolicy: IfNotPresent
           image: mfenwick100/cyclonus:latest
