@@ -2,6 +2,7 @@ name: Kind Cilium Cyclonus
 on:
 #  push:
 #  pull_request:
+  workflow_dispatch:
   schedule:
     # run once a day at 4 AM
     - cron: '0 4 * * *'

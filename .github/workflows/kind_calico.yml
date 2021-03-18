@@ -2,6 +2,7 @@ name: Kind Calico Cyclonus
 on:
 #  push:
 #  pull_request:
+  workflow_dispatch:
   schedule:
     # run once a day at 2 AM
     - cron: '0 2 * * *'
