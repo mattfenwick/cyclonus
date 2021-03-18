@@ -13,7 +13,7 @@ docker pull k8s.gcr.io/e2e-test-images/agnhost:2.28
 kind load docker-image k8s.gcr.io/e2e-test-images/agnhost:2.28 --name "$CLUSTER_NAME"
 
 kind get clusters
-kind export kubeconfig --name ovn
+kind export kubeconfig --name "$CLUSTER_NAME"
 
 # get some debug info
 kubectl get nodes

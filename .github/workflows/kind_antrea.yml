@@ -2,6 +2,7 @@ name: Kind Antrea Cyclonus
 on:
 #  push:
 #  pull_request:
+  workflow_dispatch:
   schedule:
     # See https://crontab.guru/#0_0_*_*_0:
     #   At 00:00 on Sunday.
