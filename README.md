@@ -5,11 +5,11 @@
 Parse, explain, and probe network policies to understand their implications and help design
 policies that suit your needs!
 
-### Quickstart
+## Quickstart
 
 Grab the [latest release](https://github.com/mattfenwick/cyclonus/releases) to get started using Cyclonus.
 
-### Run as a kubernetes job
+## Run as a kubernetes job
 
 Take a look at the [hack directory](./hack):
 
@@ -363,4 +363,4 @@ goreleaser release --snapshot --rm-dist
 
 ## Motivation and History
 
-Testing network policys for CNI providers on Kubernetes has historically been very difficult, requiring alot of boiler plate.  This was recently improved upstream via truth table based tests (https://github.com/kubernetes/enhancements/tree/master/keps/sig-network/1611-network-policy-validation).  Cyclonus is the next evolution of the truth table tests which are part of upstream Kubernetes.  Cyclonus generates 100s of truth tables, and outputs results in the same, easy to read format.
+Testing network policies for CNI providers on Kubernetes has historically been very difficult, requiring a lot of boiler plate.  This was recently improved upstream via truth table based tests ([see KEP](https://github.com/kubernetes/enhancements/tree/master/keps/sig-network/1611-network-policy-validation)).  Cyclonus is the next evolution of the truth table tests which are part of upstream Kubernetes.  Cyclonus generates hundreds of network policies, their connectivity tables, and outputs results in the same, easy to read format.
