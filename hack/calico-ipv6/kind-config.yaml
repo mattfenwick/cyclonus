@@ -1,0 +1,14 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+  disableDefaultCNI: true # disable kindnet
+  # TODO why does this fail?
+#  podSubnet: fc00::/7
+  podSubnet: fc00::/48 # set to Calico's default subnet
+  ipFamily: ipv6
+  # required on mac, but not on linux: https://kind.sigs.k8s.io/docs/user/quick-start#ipv6-clusters
+  apiServerAddress: 127.0.0.1
+nodes:
+  - role: control-plane
+  - role: worker
+  - role: worker
