@@ -11,6 +11,7 @@ spec:
             - ./cyclonus
             - generate
             - --ignore-loopback=true
+            - --include=ipblock
             - --exclude=named-port,multi-peer,upstream-e2e,example
           name: cyclonus
           imagePullPolicy: IfNotPresent

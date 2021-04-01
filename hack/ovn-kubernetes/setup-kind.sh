@@ -20,6 +20,6 @@ pushd $OVN_DIR
   popd
 
   pushd contrib
-      KUBECONFIG=${HOME}/admin.conf ./kind.sh
+      KUBECONFIG=${HOME}/admin.conf ./kind.sh --no-ipv4 --ipv6
   popd
 popd
