@@ -201,7 +201,6 @@ func QueryTargetHelper(policies *matcher.Policy, pod *QueryTargetPod) (*matcher.
 	}
 
 	return matcher.NewPolicyWithTargets(ingressTargets, egressTargets), matcher.NewPolicyWithTargets(combinedIngresses, combinedEgresses)
-
 }
 
 func QueryTraffic(explainedPolicies *matcher.Policy, trafficPath string) {
