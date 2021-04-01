@@ -20,6 +20,7 @@ kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
 kubectl -n kube-system set env daemonset/calico-node FELIX_IGNORELOOSERPF=true
 kubectl -n kube-system set env daemonset/calico-node FELIX_XDPENABLED=false
 kubectl -n kube-system set env daemonset/calico-node FELIX_IPV6SUPPORT=true
+kubectl -n kube-system set env daemonset/calico-node IP6=autodetect
 
 kubectl get nodes
 kubectl get all -A
