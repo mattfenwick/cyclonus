@@ -3,9 +3,9 @@ on:
 #  push:
 #  pull_request:
   workflow_dispatch:
-  schedule:
+#  schedule:
     # At 01:00 on Sunday.
-    - cron: '0 1 * * 0'
+#    - cron: '0 1 * * 0'
 
 env:
   KIND_VERSION: v0.9.0
