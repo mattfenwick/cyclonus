@@ -15,5 +15,5 @@ spec:
             - --server-protocol=tcp,udp
           name: cyclonus
           imagePullPolicy: IfNotPresent
-          image: mfenwick100/cyclonus:latest
+          image: mfenwick100/cyclonus:v0.3.1
       serviceAccount: cyclonus
