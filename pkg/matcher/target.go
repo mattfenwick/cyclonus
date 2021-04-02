@@ -12,7 +12,7 @@ import (
 type Target struct {
 	Namespace   string
 	PodSelector metav1.LabelSelector
-	Peer        PeerMatcher
+	Peers       []PeerMatcher
 	SourceRules []*networkingv1.NetworkPolicy
 	primaryKey  string
 }
@@ -38,7 +38,7 @@ func (t *Target) Combine(other *Target) *Target {
 	return &Target{
 		Namespace:   t.Namespace,
 		PodSelector: t.PodSelector,
-		Peer:        CombinePeerMatchers(t.Peer, other.Peer),
+		Peers:       append(t.Peers, other.Peers...),
 		SourceRules: append(t.SourceRules, other.SourceRules...),
 	}
 }
@@ -60,11 +60,11 @@ func CombineTargetsIgnoringPrimaryKey(namespace string, podSelector metav1.Label
 	target := &Target{
 		Namespace:   namespace,
 		PodSelector: podSelector,
-		Peer:        targets[0].Peer,
+		Peers:       targets[0].Peers,
 		SourceRules: targets[0].SourceRules,
 	}
 	for _, t := range targets[1:] {
-		target.Peer = CombinePeerMatchers(target.Peer, t.Peer)
+		target.Peers = append(target.Peers, t.Peers...)
 		target.SourceRules = append(target.SourceRules, t.SourceRules...)
 	}
 	return target

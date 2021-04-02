@@ -29,7 +29,7 @@ func RunBuilderTests() {
 			ingress, egress := BuildTarget(netpol.AllowNoIngress)
 
 			Expect(ingress.Peer).To(Equal(&NonePeerMatcher{}))
-			//Expect(target.Ingress).To(Equal(&PeerMatcher{Matchers: []*NamespacePodMatcher{}}))
+			//Expect(target.Ingress).To(Equal(&PeerMatcher{Matchers: []*PodPeerMatcher{}}))
 			Expect(egress).To(BeNil())
 		})
 
@@ -163,17 +163,17 @@ func RunBuilderTests() {
 			})
 			port53UDPMatcher := &SpecificPortMatcher{Ports: []*PortProtocolMatcher{{Port: &port53, Protocol: v1.ProtocolUDP}}}
 			port80TCPMatcher := &SpecificPortMatcher{Ports: []*PortProtocolMatcher{{Port: &port80, Protocol: v1.ProtocolTCP}}}
-			ip := &IPBlockMatcher{
+			ip := &IPPeerMatcher{
 				IPBlock: netpol.IPBlock_192_168_242_213_24,
 				Port:    port80TCPMatcher,
 			}
 			Expect(peer).To(Equal(&SpecificPeerMatcher{
 				IP: NewSpecificIPMatcher(port53UDPMatcher, ip),
-				Internal: NewSpecificInternalMatcher(&NamespacePodMatcher{
+				Internal: NewSpecificInternalMatcher(&PodPeerMatcher{
 					Namespace: &ExactNamespaceMatcher{Namespace: "abc"},
 					Pod:       &AllPodMatcher{},
 					Port:      port80TCPMatcher,
-				}, &NamespacePodMatcher{
+				}, &PodPeerMatcher{
 					Namespace: &AllNamespaceMatcher{},
 					Pod:       &AllPodMatcher{},
 					Port:      port53UDPMatcher,
@@ -200,7 +200,7 @@ func RunBuilderTests() {
 					Protocol: v1.ProtocolSCTP,
 				},
 			}}
-			matcher := &NamespacePodMatcher{
+			matcher := &PodPeerMatcher{
 				Namespace: &AllNamespaceMatcher{},
 				Pod:       &AllPodMatcher{},
 				Port:      portMatcher,
@@ -219,7 +219,7 @@ func RunBuilderTests() {
 					IPBlock:           netpol.IPBlock_10_0_0_1_24,
 				},
 			})
-			ip := &IPBlockMatcher{
+			ip := &IPPeerMatcher{
 				IPBlock: netpol.IPBlock_10_0_0_1_24,
 				Port:    &AllPortMatcher{},
 			}
@@ -251,14 +251,14 @@ func RunBuilderTests() {
 					IPBlock:           nil,
 				},
 			})
-			matcher := &NamespacePodMatcher{
+			matcher := &PodPeerMatcher{
 				Namespace: &ExactNamespaceMatcher{Namespace: "abc"},
 				Pod:       &AllPodMatcher{},
 				Port:      &AllPortMatcher{},
 			}
 			Expect(peer).To(Equal(&SpecificPeerMatcher{
 				IP: &NoneIPMatcher{},
-				Internal: &SpecificInternalMatcher{NamespacePods: map[string]*NamespacePodMatcher{
+				Internal: &SpecificInternalMatcher{NamespacePods: map[string]*PodPeerMatcher{
 					matcher.PrimaryKey(): matcher,
 				}},
 			}))
@@ -270,12 +270,12 @@ func RunBuilderTests() {
 		It("should combine Peer matchers correctly", func() {
 			all := &AllPeerMatcher{}
 			none := &NonePeerMatcher{}
-			ip := &IPBlockMatcher{
+			ip := &IPPeerMatcher{
 				IPBlock: netpol.IPBlock_10_0_0_1_24,
 				Port:    &AllPortMatcher{},
 			}
 			someIps := &SpecificPeerMatcher{
-				IP: &SpecificIPMatcher{IPBlocks: map[string]*IPBlockMatcher{
+				IP: &SpecificIPMatcher{IPBlocks: map[string]*IPPeerMatcher{
 					ip.PrimaryKey(): ip,
 				}},
 				Internal: &NoneInternalMatcher{},
@@ -314,12 +314,12 @@ func RunBuilderTests() {
 		It("should combine Internal matchers correctly", func() {
 			all := &AllInternalMatcher{}
 			none := &NoneInternalMatcher{}
-			np1 := &NamespacePodMatcher{
+			np1 := &PodPeerMatcher{
 				Namespace: &AllNamespaceMatcher{},
 				Pod:       &LabelSelectorPodMatcher{Selector: *netpol.SelectorAB},
 				Port:      &AllPortMatcher{},
 			}
-			some1 := &SpecificInternalMatcher{NamespacePods: map[string]*NamespacePodMatcher{
+			some1 := &SpecificInternalMatcher{NamespacePods: map[string]*PodPeerMatcher{
 				np1.PrimaryKey(): np1,
 			}}
 
@@ -401,7 +401,7 @@ func RunBuilderTests() {
 
 		It("allow ipblock", func() {
 			ip, ns, pod := BuildIPBlockNamespacePodMatcher(netpol.Namespace, netpol.AllowIPBlockPeer)
-			Expect(ip).To(Equal(&IPBlockMatcher{
+			Expect(ip).To(Equal(&IPPeerMatcher{
 				IPBlock: netpol.IPBlock_10_0_0_1_24,
 				Port:    nil,
 			}))

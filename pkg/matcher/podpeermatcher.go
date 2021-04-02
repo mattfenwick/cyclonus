@@ -8,28 +8,23 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type NamespacePodMatcher struct {
+type PodPeerMatcher struct {
 	Namespace NamespaceMatcher
 	Pod       PodMatcher
 	Port      PortMatcher
 }
 
-func (ppm *NamespacePodMatcher) PrimaryKey() string {
+func (ppm *PodPeerMatcher) PrimaryKey() string {
 	return ppm.Namespace.PrimaryKey() + "---" + ppm.Pod.PrimaryKey()
 }
 
-func (ppm *NamespacePodMatcher) Allows(peer *InternalPeer, portInt int, portName string, protocol v1.Protocol) bool {
-	return ppm.Namespace.Allows(peer.Namespace, peer.NamespaceLabels) &&
-		ppm.Pod.Allows(peer.PodLabels) &&
-		ppm.Port.Allows(portInt, portName, protocol)
-}
-
-func (ppm *NamespacePodMatcher) Combine(otherPort PortMatcher) *NamespacePodMatcher {
-	return &NamespacePodMatcher{
-		Namespace: ppm.Namespace,
-		Pod:       ppm.Pod,
-		Port:      CombinePortMatchers(ppm.Port, otherPort),
+func (ppm *PodPeerMatcher) Allows(peer *TrafficPeer, portInt int, portName string, protocol v1.Protocol) bool {
+	if peer.IsExternal() {
+		return false
 	}
+	return ppm.Namespace.Allows(peer.Internal.Namespace, peer.Internal.NamespaceLabels) &&
+		ppm.Pod.Allows(peer.Internal.PodLabels) &&
+		ppm.Port.Allows(portInt, portName, protocol)
 }
 
 // PodMatcher possibilities:

@@ -2,7 +2,6 @@ package matcher
 
 import (
 	"encoding/json"
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -11,39 +10,7 @@ type PortMatcher interface {
 	Allows(portInt int, portName string, protocol v1.Protocol) bool
 }
 
-func CombinePortMatchers(a PortMatcher, b PortMatcher) PortMatcher {
-	switch l := a.(type) {
-	case *AllPortMatcher:
-		return a
-	case *NonePortMatcher:
-		return b
-	case *SpecificPortMatcher:
-		switch r := b.(type) {
-		case *AllPortMatcher:
-			return b
-		case *NonePortMatcher:
-			return a
-		case *SpecificPortMatcher:
-			return l.Combine(r)
-		default:
-			panic(errors.Errorf("invalid Port type %T", b))
-		}
-	default:
-		panic(errors.Errorf("invalid Port type %T", a))
-	}
-}
-
-type NonePortMatcher struct{}
-
-func (n *NonePortMatcher) Allows(portInt int, portName string, protocol v1.Protocol) bool {
-	return false
-}
-
-func (n *NonePortMatcher) MarshalJSON() (b []byte, e error) {
-	return json.Marshal(map[string]interface{}{
-		"Type": "no ports",
-	})
-}
+// TODO add port range
 
 type AllPortMatcher struct{}
 

@@ -44,88 +44,66 @@ func (s *SliceBuilder) TargetsTableLines(targets []*Target, isIngress bool) {
 	} else {
 		ruleType = "Egress"
 	}
-	for _, ingress := range targets {
+	for _, target := range targets {
 		var sourceRules []string
-		for _, sr := range ingress.SourceRules {
+		for _, sr := range target.SourceRules {
 			sourceRules = append(sourceRules, fmt.Sprintf("%s/%s", sr.Namespace, sr.Name))
 		}
-		target := fmt.Sprintf("namespace: %s\n%s", ingress.Namespace, kube.LabelSelectorTableLines(ingress.PodSelector))
+		targetString := fmt.Sprintf("namespace: %s\n%s", target.Namespace, kube.LabelSelectorTableLines(target.PodSelector))
 		rules := strings.Join(sourceRules, "\n")
-		s.Prefix = []string{ruleType, target, rules}
+		s.Prefix = []string{ruleType, targetString, rules}
 
-		switch a := ingress.Peer.(type) {
-		case *AllPeerMatcher:
-			s.Append("all pods, all ips", "all ports, all protocols")
-		case *NonePeerMatcher:
-			s.Append("no pods, no ips", "no ports, no protocols")
-		case *SpecificPeerMatcher:
-			switch ip := a.IP.(type) {
-			case *AllIPMatcher:
-				s.Append("all ips", "all ports, all protocols")
-			case *NoneIPMatcher:
-				s.Append("no ips", "no ports, no protocols")
-			case *SpecificIPMatcher:
-				s.SpecificIPMatcherTableLines(ip)
+		for _, peer := range target.Peers {
+			switch a := peer.(type) {
+			case *AllPeerMatcher:
+				s.Append("all pods, all ips", "all ports, all protocols")
+			case *NonePeerMatcher:
+				s.Append("no pods, no ips", "no ports, no protocols")
+			case *IPPeerMatcher:
+				s.IPPeerMatcherTableLines(a)
+			case *PodPeerMatcher:
+				s.PodPeerMatcherTableLines(a)
 			default:
-				panic(errors.Errorf("invalid IPMatcher type %T", ip))
+				panic(errors.Errorf("invalid PeerMatcher type %T", a))
 			}
-			switch internal := a.Internal.(type) {
-			case *AllInternalMatcher:
-				s.Append("all pods", "all ports, all protocols")
-			case *NoneInternalMatcher:
-				s.Append("no pods", "no ports, no protocols")
-			case *SpecificInternalMatcher:
-				s.SpecificInternalMatcherTableLines(internal)
-			default:
-				panic(errors.Errorf("invalid InternalMatcher type %T", internal))
-			}
-		default:
-			panic(errors.Errorf("invalid PeerMatcher type %T", a))
 		}
 	}
 }
 
-func (s *SliceBuilder) SpecificIPMatcherTableLines(ip *SpecificIPMatcher) {
-	s.Append("ports for all IPs", strings.Join(PortMatcherTableLines(ip.PortsForAllIPs), "\n"))
-	for _, block := range ip.SortedIPBlocks() {
-		peer := block.IPBlock.CIDR + "\n" + fmt.Sprintf("except %+v", block.IPBlock.Except)
-		pps := PortMatcherTableLines(block.Port)
-		s.Append(peer, strings.Join(pps, "\n"))
-	}
+func (s *SliceBuilder) IPPeerMatcherTableLines(ip *IPPeerMatcher) {
+	peer := ip.IPBlock.CIDR + "\n" + fmt.Sprintf("except %+v", ip.IPBlock.Except)
+	pps := PortMatcherTableLines(ip.Port)
+	s.Append(peer, strings.Join(pps, "\n"))
 }
 
-func (s *SliceBuilder) SpecificInternalMatcherTableLines(internal *SpecificInternalMatcher) {
-	for _, nsPodMatcher := range internal.NamespacePods {
-		var namespaces string
-		switch ns := nsPodMatcher.Namespace.(type) {
-		case *AllNamespaceMatcher:
-			namespaces = "all"
-		case *LabelSelectorNamespaceMatcher:
-			namespaces = kube.LabelSelectorTableLines(ns.Selector)
-		case *ExactNamespaceMatcher:
-			namespaces = ns.Namespace
-		default:
-			panic(errors.Errorf("invalid NamespaceMatcher type %T", ns))
-		}
-		var pods string
-		switch p := nsPodMatcher.Pod.(type) {
-		case *AllPodMatcher:
-			pods = "all"
-		case *LabelSelectorPodMatcher:
-			pods = kube.LabelSelectorTableLines(p.Selector)
-		default:
-			panic(errors.Errorf("invalid PodMatcher type %T", p))
-		}
-		s.Append("namespace: "+namespaces+"\n"+"pods: "+pods, strings.Join(PortMatcherTableLines(nsPodMatcher.Port), "\n"))
+func (s *SliceBuilder) PodPeerMatcherTableLines(nsPodMatcher *PodPeerMatcher) {
+	var namespaces string
+	switch ns := nsPodMatcher.Namespace.(type) {
+	case *AllNamespaceMatcher:
+		namespaces = "all"
+	case *LabelSelectorNamespaceMatcher:
+		namespaces = kube.LabelSelectorTableLines(ns.Selector)
+	case *ExactNamespaceMatcher:
+		namespaces = ns.Namespace
+	default:
+		panic(errors.Errorf("invalid NamespaceMatcher type %T", ns))
 	}
+	var pods string
+	switch p := nsPodMatcher.Pod.(type) {
+	case *AllPodMatcher:
+		pods = "all"
+	case *LabelSelectorPodMatcher:
+		pods = kube.LabelSelectorTableLines(p.Selector)
+	default:
+		panic(errors.Errorf("invalid PodMatcher type %T", p))
+	}
+	s.Append("namespace: "+namespaces+"\n"+"pods: "+pods, strings.Join(PortMatcherTableLines(nsPodMatcher.Port), "\n"))
 }
 
 func PortMatcherTableLines(pm PortMatcher) []string {
 	switch port := pm.(type) {
 	case *AllPortMatcher:
 		return []string{"all ports, all protocols"}
-	case *NonePortMatcher:
-		return []string{"no ports, no protocols"}
 	case *SpecificPortMatcher:
 		var pps []string
 		for _, portProtocol := range port.Ports {
