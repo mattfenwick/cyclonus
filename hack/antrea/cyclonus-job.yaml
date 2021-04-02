@@ -10,7 +10,8 @@ spec:
         - command:
             - ./cyclonus
             - generate
-            - --perturbation-wait-seconds=15
+            - --perturbation-wait-seconds=1
+            - --include=conflict
             - --server-protocol=tcp,udp
           name: cyclonus
           imagePullPolicy: IfNotPresent
