@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -23,6 +24,15 @@ func (t *Target) String() string {
 
 func (t *Target) IsMatch(namespace string, podLabels map[string]string) bool {
 	return t.Namespace == namespace && kube.IsLabelsMatchLabelSelector(podLabels, t.PodSelector)
+}
+
+func (t *Target) Allows(peer *TrafficPeer, portInt int, portName string, protocol v1.Protocol) bool {
+	for _, peerMatcher := range t.Peers {
+		if peerMatcher.Allows(peer, portInt, portName, protocol) {
+			return true
+		}
+	}
+	return false
 }
 
 // CombinePeerMatchers creates a new Target combining the egress and ingress rules

@@ -163,7 +163,7 @@ func (p *Policy) IsIngressOrEgressAllowed(traffic *Traffic, isIngress bool) *Dir
 	var allowers []*Target
 	var deniers []*Target
 	for _, target := range matchingTargets {
-		if target.Peer.Allows(peer, traffic.ResolvedPort, traffic.ResolvedPortName, traffic.Protocol) {
+		if target.Allows(peer, traffic.ResolvedPort, traffic.ResolvedPortName, traffic.Protocol) {
 			allowers = append(allowers, target)
 		} else {
 			deniers = append(deniers, target)

@@ -147,28 +147,37 @@ func LintNetworkPolicyPorts(policy *networkingv1.NetworkPolicy, ports []networki
 func LintResolvedPolicies(policies *matcher.Policy) []*Warning {
 	var ws []*Warning
 	for _, egress := range policies.Egress {
-		if !egress.Peer.Allows(&matcher.TrafficPeer{Internal: nil, IP: "8.8.8.8"}, 53, "", v1.ProtocolTCP) {
+		if !egress.Allows(&matcher.TrafficPeer{Internal: nil, IP: "8.8.8.8"}, 53, "", v1.ProtocolTCP) {
 			ws = append(ws, &Warning{Check: CheckDNSBlockedOnTCP, Target: egress})
 		}
-		if !egress.Peer.Allows(&matcher.TrafficPeer{Internal: nil, IP: "8.8.8.8"}, 53, "", v1.ProtocolUDP) {
+		if !egress.Allows(&matcher.TrafficPeer{Internal: nil, IP: "8.8.8.8"}, 53, "", v1.ProtocolUDP) {
 			ws = append(ws, &Warning{Check: CheckDNSBlockedOnUDP, Target: egress})
 		}
 
-		if _, ok := egress.Peer.(*matcher.NonePeerMatcher); ok {
-			ws = append(ws, &Warning{Check: CheckTargetAllEgressBlocked, Target: egress})
+		if len(egress.Peers) == 1 {
+			if _, ok := egress.Peers[0].(*matcher.NonePeerMatcher); ok {
+				ws = append(ws, &Warning{Check: CheckTargetAllEgressBlocked, Target: egress})
+			}
 		}
-		if _, ok := egress.Peer.(*matcher.AllPeerMatcher); ok {
-			ws = append(ws, &Warning{Check: CheckTargetAllEgressAllowed, Target: egress})
+		for _, peer := range egress.Peers {
+			if _, ok := peer.(*matcher.AllPeerMatcher); ok {
+				ws = append(ws, &Warning{Check: CheckTargetAllEgressAllowed, Target: egress})
+			}
 		}
 	}
 
 	for _, ingress := range policies.Ingress {
-		if _, ok := ingress.Peer.(*matcher.NonePeerMatcher); ok {
-			ws = append(ws, &Warning{Check: CheckTargetAllIngressBlocked, Target: ingress})
+		if len(ingress.Peers) == 1 {
+			if _, ok := ingress.Peers[0].(*matcher.NonePeerMatcher); ok {
+				ws = append(ws, &Warning{Check: CheckTargetAllIngressBlocked, Target: ingress})
+			}
 		}
-		if _, ok := ingress.Peer.(*matcher.AllPeerMatcher); ok {
-			ws = append(ws, &Warning{Check: CheckTargetAllIngressAllowed, Target: ingress})
+		for _, peer := range ingress.Peers {
+			if _, ok := peer.(*matcher.AllPeerMatcher); ok {
+				ws = append(ws, &Warning{Check: CheckTargetAllIngressAllowed, Target: ingress})
+			}
 		}
+
 	}
 
 	return ws

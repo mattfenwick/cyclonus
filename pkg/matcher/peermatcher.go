@@ -5,6 +5,11 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
+var (
+	NoPeers       = &NonePeerMatcher{}
+	AllPeersPorts = &AllPeerMatcher{Port: &AllPortMatcher{}}
+)
+
 type PeerMatcher interface {
 	Allows(peer *TrafficPeer, portInt int, portName string, protocol v1.Protocol) bool
 }
