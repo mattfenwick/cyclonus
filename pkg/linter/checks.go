@@ -160,7 +160,7 @@ func LintResolvedPolicies(policies *matcher.Policy) []*Warning {
 			}
 		}
 		for _, peer := range egress.Peers {
-			if _, ok := peer.(*matcher.AllPeerMatcher); ok {
+			if _, ok := peer.(*matcher.PortsForAllPeersMatcher); ok {
 				ws = append(ws, &Warning{Check: CheckTargetAllEgressAllowed, Target: egress})
 			}
 		}
@@ -173,7 +173,7 @@ func LintResolvedPolicies(policies *matcher.Policy) []*Warning {
 			}
 		}
 		for _, peer := range ingress.Peers {
-			if _, ok := peer.(*matcher.AllPeerMatcher); ok {
+			if _, ok := peer.(*matcher.PortsForAllPeersMatcher); ok {
 				ws = append(ws, &Warning{Check: CheckTargetAllIngressAllowed, Target: ingress})
 			}
 		}

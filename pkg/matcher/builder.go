@@ -61,7 +61,7 @@ func BuildTarget(netpol *networkingv1.NetworkPolicy) (*Target, *Target) {
 }
 
 func BuildIngressMatcher(policyNamespace string, ingresses []networkingv1.NetworkPolicyIngressRule) []PeerMatcher {
-	matchers := []PeerMatcher{&NonePeerMatcher{}}
+	matchers := []PeerMatcher{NoPeers}
 	for _, ingress := range ingresses {
 		matchers = append(matchers, BuildPeerMatcher(policyNamespace, ingress.Ports, ingress.From)...)
 	}
@@ -69,7 +69,7 @@ func BuildIngressMatcher(policyNamespace string, ingresses []networkingv1.Networ
 }
 
 func BuildEgressMatcher(policyNamespace string, egresses []networkingv1.NetworkPolicyEgressRule) []PeerMatcher {
-	matchers := []PeerMatcher{&NonePeerMatcher{}}
+	matchers := []PeerMatcher{NoPeers}
 	for _, egress := range egresses {
 		matchers = append(matchers, BuildPeerMatcher(policyNamespace, egress.Ports, egress.To)...)
 	}
@@ -77,11 +77,14 @@ func BuildEgressMatcher(policyNamespace string, egresses []networkingv1.NetworkP
 }
 
 func BuildPeerMatcher(policyNamespace string, npPorts []networkingv1.NetworkPolicyPort, peers []networkingv1.NetworkPolicyPeer) []PeerMatcher {
+	if len(npPorts) == 0 && len(peers) == 0 {
+		return []PeerMatcher{AllPeersPorts}
+	}
 	// 1. build port matcher
 	port := BuildPortMatcher(npPorts)
 	// 2. build Peers
 	if len(peers) == 0 {
-		return []PeerMatcher{&AllPeerMatcher{Port: port}}
+		return []PeerMatcher{&PortsForAllPeersMatcher{Port: port}}
 	}
 
 	var matchers []PeerMatcher

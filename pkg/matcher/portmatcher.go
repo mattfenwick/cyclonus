@@ -88,6 +88,10 @@ func (s *SpecificPortMatcher) Combine(other *SpecificPortMatcher) *SpecificPortM
 	return &SpecificPortMatcher{Ports: pps}
 }
 
+func (s *SpecificPortMatcher) Subtract(other *SpecificPortMatcher) *SpecificPortMatcher {
+	panic("TODO")
+}
+
 func isPortMatch(a intstr.IntOrString, portInt int, portName string) bool {
 	switch a.Type {
 	case intstr.Int:

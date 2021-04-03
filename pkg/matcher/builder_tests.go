@@ -162,7 +162,7 @@ func RunBuilderTests() {
 					Port:      port80TCPMatcher,
 				},
 				ip,
-				&AllPeerMatcher{
+				&PortsForAllPeersMatcher{
 					Port: port53UDPMatcher,
 				}}))
 
@@ -184,7 +184,7 @@ func RunBuilderTests() {
 			portMatcher := &SpecificPortMatcher{Ports: []*PortProtocolMatcher{
 				{Port: &port103, Protocol: v1.ProtocolSCTP},
 			}}
-			matcher := &AllPeerMatcher{Port: portMatcher}
+			matcher := &PortsForAllPeersMatcher{Port: portMatcher}
 			Expect(sds).To(Equal([]PeerMatcher{matcher}))
 		})
 
@@ -227,7 +227,7 @@ func RunBuilderTests() {
 
 		// TODO restore these tests
 		//It("should combine Peer matchers correctly", func() {
-		//	all := &AllPeerMatcher{}
+		//	all := &PortsForAllPeersMatcher{}
 		//	none := &NonePeerMatcher{}
 		//	ip := &IPPeerMatcher{
 		//		IPBlock: netpol.IPBlock_10_0_0_1_24,
