@@ -61,7 +61,7 @@ func BuildTarget(netpol *networkingv1.NetworkPolicy) (*Target, *Target) {
 }
 
 func BuildIngressMatcher(policyNamespace string, ingresses []networkingv1.NetworkPolicyIngressRule) []PeerMatcher {
-	matchers := []PeerMatcher{NoPeers}
+	var matchers []PeerMatcher
 	for _, ingress := range ingresses {
 		matchers = append(matchers, BuildPeerMatcher(policyNamespace, ingress.Ports, ingress.From)...)
 	}
@@ -69,7 +69,7 @@ func BuildIngressMatcher(policyNamespace string, ingresses []networkingv1.Networ
 }
 
 func BuildEgressMatcher(policyNamespace string, egresses []networkingv1.NetworkPolicyEgressRule) []PeerMatcher {
-	matchers := []PeerMatcher{NoPeers}
+	var matchers []PeerMatcher
 	for _, egress := range egresses {
 		matchers = append(matchers, BuildPeerMatcher(policyNamespace, egress.Ports, egress.To)...)
 	}

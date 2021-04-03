@@ -60,8 +60,6 @@ func (s *SliceBuilder) TargetsTableLines(targets []*Target, isIngress bool) {
 			case *PortsForAllPeersMatcher:
 				pps := PortMatcherTableLines(a.Port)
 				s.Append("all pods, all ips", strings.Join(pps, "\n"))
-			case *NonePeerMatcher:
-				s.Append("no pods, no ips", "no ports, no protocols")
 			case *IPPeerMatcher:
 				s.IPPeerMatcherTableLines(a)
 			case *PodPeerMatcher:

@@ -6,7 +6,6 @@ import (
 )
 
 var (
-	NoPeers       = &NonePeerMatcher{}
 	AllPeersPorts = &AllPeersMatcher{}
 )
 
@@ -38,18 +37,5 @@ func (a *PortsForAllPeersMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
 		"Type": "all peers for port",
 		"Port": a.Port,
-	})
-}
-
-// TODO this type seems dumb and we should get rid of it, it's just awkward to carry around
-type NonePeerMatcher struct{}
-
-func (nem *NonePeerMatcher) Allows(peer *TrafficPeer, portInt int, portName string, protocol v1.Protocol) bool {
-	return false
-}
-
-func (nem *NonePeerMatcher) MarshalJSON() (b []byte, e error) {
-	return json.Marshal(map[string]interface{}{
-		"Type": "no peers",
 	})
 }

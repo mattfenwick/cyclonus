@@ -39,6 +39,8 @@ const (
 	CheckTargetAllEgressBlocked  Check = "CheckTargetAllEgressBlocked"
 	CheckTargetAllIngressAllowed Check = "CheckTargetAllIngressAllowed"
 	CheckTargetAllEgressAllowed  Check = "CheckTargetAllEgressAllowed"
+
+	// TODO add check that rule is unnecessary b/c another rule exactly supercedes it
 )
 
 type Warning struct {
@@ -154,10 +156,8 @@ func LintResolvedPolicies(policies *matcher.Policy) []*Warning {
 			ws = append(ws, &Warning{Check: CheckDNSBlockedOnUDP, Target: egress})
 		}
 
-		if len(egress.Peers) == 1 {
-			if _, ok := egress.Peers[0].(*matcher.NonePeerMatcher); ok {
-				ws = append(ws, &Warning{Check: CheckTargetAllEgressBlocked, Target: egress})
-			}
+		if len(egress.Peers) == 0 {
+			ws = append(ws, &Warning{Check: CheckTargetAllEgressBlocked, Target: egress})
 		}
 		for _, peer := range egress.Peers {
 			if _, ok := peer.(*matcher.PortsForAllPeersMatcher); ok {
@@ -167,10 +167,8 @@ func LintResolvedPolicies(policies *matcher.Policy) []*Warning {
 	}
 
 	for _, ingress := range policies.Ingress {
-		if len(ingress.Peers) == 1 {
-			if _, ok := ingress.Peers[0].(*matcher.NonePeerMatcher); ok {
-				ws = append(ws, &Warning{Check: CheckTargetAllIngressBlocked, Target: ingress})
-			}
+		if len(ingress.Peers) == 0 {
+			ws = append(ws, &Warning{Check: CheckTargetAllIngressBlocked, Target: ingress})
 		}
 		for _, peer := range ingress.Peers {
 			if _, ok := peer.(*matcher.PortsForAllPeersMatcher); ok {
