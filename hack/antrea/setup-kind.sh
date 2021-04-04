@@ -12,7 +12,12 @@ if [[ ! -d $ANTREA_DIR ]] ; then
 fi
 pushd $ANTREA_DIR
   git checkout "$VERSION"
+
   pushd ci/kind
-    ./kind-setup.sh create "$CLUSTER"
+    ./kind-setup.sh create "$CLUSTER" --antrea-cni false
+  popd
+
+  pushd hack
+    ./generate-manifest.sh --kind --tun vxlan | kubectl apply --context "kind-${CLUSTER}" -f -
   popd
 popd
