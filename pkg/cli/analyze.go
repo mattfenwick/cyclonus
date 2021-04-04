@@ -45,6 +45,7 @@ type AnalyzeArgs struct {
 	UseExamplePolicies bool
 	PolicyPath         string
 	Context            string
+	SimplifyPolicies   bool
 
 	Modes []string
 
@@ -75,6 +76,7 @@ func SetupAnalyzeCommand() *cobra.Command {
 	command.Flags().StringSliceVarP(&args.Namespaces, "namespace", "n", []string{}, "namespaces to read kube resources from; similar to kubectl's '--namespace'/'-n' flag, except that multiple namespaces may be passed in and is empty if not set explicitly (instead of 'default' as in kubectl)")
 	command.Flags().StringVar(&args.PolicyPath, "policy-path", "", "may be a file or a directory; if set, will attempt to read policies from the path")
 	command.Flags().StringVar(&args.Context, "context", "", "selects kube context to read policies from; only reads from kube if one or more namespaces or all namespaces are specified")
+	command.Flags().BoolVar(&args.SimplifyPolicies, "simplify-policies", true, "if true, reduce policies to simpler form while preserving semantics")
 
 	command.Flags().StringSliceVar(&args.Modes, "mode", []string{ExplainMode}, "analysis modes to run; allowed values are "+strings.Join(AllModes, ","))
 
@@ -116,13 +118,14 @@ func RunAnalyzeCommand(args *AnalyzeArgs) {
 	}
 
 	logrus.Debugf("parsed policies:\n%s", utils.JsonString(kubePolicies))
+	policies := matcher.BuildNetworkPolicies(args.SimplifyPolicies, kubePolicies)
 
 	for _, mode := range args.Modes {
 		switch mode {
 		case ParseMode:
 			ParsePolicies(kubePolicies)
 		case ExplainMode:
-			ExplainPolicies(matcher.BuildNetworkPolicies(kubePolicies))
+			ExplainPolicies(policies)
 		case LintMode:
 			Lint(kubePolicies)
 		case QueryTargetMode:
@@ -133,11 +136,11 @@ func RunAnalyzeCommand(args *AnalyzeArgs) {
 					Labels:    p.Labels,
 				}
 			}
-			QueryTargets(matcher.BuildNetworkPolicies(kubePolicies), args.TargetPodPath, pods)
+			QueryTargets(policies, args.TargetPodPath, pods)
 		case QueryTrafficMode:
-			QueryTraffic(matcher.BuildNetworkPolicies(kubePolicies), args.TrafficPath)
+			QueryTraffic(policies, args.TrafficPath)
 		case ProbeMode:
-			ProbeSyntheticConnectivity(matcher.BuildNetworkPolicies(kubePolicies), args.ProbePath, kubePods, kubeNamespaces)
+			ProbeSyntheticConnectivity(policies, args.ProbePath, kubePods, kubeNamespaces)
 		default:
 			panic(errors.Errorf("unrecognized mode %s", mode))
 		}

@@ -11,5 +11,6 @@ func TestMatcher(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunBuilderTests()
 	RunPolicyTests()
+	RunSimplifierTests()
 	RunSpecs(t, "network policy matcher suite")
 }

@@ -135,7 +135,7 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 }
 
 func (t *Interpreter) runProbe(testCaseState *TestCaseState, probeConfig *generator.ProbeConfig) *StepResult {
-	parsedPolicy := matcher.BuildNetworkPolicies(testCaseState.Policies)
+	parsedPolicy := matcher.BuildNetworkPolicies(true, testCaseState.Policies)
 
 	logrus.Infof("running probe %+v", probeConfig)
 	logrus.Debugf("with resources:\n%s", testCaseState.Resources.RenderTable())

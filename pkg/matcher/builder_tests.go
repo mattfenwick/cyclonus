@@ -1,10 +1,7 @@
 package matcher
 
 import (
-	"encoding/json"
-	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/kube/netpol"
-	"github.com/mattfenwick/cyclonus/pkg/utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
@@ -28,23 +25,29 @@ func RunBuilderTests() {
 		It("allow-no-ingress", func() {
 			ingress, egress := BuildTarget(netpol.AllowNoIngress)
 
-			Expect(ingress.Peer).To(Equal(&NonePeerMatcher{}))
-			//Expect(target.Ingress).To(Equal(&PeerMatcher{Matchers: []*NamespacePodMatcher{}}))
+			Expect(ingress).ToNot(BeNil())
+			Expect(ingress.Peers).To(BeNil())
+
 			Expect(egress).To(BeNil())
 		})
 
 		It("allow-no-egress", func() {
 			ingress, egress := BuildTarget(netpol.AllowNoEgress)
 
-			Expect(egress.Peer).To(Equal(&NonePeerMatcher{}))
+			Expect(egress).ToNot(BeNil())
+			Expect(egress.Peers).To(BeNil())
+
 			Expect(ingress).To(BeNil())
 		})
 
 		It("allow-neither", func() {
 			ingress, egress := BuildTarget(netpol.AllowNoIngressAllowNoEgress)
 
-			Expect(ingress.Peer).To(Equal(&NonePeerMatcher{}))
-			Expect(egress.Peer).To(Equal(&NonePeerMatcher{}))
+			Expect(egress).ToNot(BeNil())
+			Expect(egress.Peers).To(BeNil())
+
+			Expect(ingress).ToNot(BeNil())
+			Expect(ingress.Peers).To(BeNil())
 		})
 	})
 
@@ -69,22 +72,29 @@ func RunBuilderTests() {
 		It("allow-no-ingress", func() {
 			ingress, egress := BuildTarget(netpol.AllowNoIngress_EmptyIngress)
 
-			Expect(ingress.Peer).To(Equal(&NonePeerMatcher{}))
+			Expect(ingress).ToNot(BeNil())
+			Expect(ingress.Peers).To(BeNil())
+
 			Expect(egress).To(BeNil())
 		})
 
 		It("allow-no-egress", func() {
 			ingress, egress := BuildTarget(netpol.AllowNoEgress_EmptyEgress)
 
-			Expect(egress.Peer).To(Equal(&NonePeerMatcher{}))
+			Expect(egress).ToNot(BeNil())
+			Expect(egress.Peers).To(BeNil())
+
 			Expect(ingress).To(BeNil())
 		})
 
 		It("allow-neither", func() {
 			ingress, egress := BuildTarget(netpol.AllowNoIngressAllowNoEgress_EmptyEgressEmptyIngress)
 
-			Expect(ingress.Peer).To(Equal(&NonePeerMatcher{}))
-			Expect(egress.Peer).To(Equal(&NonePeerMatcher{}))
+			Expect(egress).ToNot(BeNil())
+			Expect(egress.Peers).To(BeNil())
+
+			Expect(ingress).ToNot(BeNil())
+			Expect(ingress.Peers).To(BeNil())
 		})
 	})
 
@@ -93,21 +103,21 @@ func RunBuilderTests() {
 			ingress, egress := BuildTarget(netpol.AllowAllIngress)
 
 			Expect(egress).To(BeNil())
-			Expect(ingress.Peer).To(Equal(&AllPeerMatcher{}))
+			Expect(ingress.Peers).To(Equal([]PeerMatcher{AllPeersPorts}))
 		})
 
 		It("allow-all-egress", func() {
 			ingress, egress := BuildTarget(netpol.AllowAllEgress)
 
-			Expect(egress.Peer).To(Equal(&AllPeerMatcher{}))
+			Expect(egress.Peers).To(Equal([]PeerMatcher{AllPeersPorts}))
 			Expect(ingress).To(BeNil())
 		})
 
 		It("allow-all-both", func() {
 			ingress, egress := BuildTarget(netpol.AllowAllIngressAllowAllEgress)
 
-			Expect(egress.Peer).To(Equal(&AllPeerMatcher{}))
-			Expect(ingress.Peer).To(Equal(&AllPeerMatcher{}))
+			Expect(egress.Peers).To(Equal([]PeerMatcher{AllPeersPorts}))
+			Expect(ingress.Peers).To(Equal([]PeerMatcher{AllPeersPorts}))
 		})
 	})
 
@@ -115,46 +125,36 @@ func RunBuilderTests() {
 
 	Describe("PeerMatcher from slice of ingress/egress rules", func() {
 		It("allows no ingress from an empty slice of ingress rules", func() {
-			peer := BuildIngressMatcher("abc", []networkingv1.NetworkPolicyIngressRule{})
-			Expect(peer).To(Equal(&NonePeerMatcher{}))
+			peers := BuildIngressMatcher("abc", []networkingv1.NetworkPolicyIngressRule{})
+			Expect(peers).To(BeNil())
 		})
 
 		It("allows no egress from an empty slice of egress rules", func() {
-			peer := BuildEgressMatcher("abc", []networkingv1.NetworkPolicyEgressRule{})
-			Expect(peer).To(Equal(&NonePeerMatcher{}))
+			peers := BuildEgressMatcher("abc", []networkingv1.NetworkPolicyEgressRule{})
+			Expect(peers).To(BeNil())
 		})
 
 		It("allows all ingress from an ingress containing a single empty rule", func() {
-			peer := BuildIngressMatcher("abc", []networkingv1.NetworkPolicyIngressRule{
-				{
-					Ports: nil,
-					From:  nil,
-				},
+			peers := BuildIngressMatcher("abc", []networkingv1.NetworkPolicyIngressRule{
+				{Ports: nil, From: nil},
 			})
-			Expect(peer).To(Equal(&AllPeerMatcher{}))
+			Expect(peers).To(Equal([]PeerMatcher{AllPeersPorts}))
 		})
 
 		It("allows all egress from an ingress containing a single empty rule", func() {
-			peer := BuildEgressMatcher("abc", []networkingv1.NetworkPolicyEgressRule{
-				{
-					Ports: nil,
-					To:    nil,
-				},
+			peers := BuildEgressMatcher("abc", []networkingv1.NetworkPolicyEgressRule{
+				{Ports: nil, To: nil},
 			})
-			Expect(peer).To(Equal(&AllPeerMatcher{}))
+			Expect(peers).To(Equal([]PeerMatcher{AllPeersPorts}))
 		})
 
 		It("allows to ips in IPBlock range and also to all pods/ips for DNS", func() {
-			peer := BuildEgressMatcher("abc", []networkingv1.NetworkPolicyEgressRule{
+			peers := BuildEgressMatcher("abc", []networkingv1.NetworkPolicyEgressRule{
 				{
 					Ports: []networkingv1.NetworkPolicyPort{{Port: &port80, Protocol: &tcp}},
 					To: []networkingv1.NetworkPolicyPeer{
-						{
-							PodSelector: &metav1.LabelSelector{},
-						},
-						{
-							IPBlock: netpol.IPBlock_192_168_242_213_24,
-						},
+						{PodSelector: &metav1.LabelSelector{}},
+						{IPBlock: netpol.IPBlock_192_168_242_213_24},
 					},
 				},
 				{
@@ -163,30 +163,29 @@ func RunBuilderTests() {
 			})
 			port53UDPMatcher := &SpecificPortMatcher{Ports: []*PortProtocolMatcher{{Port: &port53, Protocol: v1.ProtocolUDP}}}
 			port80TCPMatcher := &SpecificPortMatcher{Ports: []*PortProtocolMatcher{{Port: &port80, Protocol: v1.ProtocolTCP}}}
-			ip := &IPBlockMatcher{
+			ip := &IPPeerMatcher{
 				IPBlock: netpol.IPBlock_192_168_242_213_24,
 				Port:    port80TCPMatcher,
 			}
-			Expect(peer).To(Equal(&SpecificPeerMatcher{
-				IP: NewSpecificIPMatcher(port53UDPMatcher, ip),
-				Internal: NewSpecificInternalMatcher(&NamespacePodMatcher{
+			Expect(peers).To(Equal([]PeerMatcher{
+				&PodPeerMatcher{
 					Namespace: &ExactNamespaceMatcher{Namespace: "abc"},
 					Pod:       &AllPodMatcher{},
 					Port:      port80TCPMatcher,
-				}, &NamespacePodMatcher{
-					Namespace: &AllNamespaceMatcher{},
-					Pod:       &AllPodMatcher{},
-					Port:      port53UDPMatcher,
-				}),
-			}))
-			Expect(ip.Allows("192.168.242.249", 80, "", tcp)).To(Equal(true))
+				},
+				ip,
+				&PortsForAllPeersMatcher{
+					Port: port53UDPMatcher,
+				}}))
+
+			Expect(ip.Allows(&TrafficPeer{IP: "192.168.242.249"}, 80, "", tcp)).To(Equal(true))
 		})
 	})
 
 	Describe("PeerMatcher from slice of NetworkPolicyPeer", func() {
 		It("allows all source/destination from an empty slice", func() {
 			sds := BuildPeerMatcher("abc", []networkingv1.NetworkPolicyPort{}, []networkingv1.NetworkPolicyPeer{})
-			Expect(sds).To(Equal(&AllPeerMatcher{}))
+			Expect(sds).To(Equal([]PeerMatcher{AllPeersPorts}))
 		})
 
 		It("allows all ips and all pods over a specific port from an empty peer slice", func() {
@@ -195,143 +194,44 @@ func RunBuilderTests() {
 				Port:     &port103,
 			}}, []networkingv1.NetworkPolicyPeer{})
 			portMatcher := &SpecificPortMatcher{Ports: []*PortProtocolMatcher{
-				{
-					Port:     &port103,
-					Protocol: v1.ProtocolSCTP,
-				},
+				{Port: &port103, Protocol: v1.ProtocolSCTP},
 			}}
-			matcher := &NamespacePodMatcher{
-				Namespace: &AllNamespaceMatcher{},
-				Pod:       &AllPodMatcher{},
-				Port:      portMatcher,
-			}
-			Expect(sds).To(Equal(&SpecificPeerMatcher{
-				IP:       NewSpecificIPMatcher(portMatcher),
-				Internal: NewSpecificInternalMatcher(matcher),
-			}))
+			matcher := &PortsForAllPeersMatcher{Port: portMatcher}
+			Expect(sds).To(Equal([]PeerMatcher{matcher}))
 		})
 
 		It("allows ips, but no pods from a single IPBlock", func() {
-			peer := BuildPeerMatcher("abc", []networkingv1.NetworkPolicyPort{}, []networkingv1.NetworkPolicyPeer{
-				{
-					PodSelector:       nil,
-					NamespaceSelector: nil,
-					IPBlock:           netpol.IPBlock_10_0_0_1_24,
-				},
+			peers := BuildPeerMatcher("abc", []networkingv1.NetworkPolicyPort{}, []networkingv1.NetworkPolicyPeer{
+				{IPBlock: netpol.IPBlock_10_0_0_1_24},
 			})
-			ip := &IPBlockMatcher{
+			ip := &IPPeerMatcher{
 				IPBlock: netpol.IPBlock_10_0_0_1_24,
 				Port:    &AllPortMatcher{},
 			}
-			Expect(peer).To(Equal(&SpecificPeerMatcher{
-				IP:       NewSpecificIPMatcher(&NonePortMatcher{}, ip),
-				Internal: &NoneInternalMatcher{},
-			}))
+			Expect(peers).To(Equal([]PeerMatcher{ip}))
 		})
 
 		It("allows all ns/pods/ports, but no ips from a single peer with empty pod/ns selectors", func() {
-			peer := BuildPeerMatcher("abc", []networkingv1.NetworkPolicyPort{}, []networkingv1.NetworkPolicyPeer{
+			peers := BuildPeerMatcher("abc", []networkingv1.NetworkPolicyPort{}, []networkingv1.NetworkPolicyPeer{
 				{
 					PodSelector:       netpol.SelectorEmpty,
 					NamespaceSelector: netpol.SelectorEmpty,
-					IPBlock:           nil,
 				},
 			})
-			Expect(peer).To(Equal(&SpecificPeerMatcher{
-				IP:       &NoneIPMatcher{},
-				Internal: &AllInternalMatcher{},
-			}))
+			Expect(peers).To(Equal([]PeerMatcher{
+				&PodPeerMatcher{Namespace: &AllNamespaceMatcher{}, Pod: &AllPodMatcher{}, Port: &AllPortMatcher{}}}))
 		})
 
 		It("allows ns/pods, but no ips from a single namespace/pod", func() {
-			peer := BuildPeerMatcher("abc", []networkingv1.NetworkPolicyPort{}, []networkingv1.NetworkPolicyPeer{
-				{
-					PodSelector:       netpol.SelectorEmpty,
-					NamespaceSelector: nil,
-					IPBlock:           nil,
-				},
+			peers := BuildPeerMatcher("abc", []networkingv1.NetworkPolicyPort{}, []networkingv1.NetworkPolicyPeer{
+				{PodSelector: netpol.SelectorEmpty},
 			})
-			matcher := &NamespacePodMatcher{
+			matcher := &PodPeerMatcher{
 				Namespace: &ExactNamespaceMatcher{Namespace: "abc"},
 				Pod:       &AllPodMatcher{},
 				Port:      &AllPortMatcher{},
 			}
-			Expect(peer).To(Equal(&SpecificPeerMatcher{
-				IP: &NoneIPMatcher{},
-				Internal: &SpecificInternalMatcher{NamespacePods: map[string]*NamespacePodMatcher{
-					matcher.PrimaryKey(): matcher,
-				}},
-			}))
-		})
-
-		// TODO SpecificPeerMatcher
-		// TODO SpecificInternalMatcher
-
-		It("should combine Peer matchers correctly", func() {
-			all := &AllPeerMatcher{}
-			none := &NonePeerMatcher{}
-			ip := &IPBlockMatcher{
-				IPBlock: netpol.IPBlock_10_0_0_1_24,
-				Port:    &AllPortMatcher{},
-			}
-			someIps := &SpecificPeerMatcher{
-				IP: &SpecificIPMatcher{IPBlocks: map[string]*IPBlockMatcher{
-					ip.PrimaryKey(): ip,
-				}},
-				Internal: &NoneInternalMatcher{},
-			}
-			someInternal1 := &SpecificPeerMatcher{
-				IP:       &NoneIPMatcher{},
-				Internal: &AllInternalMatcher{},
-			}
-			someInternal2 := &SpecificPeerMatcher{
-				IP:       &NoneIPMatcher{},
-				Internal: &NoneInternalMatcher{},
-			}
-
-			Expect(CombinePeerMatchers(all, all)).To(Equal(all))
-			Expect(CombinePeerMatchers(all, none)).To(Equal(all))
-			Expect(CombinePeerMatchers(all, someIps)).To(Equal(all))
-			Expect(CombinePeerMatchers(all, someInternal1)).To(Equal(all))
-			Expect(CombinePeerMatchers(none, all)).To(Equal(all))
-			Expect(CombinePeerMatchers(someIps, all)).To(Equal(all))
-			Expect(CombinePeerMatchers(someInternal1, all)).To(Equal(all))
-
-			Expect(CombinePeerMatchers(none, none)).To(Equal(none))
-			Expect(CombinePeerMatchers(none, someIps)).To(Equal(someIps))
-			Expect(CombinePeerMatchers(none, someInternal1)).To(Equal(someInternal1))
-			Expect(CombinePeerMatchers(someIps, none)).To(Equal(someIps))
-			Expect(CombinePeerMatchers(someInternal1, none)).To(Equal(someInternal1))
-
-			bs, err := json.MarshalIndent([]interface{}{someInternal1, someInternal2}, "", "  ")
-			utils.DoOrDie(err)
-			fmt.Printf("%s\n\n", bs)
-
-			Expect(CombinePeerMatchers(someInternal1, someInternal2)).To(Equal(someInternal1))
-			Expect(CombinePeerMatchers(someInternal2, someInternal1)).To(Equal(someInternal1))
-		})
-
-		It("should combine Internal matchers correctly", func() {
-			all := &AllInternalMatcher{}
-			none := &NoneInternalMatcher{}
-			np1 := &NamespacePodMatcher{
-				Namespace: &AllNamespaceMatcher{},
-				Pod:       &LabelSelectorPodMatcher{Selector: *netpol.SelectorAB},
-				Port:      &AllPortMatcher{},
-			}
-			some1 := &SpecificInternalMatcher{NamespacePods: map[string]*NamespacePodMatcher{
-				np1.PrimaryKey(): np1,
-			}}
-
-			Expect(CombineInternalMatchers(all, all)).To(Equal(all))
-			Expect(CombineInternalMatchers(all, none)).To(Equal(all))
-			Expect(CombineInternalMatchers(all, some1)).To(Equal(all))
-			Expect(CombineInternalMatchers(none, all)).To(Equal(all))
-			Expect(CombineInternalMatchers(some1, all)).To(Equal(all))
-
-			Expect(CombineInternalMatchers(none, none)).To(Equal(none))
-			Expect(CombineInternalMatchers(none, some1)).To(Equal(some1))
-			Expect(CombineInternalMatchers(some1, none)).To(Equal(some1))
+			Expect(peers).To(Equal([]PeerMatcher{matcher}))
 		})
 	})
 
@@ -401,7 +301,7 @@ func RunBuilderTests() {
 
 		It("allow ipblock", func() {
 			ip, ns, pod := BuildIPBlockNamespacePodMatcher(netpol.Namespace, netpol.AllowIPBlockPeer)
-			Expect(ip).To(Equal(&IPBlockMatcher{
+			Expect(ip).To(Equal(&IPPeerMatcher{
 				IPBlock: netpol.IPBlock_10_0_0_1_24,
 				Port:    nil,
 			}))
@@ -437,32 +337,6 @@ func RunBuilderTests() {
 				Protocol: v1.ProtocolUDP,
 				Port:     &portName,
 			}}}))
-		})
-
-		It("should combine matchers correctly", func() {
-			port99 := intstr.FromInt(99)
-			allPortsOnSctp := &PortProtocolMatcher{
-				Port:     nil,
-				Protocol: v1.ProtocolSCTP,
-			}
-			port99OnUdp := &PortProtocolMatcher{
-				Port:     &port99,
-				Protocol: v1.ProtocolSCTP,
-			}
-
-			allMatcher := &AllPortMatcher{}
-			allPortsOnSctpMatcher := &SpecificPortMatcher{Ports: []*PortProtocolMatcher{allPortsOnSctp}}
-			port99OnUdpMatcher := &SpecificPortMatcher{Ports: []*PortProtocolMatcher{port99OnUdp}}
-			combinedMatcher := &SpecificPortMatcher{Ports: []*PortProtocolMatcher{allPortsOnSctp, port99OnUdp}}
-			combined2Matcher := &SpecificPortMatcher{Ports: []*PortProtocolMatcher{port99OnUdp, allPortsOnSctp}}
-
-			Expect(CombinePortMatchers(allMatcher, allPortsOnSctpMatcher)).To(Equal(allMatcher))
-			Expect(CombinePortMatchers(allMatcher, port99OnUdpMatcher)).To(Equal(allMatcher))
-			Expect(CombinePortMatchers(allPortsOnSctpMatcher, allMatcher)).To(Equal(allMatcher))
-			Expect(CombinePortMatchers(port99OnUdpMatcher, allMatcher)).To(Equal(allMatcher))
-
-			Expect(CombinePortMatchers(allPortsOnSctpMatcher, port99OnUdpMatcher)).To(Equal(combinedMatcher))
-			Expect(CombinePortMatchers(port99OnUdpMatcher, allPortsOnSctpMatcher)).To(Equal(combined2Matcher))
 		})
 	})
 }

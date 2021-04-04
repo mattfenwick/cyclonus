@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -12,7 +13,7 @@ import (
 type Target struct {
 	Namespace   string
 	PodSelector metav1.LabelSelector
-	Peer        PeerMatcher
+	Peers       []PeerMatcher
 	SourceRules []*networkingv1.NetworkPolicy
 	primaryKey  string
 }
@@ -23,6 +24,15 @@ func (t *Target) String() string {
 
 func (t *Target) IsMatch(namespace string, podLabels map[string]string) bool {
 	return t.Namespace == namespace && kube.IsLabelsMatchLabelSelector(podLabels, t.PodSelector)
+}
+
+func (t *Target) Allows(peer *TrafficPeer, portInt int, portName string, protocol v1.Protocol) bool {
+	for _, peerMatcher := range t.Peers {
+		if peerMatcher.Allows(peer, portInt, portName, protocol) {
+			return true
+		}
+	}
+	return false
 }
 
 // CombinePeerMatchers creates a new Target combining the egress and ingress rules
@@ -38,7 +48,7 @@ func (t *Target) Combine(other *Target) *Target {
 	return &Target{
 		Namespace:   t.Namespace,
 		PodSelector: t.PodSelector,
-		Peer:        CombinePeerMatchers(t.Peer, other.Peer),
+		Peers:       append(t.Peers, other.Peers...),
 		SourceRules: append(t.SourceRules, other.SourceRules...),
 	}
 }
@@ -60,12 +70,16 @@ func CombineTargetsIgnoringPrimaryKey(namespace string, podSelector metav1.Label
 	target := &Target{
 		Namespace:   namespace,
 		PodSelector: podSelector,
-		Peer:        targets[0].Peer,
+		Peers:       targets[0].Peers,
 		SourceRules: targets[0].SourceRules,
 	}
 	for _, t := range targets[1:] {
-		target.Peer = CombinePeerMatchers(target.Peer, t.Peer)
+		target.Peers = append(target.Peers, t.Peers...)
 		target.SourceRules = append(target.SourceRules, t.SourceRules...)
 	}
 	return target
+}
+
+func (t *Target) Simplify() {
+	t.Peers = Simplify(t.Peers)
 }

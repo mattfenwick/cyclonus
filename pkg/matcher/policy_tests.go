@@ -26,7 +26,7 @@ spec:
 	var kubePolicy *networkingv1.NetworkPolicy
 	err := yaml.Unmarshal([]byte(allowAllOnSCTPSerialized), &kubePolicy)
 	utils.DoOrDie(err)
-	allowAllOnSCTP := BuildNetworkPolicy(kubePolicy)
+	allowAllOnSCTP := BuildNetworkPolicies(true, []*networkingv1.NetworkPolicy{kubePolicy})
 
 	Describe("Allowing a protocol should implicitly deny other protocols from pods", func() {
 		It("should not allow TCP", func() {
@@ -152,7 +152,7 @@ spec:
 		var kubePolicy *networkingv1.NetworkPolicy
 		err := yaml.Unmarshal([]byte(allowAllOnSCTPSerialized), &kubePolicy)
 		utils.DoOrDie(err)
-		policy := BuildNetworkPolicy(kubePolicy)
+		policy := BuildNetworkPolicies(true, []*networkingv1.NetworkPolicy{kubePolicy})
 
 		It("Should allow ips in cidr", func() {
 			Expect(policy.IsTrafficAllowed(&Traffic{
@@ -199,7 +199,7 @@ spec:
 		var kubePolicy *networkingv1.NetworkPolicy
 		err := yaml.Unmarshal([]byte(policyYaml), &kubePolicy)
 		utils.DoOrDie(err)
-		policy := BuildNetworkPolicy(kubePolicy)
+		policy := BuildNetworkPolicies(true, []*networkingv1.NetworkPolicy{kubePolicy})
 
 		It("Should allow access to named port", func() {
 			Expect(policy.IsTrafficAllowed(&Traffic{

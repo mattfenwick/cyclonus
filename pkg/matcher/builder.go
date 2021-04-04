@@ -7,11 +7,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
-func BuildNetworkPolicy(policy *networkingv1.NetworkPolicy) *Policy {
-	return BuildNetworkPolicies([]*networkingv1.NetworkPolicy{policy})
-}
-
-func BuildNetworkPolicies(netpols []*networkingv1.NetworkPolicy) *Policy {
+func BuildNetworkPolicies(simplify bool, netpols []*networkingv1.NetworkPolicy) *Policy {
 	np := NewPolicy()
 	for _, policy := range netpols {
 		ingress, egress := BuildTarget(policy)
@@ -21,6 +17,9 @@ func BuildNetworkPolicies(netpols []*networkingv1.NetworkPolicy) *Policy {
 		if egress != nil {
 			np.AddTarget(false, egress)
 		}
+	}
+	if simplify {
+		np.Simplify()
 	}
 	return np
 }
@@ -46,102 +45,75 @@ func BuildTarget(netpol *networkingv1.NetworkPolicy) (*Target, *Target) {
 				Namespace:   policyNamespace,
 				PodSelector: netpol.Spec.PodSelector,
 				SourceRules: []*networkingv1.NetworkPolicy{netpol},
-				Peer:        BuildIngressMatcher(policyNamespace, netpol.Spec.Ingress),
+				Peers:       BuildIngressMatcher(policyNamespace, netpol.Spec.Ingress),
 			}
 		case networkingv1.PolicyTypeEgress:
 			egress = &Target{
 				Namespace:   policyNamespace,
 				PodSelector: netpol.Spec.PodSelector,
 				SourceRules: []*networkingv1.NetworkPolicy{netpol},
-				Peer:        BuildEgressMatcher(policyNamespace, netpol.Spec.Egress),
+				Peers:       BuildEgressMatcher(policyNamespace, netpol.Spec.Egress),
 			}
 		}
 	}
 	return ingress, egress
 }
 
-func BuildIngressMatcher(policyNamespace string, ingresses []networkingv1.NetworkPolicyIngressRule) PeerMatcher {
-	var matcher PeerMatcher = &NonePeerMatcher{}
+func BuildIngressMatcher(policyNamespace string, ingresses []networkingv1.NetworkPolicyIngressRule) []PeerMatcher {
+	var matchers []PeerMatcher
 	for _, ingress := range ingresses {
-		matcher = CombinePeerMatchers(matcher, BuildPeerMatcher(policyNamespace, ingress.Ports, ingress.From))
+		matchers = append(matchers, BuildPeerMatcher(policyNamespace, ingress.Ports, ingress.From)...)
 	}
-	return matcher
+	return matchers
 }
 
-func BuildEgressMatcher(policyNamespace string, egresses []networkingv1.NetworkPolicyEgressRule) PeerMatcher {
-	var matcher PeerMatcher = &NonePeerMatcher{}
+func BuildEgressMatcher(policyNamespace string, egresses []networkingv1.NetworkPolicyEgressRule) []PeerMatcher {
+	var matchers []PeerMatcher
 	for _, egress := range egresses {
-		matcher = CombinePeerMatchers(matcher, BuildPeerMatcher(policyNamespace, egress.Ports, egress.To))
+		matchers = append(matchers, BuildPeerMatcher(policyNamespace, egress.Ports, egress.To)...)
 	}
-	return matcher
+	return matchers
 }
 
-func BuildPeerMatcher(policyNamespace string, npPorts []networkingv1.NetworkPolicyPort, peers []networkingv1.NetworkPolicyPeer) PeerMatcher {
+func BuildPeerMatcher(policyNamespace string, npPorts []networkingv1.NetworkPolicyPort, peers []networkingv1.NetworkPolicyPeer) []PeerMatcher {
+	if len(npPorts) == 0 && len(peers) == 0 {
+		return []PeerMatcher{AllPeersPorts}
+	}
 	// 1. build port matcher
 	port := BuildPortMatcher(npPorts)
 	// 2. build Peers
 	if len(peers) == 0 {
-		switch port.(type) {
-		case *AllPortMatcher:
-			return &AllPeerMatcher{}
-		default:
-			matcher := &NamespacePodMatcher{
-				Namespace: &AllNamespaceMatcher{},
-				Pod:       &AllPodMatcher{},
-				Port:      port,
-			}
-			return &SpecificPeerMatcher{
-				IP:       NewSpecificIPMatcher(port),
-				Internal: NewSpecificInternalMatcher(matcher),
-			}
-		}
-	} else {
-		matcher := &SpecificPeerMatcher{
-			IP:       &NoneIPMatcher{},
-			Internal: &NoneInternalMatcher{},
-		}
-		for _, from := range peers {
-			ip, ns, pod := BuildIPBlockNamespacePodMatcher(policyNamespace, from)
-			// invalid netpol guards
-			if ip == nil && ns == nil && pod == nil {
-				panic(errors.Errorf("invalid NetworkPolicyPeer: all of IPBlock, NamespaceSelector, and PodSelector are nil"))
-			}
-			if ip != nil && (ns != nil || pod != nil) {
-				panic(errors.Errorf("invalid NetworkPolicyPeer: if NamespaceSelector or PodSelector is non-nil, IPBlock must be nil"))
-			}
-			// process a valid netpol
-			if ip != nil {
-				ip.Port = port
-				matcher.IP = CombineIPMatchers(matcher.IP, NewSpecificIPMatcher(&NonePortMatcher{}, ip))
-			} else {
-				// special case: if all ports, namespaces, and pods are allowed
-				switch port.(type) {
-				case *AllPortMatcher:
-					switch ns.(type) {
-					case *AllNamespaceMatcher:
-						switch pod.(type) {
-						case *AllPodMatcher:
-							matcher.Internal = &AllInternalMatcher{}
-						}
-					}
-				}
-				// it's okay to continue processing additional matchers after hitting the special case,
-				//   since nothing can override an AllInternalMatcher
-				internal := NewSpecificInternalMatcher(&NamespacePodMatcher{
-					Namespace: ns,
-					Pod:       pod,
-					Port:      port,
-				})
-				matcher.Internal = CombineInternalMatchers(matcher.Internal, internal)
-			}
-		}
-		return matcher
+		return []PeerMatcher{&PortsForAllPeersMatcher{Port: port}}
 	}
+
+	var matchers []PeerMatcher
+	for _, from := range peers {
+		ip, ns, pod := BuildIPBlockNamespacePodMatcher(policyNamespace, from)
+		// invalid netpol guards
+		if ip == nil && ns == nil && pod == nil {
+			panic(errors.Errorf("invalid NetworkPolicyPeer: all of IPBlock, NamespaceSelector, and PodSelector are nil"))
+		}
+		if ip != nil && (ns != nil || pod != nil) {
+			panic(errors.Errorf("invalid NetworkPolicyPeer: if NamespaceSelector or PodSelector is non-nil, IPBlock must be nil"))
+		}
+		// process a valid netpol
+		if ip != nil {
+			ip.Port = port
+			matchers = append(matchers, ip)
+		} else {
+			matchers = append(matchers, &PodPeerMatcher{
+				Namespace: ns,
+				Pod:       pod,
+				Port:      port,
+			})
+		}
+	}
+	return matchers
 }
 
-func BuildIPBlockNamespacePodMatcher(policyNamespace string, peer networkingv1.NetworkPolicyPeer) (*IPBlockMatcher, NamespaceMatcher, PodMatcher) {
+func BuildIPBlockNamespacePodMatcher(policyNamespace string, peer networkingv1.NetworkPolicyPeer) (*IPPeerMatcher, NamespaceMatcher, PodMatcher) {
 	if peer.IPBlock != nil {
-		return &IPBlockMatcher{
+		return &IPPeerMatcher{
 			IPBlock: peer.IPBlock,
 			Port:    nil, // remember to set this elsewhere!
 		}, nil, nil

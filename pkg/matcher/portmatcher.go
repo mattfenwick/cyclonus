@@ -2,48 +2,16 @@ package matcher
 
 import (
 	"encoding/json"
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sort"
 )
 
 type PortMatcher interface {
 	Allows(portInt int, portName string, protocol v1.Protocol) bool
 }
 
-func CombinePortMatchers(a PortMatcher, b PortMatcher) PortMatcher {
-	switch l := a.(type) {
-	case *AllPortMatcher:
-		return a
-	case *NonePortMatcher:
-		return b
-	case *SpecificPortMatcher:
-		switch r := b.(type) {
-		case *AllPortMatcher:
-			return b
-		case *NonePortMatcher:
-			return a
-		case *SpecificPortMatcher:
-			return l.Combine(r)
-		default:
-			panic(errors.Errorf("invalid Port type %T", b))
-		}
-	default:
-		panic(errors.Errorf("invalid Port type %T", a))
-	}
-}
-
-type NonePortMatcher struct{}
-
-func (n *NonePortMatcher) Allows(portInt int, portName string, protocol v1.Protocol) bool {
-	return false
-}
-
-func (n *NonePortMatcher) MarshalJSON() (b []byte, e error) {
-	return json.Marshal(map[string]interface{}{
-		"Type": "no ports",
-	})
-}
+// TODO add port range
 
 type AllPortMatcher struct{}
 
@@ -64,7 +32,8 @@ type PortProtocolMatcher struct {
 	Protocol v1.Protocol
 }
 
-func (p *PortProtocolMatcher) Allows(portInt int, portName string, protocol v1.Protocol) bool {
+// AllowsPort does not implement the PortMatcher interface, purposely!
+func (p *PortProtocolMatcher) AllowsPort(portInt int, portName string, protocol v1.Protocol) bool {
 	if p.Port != nil {
 		return isPortMatch(*p.Port, portInt, portName) && p.Protocol == protocol
 	}
@@ -91,7 +60,7 @@ type SpecificPortMatcher struct {
 
 func (s *SpecificPortMatcher) Allows(portInt int, portName string, protocol v1.Protocol) bool {
 	for _, matcher := range s.Ports {
-		if matcher.Allows(portInt, portName, protocol) {
+		if matcher.AllowsPort(portInt, portName, protocol) {
 			return true
 		}
 	}
@@ -118,7 +87,74 @@ func (s *SpecificPortMatcher) Combine(other *SpecificPortMatcher) *SpecificPortM
 			pps = append(pps, otherPP)
 		}
 	}
+	sort.Slice(pps, func(i, j int) bool {
+		// first, run it forward
+		if isPortLessThan(pps[i].Port, pps[j].Port) {
+			return true
+		}
+		// flip it around, run it the other way
+		if isPortLessThan(pps[j].Port, pps[i].Port) {
+			return false
+		}
+		// neither is less than the other?  fall back to protocol
+		return pps[i].Protocol < pps[j].Protocol
+	})
 	return &SpecificPortMatcher{Ports: pps}
+}
+
+func (s *SpecificPortMatcher) Subtract(other *SpecificPortMatcher) (bool, *SpecificPortMatcher) {
+	var remaining []*PortProtocolMatcher
+	for _, thisPort := range s.Ports {
+		found := false
+		for _, otherPort := range other.Ports {
+			if thisPort.Equals(otherPort) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			remaining = append(remaining, thisPort)
+		}
+	}
+	if len(remaining) == 0 {
+		return true, nil
+	}
+	return false, &SpecificPortMatcher{Ports: remaining}
+}
+
+// isPortLessThan orders from low to high:
+// - nil
+// - string
+// - int
+func isPortLessThan(a *intstr.IntOrString, b *intstr.IntOrString) bool {
+	if a == nil {
+		return b != nil
+	}
+	if b == nil {
+		return false
+	}
+	switch a.Type {
+	case intstr.Int:
+		switch b.Type {
+		case intstr.Int:
+			return a.IntVal < b.IntVal
+		case intstr.String:
+			return false
+		default:
+			panic("invalid type")
+		}
+	case intstr.String:
+		switch b.Type {
+		case intstr.Int:
+			return true
+		case intstr.String:
+			return a.StrVal < b.StrVal
+		default:
+			panic("invalid type")
+		}
+	default:
+		panic("invalid type")
+	}
 }
 
 func isPortMatch(a intstr.IntOrString, portInt int, portName string) bool {

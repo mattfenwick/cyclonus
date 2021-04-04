@@ -39,6 +39,8 @@ const (
 	CheckTargetAllEgressBlocked  Check = "CheckTargetAllEgressBlocked"
 	CheckTargetAllIngressAllowed Check = "CheckTargetAllIngressAllowed"
 	CheckTargetAllEgressAllowed  Check = "CheckTargetAllEgressAllowed"
+
+	// TODO add check that rule is unnecessary b/c another rule exactly supercedes it
 )
 
 type Warning struct {
@@ -75,8 +77,10 @@ func WarningsTable(warnings []*Warning) string {
 }
 
 func Lint(kubePolicies []*networkingv1.NetworkPolicy, skip map[Check]bool) []*Warning {
-	policies := matcher.BuildNetworkPolicies(kubePolicies)
+	policies := matcher.BuildNetworkPolicies(false, kubePolicies)
 	warnings := append(LintSourcePolicies(kubePolicies), LintResolvedPolicies(policies)...)
+
+	// TODO do some stuff with comparing simplified to non-simplified policies
 
 	var filtered []*Warning
 	for _, warning := range warnings {
@@ -147,28 +151,33 @@ func LintNetworkPolicyPorts(policy *networkingv1.NetworkPolicy, ports []networki
 func LintResolvedPolicies(policies *matcher.Policy) []*Warning {
 	var ws []*Warning
 	for _, egress := range policies.Egress {
-		if !egress.Peer.Allows(&matcher.TrafficPeer{Internal: nil, IP: "8.8.8.8"}, 53, "", v1.ProtocolTCP) {
+		if !egress.Allows(&matcher.TrafficPeer{Internal: nil, IP: "8.8.8.8"}, 53, "", v1.ProtocolTCP) {
 			ws = append(ws, &Warning{Check: CheckDNSBlockedOnTCP, Target: egress})
 		}
-		if !egress.Peer.Allows(&matcher.TrafficPeer{Internal: nil, IP: "8.8.8.8"}, 53, "", v1.ProtocolUDP) {
+		if !egress.Allows(&matcher.TrafficPeer{Internal: nil, IP: "8.8.8.8"}, 53, "", v1.ProtocolUDP) {
 			ws = append(ws, &Warning{Check: CheckDNSBlockedOnUDP, Target: egress})
 		}
 
-		if _, ok := egress.Peer.(*matcher.NonePeerMatcher); ok {
+		if len(egress.Peers) == 0 {
 			ws = append(ws, &Warning{Check: CheckTargetAllEgressBlocked, Target: egress})
 		}
-		if _, ok := egress.Peer.(*matcher.AllPeerMatcher); ok {
-			ws = append(ws, &Warning{Check: CheckTargetAllEgressAllowed, Target: egress})
+		for _, peer := range egress.Peers {
+			if _, ok := peer.(*matcher.PortsForAllPeersMatcher); ok {
+				ws = append(ws, &Warning{Check: CheckTargetAllEgressAllowed, Target: egress})
+			}
 		}
 	}
 
 	for _, ingress := range policies.Ingress {
-		if _, ok := ingress.Peer.(*matcher.NonePeerMatcher); ok {
+		if len(ingress.Peers) == 0 {
 			ws = append(ws, &Warning{Check: CheckTargetAllIngressBlocked, Target: ingress})
 		}
-		if _, ok := ingress.Peer.(*matcher.AllPeerMatcher); ok {
-			ws = append(ws, &Warning{Check: CheckTargetAllIngressAllowed, Target: ingress})
+		for _, peer := range ingress.Peers {
+			if _, ok := peer.(*matcher.PortsForAllPeersMatcher); ok {
+				ws = append(ws, &Warning{Check: CheckTargetAllIngressAllowed, Target: ingress})
+			}
 		}
+
 	}
 
 	return ws
