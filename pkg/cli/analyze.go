@@ -118,10 +118,7 @@ func RunAnalyzeCommand(args *AnalyzeArgs) {
 	}
 
 	logrus.Debugf("parsed policies:\n%s", utils.JsonString(kubePolicies))
-	policies := matcher.BuildNetworkPolicies(kubePolicies)
-	if args.SimplifyPolicies {
-		policies.Simplify()
-	}
+	policies := matcher.BuildNetworkPolicies(args.SimplifyPolicies, kubePolicies)
 
 	for _, mode := range args.Modes {
 		switch mode {

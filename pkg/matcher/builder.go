@@ -7,11 +7,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
-func BuildNetworkPolicy(policy *networkingv1.NetworkPolicy) *Policy {
-	return BuildNetworkPolicies([]*networkingv1.NetworkPolicy{policy})
-}
-
-func BuildNetworkPolicies(netpols []*networkingv1.NetworkPolicy) *Policy {
+func BuildNetworkPolicies(simplify bool, netpols []*networkingv1.NetworkPolicy) *Policy {
 	np := NewPolicy()
 	for _, policy := range netpols {
 		ingress, egress := BuildTarget(policy)
@@ -21,6 +17,9 @@ func BuildNetworkPolicies(netpols []*networkingv1.NetworkPolicy) *Policy {
 		if egress != nil {
 			np.AddTarget(false, egress)
 		}
+	}
+	if simplify {
+		np.Simplify()
 	}
 	return np
 }

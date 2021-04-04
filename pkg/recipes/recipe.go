@@ -31,7 +31,7 @@ func (r *Recipe) Policies() []*networkingv1.NetworkPolicy {
 }
 
 func (r *Recipe) RunProbe() *probe.Table {
-	runner := probe.NewSimulatedRunner(matcher.BuildNetworkPolicies(r.Policies()))
+	runner := probe.NewSimulatedRunner(matcher.BuildNetworkPolicies(true, r.Policies()))
 	return runner.RunProbeForConfig(generator.NewProbeConfig(intstr.FromInt(r.Port), r.Protocol, generator.ProbeModeServiceName), r.Resources)
 }
 
@@ -57,7 +57,7 @@ func Run() {
 	for _, recipe := range AllRecipes {
 		table := recipe.RunProbe()
 
-		fmt.Printf("Policies:\n%s\n", matcher.BuildNetworkPolicies(recipe.Policies()).ExplainTable())
+		fmt.Printf("Policies:\n%s\n", matcher.BuildNetworkPolicies(true, recipe.Policies()).ExplainTable())
 
 		fmt.Printf("resources:\n%s\n", recipe.Resources.RenderTable())
 

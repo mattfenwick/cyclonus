@@ -77,8 +77,10 @@ func WarningsTable(warnings []*Warning) string {
 }
 
 func Lint(kubePolicies []*networkingv1.NetworkPolicy, skip map[Check]bool) []*Warning {
-	policies := matcher.BuildNetworkPolicies(kubePolicies)
+	policies := matcher.BuildNetworkPolicies(false, kubePolicies)
 	warnings := append(LintSourcePolicies(kubePolicies), LintResolvedPolicies(policies)...)
+
+	// TODO do some stuff with comparing simplified to non-simplified policies
 
 	var filtered []*Warning
 	for _, warning := range warnings {
