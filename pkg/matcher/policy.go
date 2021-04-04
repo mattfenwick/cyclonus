@@ -172,3 +172,12 @@ func (p *Policy) IsIngressOrEgressAllowed(traffic *Traffic, isIngress bool) *Dir
 
 	return &DirectionResult{AllowingTargets: allowers, DenyingTargets: deniers}
 }
+
+func (p *Policy) Simplify() {
+	for _, ingress := range p.Ingress {
+		ingress.Simplify()
+	}
+	for _, egress := range p.Egress {
+		egress.Simplify()
+	}
+}

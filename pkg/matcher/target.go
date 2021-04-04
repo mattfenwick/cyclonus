@@ -79,3 +79,7 @@ func CombineTargetsIgnoringPrimaryKey(namespace string, podSelector metav1.Label
 	}
 	return target
 }
+
+func (t *Target) Simplify() {
+	t.Peers = Simplify(t.Peers)
+}

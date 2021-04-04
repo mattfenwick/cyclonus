@@ -53,19 +53,23 @@ func (s *SliceBuilder) TargetsTableLines(targets []*Target, isIngress bool) {
 		rules := strings.Join(sourceRules, "\n")
 		s.Prefix = []string{ruleType, targetString, rules}
 
-		for _, peer := range target.Peers {
-			switch a := peer.(type) {
-			case *AllPeersMatcher:
-				s.Append("all pods, all ips", "all ports, all protocols")
-			case *PortsForAllPeersMatcher:
-				pps := PortMatcherTableLines(a.Port)
-				s.Append("all pods, all ips", strings.Join(pps, "\n"))
-			case *IPPeerMatcher:
-				s.IPPeerMatcherTableLines(a)
-			case *PodPeerMatcher:
-				s.PodPeerMatcherTableLines(a)
-			default:
-				panic(errors.Errorf("invalid PeerMatcher type %T", a))
+		if len(target.Peers) == 0 {
+			s.Append("no pods, no ips", "no ports, no protocols")
+		} else {
+			for _, peer := range target.Peers {
+				switch a := peer.(type) {
+				case *AllPeersMatcher:
+					s.Append("all pods, all ips", "all ports, all protocols")
+				case *PortsForAllPeersMatcher:
+					pps := PortMatcherTableLines(a.Port)
+					s.Append("all pods, all ips", strings.Join(pps, "\n"))
+				case *IPPeerMatcher:
+					s.IPPeerMatcherTableLines(a)
+				case *PodPeerMatcher:
+					s.PodPeerMatcherTableLines(a)
+				default:
+					panic(errors.Errorf("invalid PeerMatcher type %T", a))
+				}
 			}
 		}
 	}

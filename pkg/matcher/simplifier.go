@@ -148,16 +148,26 @@ func CombinePortMatchers(a PortMatcher, b PortMatcher) PortMatcher {
 	}
 }
 
+// SubtractPortMatchers finds ports that are in `a` but not in `b`.
+// The boolean return value is true if the return value is empty.
+// TODO this doesn't handle "all but" cases correctly.
 func SubtractPortMatchers(a PortMatcher, b PortMatcher) (bool, PortMatcher) {
 	switch l := a.(type) {
 	case *AllPortMatcher:
-		return true, nil
+		switch b.(type) {
+		case *AllPortMatcher:
+			return true, nil
+		case *SpecificPortMatcher:
+			return false, a
+		default:
+			panic(errors.Errorf("invalid Port type %T", b))
+		}
 	case *SpecificPortMatcher:
 		switch r := b.(type) {
 		case *AllPortMatcher:
-			return false, b
+			return true, nil
 		case *SpecificPortMatcher:
-			return false, l.Subtract(r)
+			return l.Subtract(r)
 		default:
 			panic(errors.Errorf("invalid Port type %T", b))
 		}
