@@ -51,6 +51,7 @@ func (p *PortProtocolMatcher) Equals(other *PortProtocolMatcher) bool {
 	return isIntStringEqual(*p.Port, *other.Port)
 }
 
+// PortRangeMatcher works with endports to specify a range of matched numeric ports.
 type PortRangeMatcher struct {
 	From     int
 	To       int
@@ -63,9 +64,10 @@ func (prm *PortRangeMatcher) AllowsPortProtocol(portInt int, protocol v1.Protoco
 
 func (prm *PortRangeMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
-		"Type": "port range",
-		"From": prm.From,
-		"To":   prm.To,
+		"Type":     "port range",
+		"From":     prm.From,
+		"To":       prm.To,
+		"Protocol": prm.Protocol,
 	})
 }
 
