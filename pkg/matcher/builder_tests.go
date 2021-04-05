@@ -324,7 +324,7 @@ func RunBuilderTests() {
 		It("allow numbered port on protocol", func() {
 			portNumber := intstr.FromInt(9001)
 			pm := BuildPortMatcher([]networkingv1.NetworkPolicyPort{netpol.AllowNumberedPortOnProtocol})
-			Expect(pm).To(Equal(&SpecificPortMatcher{[]*PortProtocolMatcher{{
+			Expect(pm).To(Equal(&SpecificPortMatcher{Ports: []*PortProtocolMatcher{{
 				Protocol: v1.ProtocolTCP,
 				Port:     &portNumber,
 			}}}))
@@ -333,7 +333,7 @@ func RunBuilderTests() {
 		It("allow named port on protocol", func() {
 			portName := intstr.FromString("hello")
 			pm := BuildPortMatcher([]networkingv1.NetworkPolicyPort{netpol.AllowNamedPortOnProtocol})
-			Expect(pm).To(Equal(&SpecificPortMatcher{[]*PortProtocolMatcher{{
+			Expect(pm).To(Equal(&SpecificPortMatcher{Ports: []*PortProtocolMatcher{{
 				Protocol: v1.ProtocolUDP,
 				Port:     &portName,
 			}}}))

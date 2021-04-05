@@ -11,8 +11,6 @@ type PortMatcher interface {
 	Allows(portInt int, portName string, protocol v1.Protocol) bool
 }
 
-// TODO add port range
-
 type AllPortMatcher struct{}
 
 func (ap *AllPortMatcher) Allows(portInt int, portName string, protocol v1.Protocol) bool {
@@ -32,8 +30,8 @@ type PortProtocolMatcher struct {
 	Protocol v1.Protocol
 }
 
-// AllowsPort does not implement the PortMatcher interface, purposely!
-func (p *PortProtocolMatcher) AllowsPort(portInt int, portName string, protocol v1.Protocol) bool {
+// AllowsPortProtocol does not implement the PortMatcher interface, purposely!
+func (p *PortProtocolMatcher) AllowsPortProtocol(portInt int, portName string, protocol v1.Protocol) bool {
 	if p.Port != nil {
 		return isPortMatch(*p.Port, portInt, portName) && p.Protocol == protocol
 	}
@@ -53,14 +51,38 @@ func (p *PortProtocolMatcher) Equals(other *PortProtocolMatcher) bool {
 	return isIntStringEqual(*p.Port, *other.Port)
 }
 
+type PortRangeMatcher struct {
+	From     int
+	To       int
+	Protocol v1.Protocol
+}
+
+func (prm *PortRangeMatcher) AllowsPortProtocol(portInt int, protocol v1.Protocol) bool {
+	return prm.From <= portInt && portInt <= prm.To && prm.Protocol == protocol
+}
+
+func (prm *PortRangeMatcher) MarshalJSON() (b []byte, e error) {
+	return json.Marshal(map[string]interface{}{
+		"Type": "port range",
+		"From": prm.From,
+		"To":   prm.To,
+	})
+}
+
 // SpecificPortMatcher models the case where traffic must match a named or numbered port
 type SpecificPortMatcher struct {
-	Ports []*PortProtocolMatcher
+	Ports      []*PortProtocolMatcher
+	PortRanges []*PortRangeMatcher
 }
 
 func (s *SpecificPortMatcher) Allows(portInt int, portName string, protocol v1.Protocol) bool {
 	for _, matcher := range s.Ports {
-		if matcher.AllowsPort(portInt, portName, protocol) {
+		if matcher.AllowsPortProtocol(portInt, portName, protocol) {
+			return true
+		}
+	}
+	for _, matcher := range s.PortRanges {
+		if matcher.AllowsPortProtocol(portInt, protocol) {
 			return true
 		}
 	}
@@ -75,10 +97,7 @@ func (s *SpecificPortMatcher) MarshalJSON() (b []byte, e error) {
 }
 
 func (s *SpecificPortMatcher) Combine(other *SpecificPortMatcher) *SpecificPortMatcher {
-	var pps []*PortProtocolMatcher
-	for _, pp := range s.Ports {
-		pps = append(pps, pp)
-	}
+	pps := append([]*PortProtocolMatcher{}, s.Ports...)
 	for _, otherPP := range other.Ports {
 		for _, pp := range pps {
 			if pp.Equals(otherPP) {
@@ -99,7 +118,12 @@ func (s *SpecificPortMatcher) Combine(other *SpecificPortMatcher) *SpecificPortM
 		// neither is less than the other?  fall back to protocol
 		return pps[i].Protocol < pps[j].Protocol
 	})
-	return &SpecificPortMatcher{Ports: pps}
+
+	// TODO compact port ranges
+	ranges := append(s.PortRanges, other.PortRanges...)
+	// TODO sort port ranges
+
+	return &SpecificPortMatcher{Ports: pps, PortRanges: ranges}
 }
 
 func (s *SpecificPortMatcher) Subtract(other *SpecificPortMatcher) (bool, *SpecificPortMatcher) {

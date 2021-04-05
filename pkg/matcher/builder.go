@@ -5,6 +5,7 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func BuildNetworkPolicies(simplify bool, netpols []*networkingv1.NetworkPolicy) *Policy {
@@ -146,15 +147,41 @@ func BuildPortMatcher(npPorts []networkingv1.NetworkPolicyPort) PortMatcher {
 	} else {
 		matcher := &SpecificPortMatcher{}
 		for _, p := range npPorts {
-			protocol := v1.ProtocolTCP
-			if p.Protocol != nil {
-				protocol = *p.Protocol
+			singlePort, portRange := BuildSinglePortMatcher(p)
+			if singlePort != nil {
+				matcher.Ports = append(matcher.Ports, singlePort)
+			} else {
+				matcher.PortRanges = append(matcher.PortRanges, portRange)
 			}
-			matcher.Ports = append(matcher.Ports, &PortProtocolMatcher{
-				Port:     p.Port,
-				Protocol: protocol,
-			})
 		}
 		return matcher
+	}
+}
+
+func BuildSinglePortMatcher(npPort networkingv1.NetworkPolicyPort) (*PortProtocolMatcher, *PortRangeMatcher) {
+	protocol := v1.ProtocolTCP
+	if npPort.Protocol != nil {
+		protocol = *npPort.Protocol
+	}
+	if npPort.EndPort == nil {
+		return &PortProtocolMatcher{
+			Port:     npPort.Port,
+			Protocol: protocol,
+		}, nil
+	}
+	// we have a port range: make sure it's valid
+	if npPort.Port == nil {
+		panic(errors.Errorf("invalid port range: start port is nil"))
+	}
+	if npPort.Port.Type == intstr.String {
+		panic(errors.Errorf("invalid port range: start port is string"))
+	}
+	if *npPort.EndPort < npPort.Port.IntVal {
+		panic(errors.Errorf("invalid port range: end port < start port"))
+	}
+	return nil, &PortRangeMatcher{
+		From:     int(npPort.Port.IntVal),
+		To:       int(*npPort.EndPort),
+		Protocol: protocol,
 	}
 }
