@@ -5,6 +5,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -70,6 +71,43 @@ func RunSimplifierTests() {
 			Expect(simplifyPortsForAllPeers([]*PortsForAllPeersMatcher{allOnTCP80})).To(Equal(allOnTCP80))
 			Expect(simplifyPortsForAllPeers([]*PortsForAllPeersMatcher{allOnTCP80, allOnTCP103})).To(Equal(allOnTCP80_103))
 			Expect(simplifyPortsForAllPeers([]*PortsForAllPeersMatcher{allOnTCP103, allOnTCP80})).To(Equal(allOnTCP80_103))
+		})
+
+		It("Should avoid mixing different matchers -- port range", func() {
+			dns := &PortsForAllPeersMatcher{Port: &SpecificPortMatcher{Ports: []*PortProtocolMatcher{{
+				Port:     &port53,
+				Protocol: udp,
+			}}}}
+			somePod := &PodPeerMatcher{
+				Namespace: &AllNamespaceMatcher{},
+				Pod: &LabelSelectorPodMatcher{Selector: metav1.LabelSelector{
+					MatchLabels: map[string]string{"app": "x"},
+				}},
+				Port: &SpecificPortMatcher{PortRanges: []*PortRangeMatcher{{
+					From:     80,
+					To:       103,
+					Protocol: tcp,
+				}}},
+			}
+			Expect(Simplify([]PeerMatcher{dns, somePod})).To(Equal([]PeerMatcher{dns, somePod}))
+		})
+
+		It("Should avoid mixing different matchers -- single port", func() {
+			dns := &PortsForAllPeersMatcher{Port: &SpecificPortMatcher{Ports: []*PortProtocolMatcher{{
+				Port:     &port53,
+				Protocol: udp,
+			}}}}
+			somePod := &PodPeerMatcher{
+				Namespace: &AllNamespaceMatcher{},
+				Pod: &LabelSelectorPodMatcher{Selector: metav1.LabelSelector{
+					MatchLabels: map[string]string{"app": "x"},
+				}},
+				Port: &SpecificPortMatcher{Ports: []*PortProtocolMatcher{{
+					Port:     &port80,
+					Protocol: tcp,
+				}}},
+			}
+			Expect(Simplify([]PeerMatcher{dns, somePod})).To(Equal([]PeerMatcher{dns, somePod}))
 		})
 	})
 

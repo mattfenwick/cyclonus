@@ -110,15 +110,18 @@ func PortMatcherTableLines(pm PortMatcher) []string {
 	case *AllPortMatcher:
 		return []string{"all ports, all protocols"}
 	case *SpecificPortMatcher:
-		var pps []string
+		var lines []string
 		for _, portProtocol := range port.Ports {
 			if portProtocol.Port == nil {
-				pps = append(pps, "all ports on protocol "+string(portProtocol.Protocol))
+				lines = append(lines, "all ports on protocol "+string(portProtocol.Protocol))
 			} else {
-				pps = append(pps, "port "+portProtocol.Port.String()+" on protocol "+string(portProtocol.Protocol))
+				lines = append(lines, "port "+portProtocol.Port.String()+" on protocol "+string(portProtocol.Protocol))
 			}
 		}
-		return pps
+		for _, portRange := range port.PortRanges {
+			lines = append(lines, fmt.Sprintf("ports [%d, %d] on protocol %s", portRange.From, portRange.To, portRange.Protocol))
+		}
+		return lines
 	default:
 		panic(errors.Errorf("invalid PortMatcher type %T", port))
 	}

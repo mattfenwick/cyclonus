@@ -91,8 +91,9 @@ func (s *SpecificPortMatcher) Allows(portInt int, portName string, protocol v1.P
 
 func (s *SpecificPortMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
-		"Type":  "specific ports",
-		"Ports": s.Ports,
+		"Type":       "specific ports",
+		"Ports":      s.Ports,
+		"PortRanges": s.PortRanges,
 	})
 }
 
@@ -127,6 +128,9 @@ func (s *SpecificPortMatcher) Combine(other *SpecificPortMatcher) *SpecificPortM
 }
 
 func (s *SpecificPortMatcher) Subtract(other *SpecificPortMatcher) (bool, *SpecificPortMatcher) {
+	// TODO actually subtract ranges
+	remainingRanges := s.PortRanges
+
 	var remaining []*PortProtocolMatcher
 	for _, thisPort := range s.Ports {
 		found := false
@@ -140,10 +144,10 @@ func (s *SpecificPortMatcher) Subtract(other *SpecificPortMatcher) (bool, *Speci
 			remaining = append(remaining, thisPort)
 		}
 	}
-	if len(remaining) == 0 {
+	if len(remainingRanges) == 0 && len(remaining) == 0 {
 		return true, nil
 	}
-	return false, &SpecificPortMatcher{Ports: remaining}
+	return false, &SpecificPortMatcher{Ports: remaining, PortRanges: remainingRanges}
 }
 
 // isPortLessThan orders from low to high:
