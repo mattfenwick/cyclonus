@@ -1,8 +1,6 @@
 package matcher
 
 import (
-	"fmt"
-	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	"sort"
 )
@@ -102,7 +100,6 @@ func simplifyIPsAndPodsIntoAlls(all *PortsForAllPeersMatcher, ips []*IPPeerMatch
 	var newPods []*PodPeerMatcher
 	for _, pod := range pods {
 		isEmpty, remainingPorts := SubtractPortMatchers(pod.Port, all.Port)
-		fmt.Printf("\n%+v\n%+v\n%+v\n\n", isEmpty, utils.JsonString(remainingPorts), utils.JsonString(pod))
 		if isEmpty {
 			// nothing to do
 		} else {
