@@ -6,6 +6,7 @@ set -e
 CLUSTER=${CLUSTER:-netpol-antrea}
 VERSION=${VERSION:-v0.13.1}
 ANTREA_DIR=antrea-repo
+IMG_NAME="projects.registry.vmware.com/antrea/antrea-ubuntu"
 
 if [[ ! -d $ANTREA_DIR ]] ; then
   git clone https://github.com/vmware-tanzu/antrea.git $ANTREA_DIR
@@ -18,6 +19,6 @@ pushd $ANTREA_DIR
   popd
 
   pushd hack
-    ./generate-manifest.sh --kind --tun vxlan | kubectl apply --context "kind-${CLUSTER}" -f -
+    IMG_NAME="${IMG_NAME}" IMG_TAG="${VERSION}" ./generate-manifest.sh --mode release --kind --tun vxlan | kubectl apply --context "kind-${CLUSTER}" -f -
   popd
 popd
