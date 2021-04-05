@@ -99,7 +99,11 @@ func PrintPorts(npPorts []NetworkPolicyPort) string {
 		} else {
 			protocol = string(*pp.Protocol)
 		}
-		lines = append(lines, fmt.Sprintf("%s on %s", port, protocol))
+		if pp.EndPort == nil {
+			lines = append(lines, fmt.Sprintf("%s on %s", port, protocol))
+		} else {
+			lines = append(lines, fmt.Sprintf("[%s, %d] on %s", pp.Port.String(), *pp.EndPort, protocol))
+		}
 	}
 	return strings.Join(lines, "\n")
 }
