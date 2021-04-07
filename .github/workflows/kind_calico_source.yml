@@ -1,0 +1,38 @@
+name: Kind Calico Cyclonus From Source
+on:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  KIND_VERSION: v0.10.0
+
+jobs:
+  test-kind-calico:
+    name: Run Cyclonus on KinD/Calico
+    runs-on: ubuntu-latest
+    steps:
+      - name: Free disk space
+        # https://github.com/actions/virtual-environments/issues/709
+        run: |
+          sudo apt-get clean
+          df -h
+
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.15
+
+      - name: Install KinD
+        run: |
+          curl -Lo ./kind https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-$(uname)-amd64
+          chmod +x ./kind
+          sudo mv kind /usr/local/bin
+
+      - name: Create KinD cluster
+        working-directory: hack/calico
+        run: ./setup-kind.sh
+
+      - name: Run cyclonus
+        run: go run ./cmd/cyclonus/main.go generate --include conflict
