@@ -5,3 +5,7 @@ set -xv
 env
 
 echo "$PATH"
+
+echo $a
+
+echo $b

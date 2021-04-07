@@ -1,16 +1,30 @@
 name: experimental
 
-inputs:
-  cni:
-    required: true
-  fromSource:
-    description: 'if true, run from source; otherwise run from an image'
-    required: false
-    default: true
-
 on:
   push:
+    inputs:
+      cni:
+        required: true
+      fromSource:
+        description: 'if true, run from source; otherwise run from an image'
+        required: false
+        default: true
   pull_request:
+    inputs:
+      cni:
+        required: true
+      fromSource:
+        description: 'if true, run from source; otherwise run from an image'
+        required: false
+        default: true
+  workflow_dispatch:
+    inputs:
+      cni:
+        required: true
+      fromSource:
+        description: 'if true, run from source; otherwise run from an image'
+        required: false
+        default: true
 
 jobs:
   build:
@@ -19,4 +33,4 @@ jobs:
       - uses: actions/checkout@v2
       - name: Run cyclonus tests
         working-directory: hack
-        run: ./hack.sh
+        run: a=${{ github.event.inputs.cni }} b=${{ github.event.inputs.fromSource }} ./hack.sh
