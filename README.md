@@ -9,7 +9,7 @@ policies that suit your needs!
 
 Grab the [latest release](https://github.com/mattfenwick/cyclonus/releases) to get started using Cyclonus.
 
-## Run as a kubernetes job
+### Run as a kubernetes job
 
 Take a look at the [hack directory](./hack):
 
@@ -36,7 +36,16 @@ Pull the logs from the job:
 kubectl logs -f -n netpol cyclonus-abcde
 ```
 
-## Docker images
+### Run from source
+
+Assuming you have a kube cluster and your kubectl is configured to point to it, you can run:
+
+```
+cd cmd/cyclonus
+go run main.go generate
+```
+
+### Docker images
 
 Images are available at [mfenwick100/cyclonus](https://hub.docker.com/r/mfenwick100/cyclonus/tags?page=1&ordering=last_updated):
 
@@ -56,14 +65,16 @@ Cyclonus is available as a [krew/kubectl plugin](https://github.com/mattfenwick/
 
 ### Antrea testing
 
-Cyclonus runs network policy tests for Antrea on a daily basis;
-[check it out on github](https://github.com/vmware-tanzu/antrea/actions/workflows/netpol_cyclonus.yml).
+[Cyclonus runs network policy tests for Antrea on a daily basis](https://github.com/vmware-tanzu/antrea/actions/workflows/netpol_cyclonus.yml).
 
-### Cilium testing (in progress)
+### Cilium testing
 
-[Cyclonus will run network policy tests for Cilium on a daily basis](https://github.com/cilium/cilium/pull/14889).
+[Cyclonus runs network policy tests for Cilium on a daily basis](https://github.com/cilium/cilium/pull/14889).
 
-## Probe
+
+## Cyclonus functionality
+
+### Probe
 
 Run a connectivity probe against a Kubernetes cluster.
 
@@ -93,7 +104,7 @@ Kube results for:
 0 wrong, 0 no value, 81 correct, 0 ignored out of 81 total
 ```
 
-## Policy generator
+### Policy generator
 
 For CNI conformance testing.
 
@@ -127,9 +138,9 @@ Tag results:
 |  - allow-all | 2 / 4 = 50% ❌ |
 |  - deny-all | 6 / 8 = 75% ❌ |
 
-## Policy analysis
+### Policy analysis
 
-### Explain policies
+#### Explain policies
 
 Groups policies by target, divides rules into egress and ingress, and gives a basic explanation of the combined
 policies.  This clarifies the interactions between "denies" and "allows" from multiple policies.
@@ -171,7 +182,7 @@ cyclonus analyze \
 +---------+---------------+------------------------+---------------------+--------------------------+
 ```
 
-### Which policy rules apply to a pod?
+#### Which policy rules apply to a pod?
 
 This takes the previous command a step further: it combines the rules from all the targets that apply
 to a pod. 
@@ -203,7 +214,7 @@ pod in ns y with labels map[pod:a]:
 ```
 
 
-### Will policies allow or block traffic?
+#### Will policies allow or block traffic?
 
 Given arbitrary traffic examples (from a source to a destination, including labels, over a port and protocol),
 this command parses network policies and determines if the traffic is allowed or not.
@@ -243,7 +254,7 @@ Is traffic allowed?
 +-------------+--------+---------------+
 ```
 
-### Simulated probe
+#### Simulated probe
 
 Runs a simulated connectivity probe against a set of network policies, without using a kubernetes cluster.
 
@@ -269,7 +280,7 @@ Combined:
 +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
 ```
 
-### Linter
+#### Linter
 
 Checks network policies for common problems.
 
