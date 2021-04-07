@@ -1,0 +1,22 @@
+name: experimental
+
+inputs:
+  cni:
+    required: true
+  fromSource:
+    description: 'if true, run from source; otherwise run from an image'
+    required: false
+    default: true
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run cyclonus tests
+        working-directory: hack
+        run: ./hack.sh
