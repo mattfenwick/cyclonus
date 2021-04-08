@@ -1,38 +1,33 @@
 name: Kind Calico Cyclonus From Source
 on:
   pull_request:
+    inputs:
+      cni:
+        value: calico
+      fromSource:
+        value: false
   workflow_dispatch:
-
-env:
-  KIND_VERSION: v0.10.0
+    inputs:
+      cni:
+        required: true
+      fromSource:
+        description: 'if true, run from source; otherwise run from an image'
+        required: false
+        default: true
 
 jobs:
   test-kind-calico:
-    name: Run Cyclonus on KinD/Calico
+    name: Run Cyclonus on KinD
     runs-on: ubuntu-latest
     steps:
-      - name: Free disk space
-        # https://github.com/actions/virtual-environments/issues/709
-        run: |
-          sudo apt-get clean
-          df -h
-
       - uses: actions/checkout@v2
 
       - name: Set up Go
+        if: ${{ github.event.inputs.fromSource }}
         uses: actions/setup-go@v2
         with:
           go-version: 1.15
 
-      - name: Install KinD
-        run: |
-          curl -Lo ./kind https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-$(uname)-amd64
-          chmod +x ./kind
-          sudo mv kind /usr/local/bin
-
-      - name: Create KinD cluster
-        working-directory: hack/calico
-        run: ./setup-kind.sh
-
-      - name: Run cyclonus
-        run: go run ./cmd/cyclonus/main.go generate --include conflict
+      - name: Run Cyclonus
+        working-directory: hack
+        run: CNI=${{ github.event.inputs.cni }} RUN_FROM_SOURCE=${{ github.event.inputs.fromSource }} ./run-cyclonus.sh
