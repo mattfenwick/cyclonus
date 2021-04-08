@@ -321,7 +321,7 @@ cyclonus analyze \
 
 ### Setup
 
- - [Get set up with golang 1.15](https://golang.org/dl/)
+ - [Get set up with golang 1.16](https://golang.org/dl/)
  - clone this repo
 
         git clone git@github.com:mattfenwick/cyclonus.git
