@@ -1,6 +1,5 @@
-name: Kind Cyclonus From Job
+name: Kind CNI From Job
 on:
-  pull_request:
   workflow_dispatch:
     inputs:
       cni:
