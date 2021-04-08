@@ -1,9 +1,10 @@
 name: GoReleaser
 
-on:
-  push:
-    tags:
-      - 'v*.*.*'
+# TODO: disabled until we figure out how to push docker images
+#on:
+#  push:
+#    tags:
+#      - 'v*.*.*'
 
 jobs:
   goreleaser:
