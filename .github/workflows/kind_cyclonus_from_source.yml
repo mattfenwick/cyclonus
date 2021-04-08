@@ -1,6 +1,6 @@
 name: Kind Calico Cyclonus From Source
 on:
-  pull_request:
+#  pull_request:
   workflow_dispatch:
     inputs:
       cni:

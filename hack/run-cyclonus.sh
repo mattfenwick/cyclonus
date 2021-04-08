@@ -48,7 +48,7 @@ else
   kubectl create clusterrolebinding cyclonus --clusterrole=cluster-admin --serviceaccount="$JOB_NS":cyclonus
   kubectl create sa cyclonus -n "$JOB_NS"
 
-  pushd cni
+  pushd "$CNI"
     kubectl create -f cyclonus-job.yaml -n "$JOB_NS"
   popd
 
