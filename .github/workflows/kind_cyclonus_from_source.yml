@@ -1,19 +1,10 @@
 name: Kind Calico Cyclonus From Source
 on:
   pull_request:
-    inputs:
-      cni:
-        value: calico
-      fromSource:
-        value: false
   workflow_dispatch:
     inputs:
       cni:
         required: true
-      fromSource:
-        description: 'if true, run from source; otherwise run from an image'
-        required: false
-        default: true
 
 jobs:
   test-kind-calico:
@@ -23,11 +14,10 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Set up Go
-        if: ${{ github.event.inputs.fromSource }}
         uses: actions/setup-go@v2
         with:
           go-version: 1.15
 
       - name: Run Cyclonus
         working-directory: hack
-        run: CNI=${{ github.event.inputs.cni }} RUN_FROM_SOURCE=${{ github.event.inputs.fromSource }} ./run-cyclonus.sh
+        run: CNI=${{ github.event.inputs.cni }} RUN_FROM_SOURCE=true ./run-cyclonus.sh

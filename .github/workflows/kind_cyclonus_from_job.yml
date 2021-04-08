@@ -1,0 +1,18 @@
+name: Kind Cyclonus From Job
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      cni:
+        required: true
+
+jobs:
+  test-kind-calico:
+    name: Run Cyclonus on KinD
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Run Cyclonus
+        working-directory: hack
+        run: CNI=${{ github.event.inputs.cni }} RUN_FROM_SOURCE=false ./run-cyclonus.sh
