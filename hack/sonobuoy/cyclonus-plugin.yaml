@@ -1,0 +1,16 @@
+sonobuoy-config:
+  driver: Job
+  plugin-name: cyclonus
+  result-format: raw
+spec:
+  command:
+  - ./cyclonus
+  - generate
+  - --include=conflict
+  image: docker.io/mfenwick100/cyclonus:latest
+  name: plugin
+  resources: {}
+  volumeMounts:
+  - mountPath: /tmp/results
+    name: results
+
