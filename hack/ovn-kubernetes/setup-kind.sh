@@ -3,7 +3,7 @@
 set -xv
 set -eou pipefail
 
-CLUSTER="ovn"
+CLUSTER=${CLUSTER:-"ovn"}
 OVN_DIR="ovn-kubernetes-repo"
 
 if [[ ! -d $OVN_DIR ]] ; then
