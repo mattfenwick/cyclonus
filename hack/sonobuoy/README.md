@@ -5,10 +5,8 @@
 ```bash
 sonobuoy gen plugin \
   --name=cyclonus \
-  --image=docker.io/mfenwick100/cyclonus:latest \
-  --cmd cyclonus \
-  --cmd generate \
-  --cmd="--include=conflict" > cyclonus-plugin.yaml
+  --image=mfenwick100/sonobuoy-cyclonus:latest \
+  --cmd ./run-sonobuoy-plugin.sh \ > cyclonus-plugin.yaml
 ```
 
 ## Run plugin
@@ -17,16 +15,11 @@ sonobuoy gen plugin \
 sonobuoy run --plugin cyclonus-plugin.yaml --wait
 ```
 
-## TODO
-
-May need an 'updateProgress' function, see
-https://github.com/vmware-tanzu/sonobuoy/blob/v0.50.0/examples/plugins/progress-reporter/run.sh#L23.
-
 ## Look at results
 
-TODO, maybe:
 ```bash
 outfile=$(sonobuoy retrieve) && \
-  mkdir results && tar -xf $outfile -C results &&
-  cat results/plugins/debug/results/*/out*
+  mkdir results && tar -xf $outfile -C results
 ```
+
+Then crack open the `results` dir and have a look!

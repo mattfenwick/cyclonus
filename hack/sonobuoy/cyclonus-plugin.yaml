@@ -4,10 +4,9 @@ sonobuoy-config:
   result-format: raw
 spec:
   command:
-  - ./cyclonus
-  - generate
-  - --include=conflict
-  image: docker.io/mfenwick100/cyclonus:latest
+  - ./run-sonobuoy-plugin.sh
+  image: mfenwick100/cyclonus-sonobuoy:latest
+  imagePullPolicy: IfNotPresent
   name: plugin
   resources: {}
   volumeMounts:
