@@ -3,7 +3,7 @@
 set -xv
 set -eou pipefail
 
-CLUSTER="ovn"
+CLUSTER=${CLUSTER:-"ovn"}
 OVN_DIR="ovn-kubernetes-repo"
 
 if [[ ! -d $OVN_DIR ]] ; then
@@ -20,6 +20,6 @@ pushd $OVN_DIR
   popd
 
   pushd contrib
-      KUBECONFIG=${HOME}/admin.conf ./kind.sh
+      KIND_CLUSTER_NAME=$CLUSTER KUBECONFIG=${HOME}/admin.conf ./kind.sh
   popd
 popd
