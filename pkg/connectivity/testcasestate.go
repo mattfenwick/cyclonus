@@ -4,6 +4,7 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"time"
@@ -234,8 +235,12 @@ func (t *TestCaseState) verifyClusterStateHelper() error {
 		if err != nil {
 			return err
 		}
-		if !NewLabelsDiff(namespace.Labels, expectedNamespaceLabels).AreLabelsEqual() {
+		diff := NewLabelsDiff(namespace.Labels, expectedNamespaceLabels)
+		if !diff.AreAllExpectedLabelsPresent() {
 			return errors.Errorf("for namespace %s, expected labels %+v (found %+v)", ns, expectedNamespaceLabels, namespace.Labels)
+		}
+		for _, key := range diff.Extra {
+			logrus.Warnf("found extra label on namespace %s -- %s: %s", ns, key, namespace.Labels[key])
 		}
 	}
 
@@ -277,6 +282,10 @@ func NewLabelsDiff(actual map[string]string, expected map[string]string) *Labels
 
 func (ld *LabelsDiff) AreLabelsEqual() bool {
 	return len(ld.Different) == 0 && len(ld.Extra) == 0 && len(ld.Missing) == 0
+}
+
+func (ld *LabelsDiff) AreAllExpectedLabelsPresent() bool {
+	return len(ld.Different) == 0 && len(ld.Missing) == 0
 }
 
 func (t *TestCaseState) resetLabelsInKubeHelper() error {
