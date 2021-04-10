@@ -5,6 +5,7 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"math/rand"
 )
 
@@ -110,7 +111,18 @@ func (m *MockKubernetes) getNamespaceObject(namespace string) (*MockNamespace, e
 
 func (m *MockKubernetes) GetNamespace(namespace string) (*v1.Namespace, error) {
 	if ns, ok := m.Namespaces[namespace]; ok {
-		return ns.NamespaceObject, nil
+		//return ns.NamespaceObject, nil
+		labels := map[string]string{}
+		for k, v := range ns.NamespaceObject.Labels {
+			labels[k] = v
+		}
+		labels["kubernetes.io/metadata.name"] = namespace
+		return &v1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: ns.NamespaceObject.Name,
+				Labels:labels,
+			},
+		}, nil
 	}
 	return nil, errors.Errorf("namespace %s not found", namespace)
 }
