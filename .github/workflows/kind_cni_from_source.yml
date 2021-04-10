@@ -4,6 +4,9 @@ on:
     inputs:
       cni:
         required: true
+      cyclonus_args:
+        required: false
+        default: "generate include --conflict"
 
 jobs:
   test-kind-calico:
@@ -19,4 +22,4 @@ jobs:
 
       - name: Run Cyclonus
         working-directory: hack
-        run: CNI=${{ github.event.inputs.cni }} RUN_FROM_SOURCE=true ./run-cyclonus.sh
+        run: CNI=${{ github.event.inputs.cni }} RUN_FROM_SOURCE=true FROM_SOURCE_ARGS=${{ github.event.inputs.cyclonus_args }} ./run-cyclonus.sh
