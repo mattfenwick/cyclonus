@@ -30,6 +30,7 @@ type GenerateArgs struct {
 	Exclude                   []string
 	DestinationType           string
 	Mock                      bool
+	DryRun                    bool
 }
 
 func SetupGenerateCommand() *cobra.Command {
@@ -65,6 +66,7 @@ func SetupGenerateCommand() *cobra.Command {
 	command.Flags().StringSliceVar(&args.Exclude, "exclude", []string{generator.TagMultiPeer, generator.TagUpstreamE2E, generator.TagExample}, "exclude tests with any of these tags.  See 'include' field for valid tags")
 
 	command.Flags().BoolVar(&args.Mock, "mock", false, "if true, use a mock kube runner (i.e. don't actually run tests against kubernetes; instead, product fake results")
+	command.Flags().BoolVar(&args.DryRun, "dry-run", false, "if true, don't actually do anything: just print out what would be done")
 
 	return command
 }
@@ -78,7 +80,7 @@ func RunGenerateCommand(args *GenerateArgs) {
 
 	var kubernetes kube.IKubernetes
 	var err error
-	if args.Mock {
+	if args.Mock || args.DryRun {
 		kubernetes = kube.NewMockKubernetes(1.0)
 	} else {
 		kubeClient, err := kube.NewKubernetesForContext(args.Context)
@@ -119,7 +121,11 @@ func RunGenerateCommand(args *GenerateArgs) {
 	}
 	fmt.Printf("testing %d cases\n\n", len(testCases))
 	for i, testCase := range testCases {
-		logrus.Infof("test #%d to run: %s", i+1, testCase.Description)
+		logrus.Infof("test #%d: %s\n - tags: %+v", i+1, testCase.Description, strings.Join(testCase.Tags.Keys(), ", "))
+	}
+
+	if args.DryRun {
+		return
 	}
 
 	if args.DestinationType != "" {

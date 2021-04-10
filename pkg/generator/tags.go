@@ -230,15 +230,16 @@ func (s StringSet) GroupTags() map[string][]string {
 }
 
 func (s StringSet) Keys() []string {
-	var slice []string
+	var stringSlice []string
 	for k := range s {
-		slice = append(slice, k)
+		stringSlice = append(stringSlice, k)
 	}
-	return slice
+	sort.Strings(stringSlice)
+	return stringSlice
 }
 
-func (s StringSet) ContainsAny(slice []string) bool {
-	for _, e := range slice {
+func (s StringSet) ContainsAny(stringSlice []string) bool {
+	for _, e := range stringSlice {
 		if _, ok := s[e]; ok {
 			return true
 		}
