@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
@@ -81,9 +82,14 @@ func RunGenerateCommand(args *GenerateArgs) {
 	if args.Mock {
 		kubernetes = kube.NewMockKubernetes(1.0)
 	} else {
-		kubernetes, err = kube.NewKubernetesForContext(args.Context)
+		kubeClient, err := kube.NewKubernetesForContext(args.Context)
+		info, err := kubeClient.ClientSet.ServerVersion()
+		utils.DoOrDie(err)
+		jsonBytes, err := json.MarshalIndent(info, "", "  ")
+		utils.DoOrDie(err)
+		fmt.Printf("server version: \n%s\n", jsonBytes)
+		kubernetes = kubeClient
 	}
-	utils.DoOrDie(err)
 
 	serverProtocols := parseProtocols(args.ServerProtocols)
 
