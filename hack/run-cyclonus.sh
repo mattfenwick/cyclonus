@@ -5,8 +5,9 @@ set -eou pipefail
 
 KIND_VERSION=${KIND_VERSION:-v0.10.0}
 CNI=${CNI:-calico}
-RUN_FROM_SOURCE=${RUN_FROM_SOURCE:-true}
 CLUSTER_NAME="netpol-$CNI"
+RUN_FROM_SOURCE=${RUN_FROM_SOURCE:-true}
+FROM_SOURCE_ARGS=${FROM_SOURCE_ARGS:-"generate include --conflict"}
 
 # install kind if not found
 if ! command -v kind &> /dev/null
@@ -35,7 +36,8 @@ kubectl get pods -A
 
 # run cyclonus
 if [ "$RUN_FROM_SOURCE" == true ]; then
-  go run ../cmd/cyclonus/main.go generate --include conflict
+  # don't quote this -- we want word splitting here!
+  go run ../cmd/cyclonus/main.go $FROM_SOURCE_ARGS
 else
   docker pull mfenwick100/cyclonus:latest
   kind load docker-image mfenwick100/cyclonus:latest --name "$CLUSTER_NAME"
