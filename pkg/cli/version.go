@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -25,5 +26,9 @@ func SetupVersionCommand() *cobra.Command {
 }
 
 func RunVersionCommand() {
-	fmt.Printf("Version: %s\nGit SHA: %s\nBuild time: %s\n", version, gitSHA, buildTime)
+	fmt.Printf("Cyclonus version: \n%s\n", utils.JsonString(map[string]string{
+		"Version":   version,
+		"GitSHA":    gitSHA,
+		"BuildTime": buildTime,
+	}))
 }

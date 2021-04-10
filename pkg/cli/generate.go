@@ -81,9 +81,12 @@ func RunGenerateCommand(args *GenerateArgs) {
 	if args.Mock {
 		kubernetes = kube.NewMockKubernetes(1.0)
 	} else {
-		kubernetes, err = kube.NewKubernetesForContext(args.Context)
+		kubeClient, err := kube.NewKubernetesForContext(args.Context)
+		info, err := kubeClient.ClientSet.ServerVersion()
+		utils.DoOrDie(err)
+		fmt.Printf("Kubernetes server version: \n%s\n", utils.JsonString(info))
+		kubernetes = kubeClient
 	}
-	utils.DoOrDie(err)
 
 	serverProtocols := parseProtocols(args.ServerProtocols)
 
