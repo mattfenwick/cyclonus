@@ -4,6 +4,7 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"time"
@@ -191,31 +192,31 @@ func (t *TestCaseState) verifyClusterStateHelper() error {
 		actualPods[probe.NewPodString(kubePod.Namespace, kubePod.Name).String()] = kubePod
 	}
 	// are we missing any pods?
-	for _, pod := range t.Resources.Pods {
-		if actualPod, ok := actualPods[pod.PodString().String()]; ok {
-			if !areLabelsEqual(actualPod.Labels, pod.Labels) {
-				return errors.Errorf("for pod %s, expected labels %+v (found %+v)", pod.PodString().String(), pod.Labels, actualPod.Labels)
+	for _, expectedPod := range t.Resources.Pods {
+		if actualPod, ok := actualPods[expectedPod.PodString().String()]; ok {
+			if !NewLabelsDiff(actualPod.Labels, expectedPod.Labels).AreLabelsEqual() {
+				return errors.Errorf("for pod %s, expected labels %+v (found %+v)", expectedPod.PodString().String(), expectedPod.Labels, actualPod.Labels)
 			}
-			if actualPod.Status.PodIP != pod.IP {
-				return errors.Errorf("for pod %s, expected ip %s (found %s)", pod.PodString().String(), pod.IP, actualPod.Status.PodIP)
+			if actualPod.Status.PodIP != expectedPod.IP {
+				return errors.Errorf("for pod %s, expected ip %s (found %s)", expectedPod.PodString().String(), expectedPod.IP, actualPod.Status.PodIP)
 			}
-			if !pod.IsEqualToKubePod(actualPod) {
-				return errors.Errorf("for pod %s, expected containers %+v (found %+v)", pod.PodString().String(), pod.Containers, actualPod.Spec.Containers)
+			if !expectedPod.IsEqualToKubePod(actualPod) {
+				return errors.Errorf("for pod %s, expected containers %+v (found %+v)", expectedPod.PodString().String(), expectedPod.Containers, actualPod.Spec.Containers)
 			}
 		} else {
-			return errors.Errorf("missing expected pod %s", pod.PodString().String())
+			return errors.Errorf("missing expected pod %s", expectedPod.PodString().String())
 		}
 	}
 
 	// 2. services: selectors, ports
-	for _, pod := range t.Resources.Pods {
-		expected := pod.KubeService()
+	for _, expectedPod := range t.Resources.Pods {
+		expected := expectedPod.KubeService()
 		svc, err := t.Kubernetes.GetService(expected.Namespace, expected.Name)
 		if err != nil {
 			return err
 		}
-		if !areLabelsEqual(svc.Spec.Selector, pod.Labels) {
-			return errors.Errorf("for service %s/%s, expected labels %+v (found %+v)", pod.Namespace, pod.Name, pod.Labels, svc.Spec.Selector)
+		if !NewLabelsDiff(svc.Spec.Selector, expectedPod.Labels).AreLabelsEqual() {
+			return errors.Errorf("for service %s/%s, expected labels %+v (found %+v)", expectedPod.Namespace, expectedPod.Name, expectedPod.Labels, svc.Spec.Selector)
 		}
 		if len(expected.Spec.Ports) != len(svc.Spec.Ports) {
 			return errors.Errorf("for service %s/%s, expected %d ports (found %d)", expected.Namespace, expected.Name, len(expected.Spec.Ports), len(svc.Spec.Ports))
@@ -229,13 +230,17 @@ func (t *TestCaseState) verifyClusterStateHelper() error {
 	}
 
 	// 3. namespaces: names, labels
-	for ns, labels := range t.Resources.Namespaces {
+	for ns, expectedNamespaceLabels := range t.Resources.Namespaces {
 		namespace, err := t.Kubernetes.GetNamespace(ns)
 		if err != nil {
 			return err
 		}
-		if !areLabelsEqual(namespace.Labels, labels) {
-			return errors.Errorf("for namespace %s, expected labels %+v (found %+v)", ns, labels, namespace.Labels)
+		diff := NewLabelsDiff(namespace.Labels, expectedNamespaceLabels)
+		if !diff.AreAllExpectedLabelsPresent() {
+			return errors.Errorf("for namespace %s, expected labels %+v (found %+v)", ns, expectedNamespaceLabels, namespace.Labels)
+		}
+		for _, key := range diff.Extra {
+			logrus.Warnf("found extra label on namespace %s -- %s: %s", ns, key, namespace.Labels[key])
 		}
 	}
 
@@ -243,17 +248,44 @@ func (t *TestCaseState) verifyClusterStateHelper() error {
 	return nil
 }
 
-func areLabelsEqual(l map[string]string, r map[string]string) bool {
-	if len(l) != len(r) {
-		return false
+type LabelsDiff struct {
+	Same      []string
+	Different []string
+	Extra     []string
+	Missing   []string
+}
+
+func NewLabelsDiff(actual map[string]string, expected map[string]string) *LabelsDiff {
+	ld := &LabelsDiff{
+		Same:      nil,
+		Different: nil,
+		Extra:     nil,
+		Missing:   nil,
 	}
-	for k, lv := range l {
-		rv, ok := r[k]
-		if !ok || lv != rv {
-			return false
+	for k, actualValue := range actual {
+		expectedValue, ok := expected[k]
+		if !ok {
+			ld.Extra = append(ld.Extra, k)
+		} else if actualValue != expectedValue {
+			ld.Different = append(ld.Different, k)
+		} else {
+			ld.Same = append(ld.Same, k)
 		}
 	}
-	return true
+	for k, _ := range expected {
+		if _, ok := actual[k]; !ok {
+			ld.Missing = append(ld.Missing, k)
+		}
+	}
+	return ld
+}
+
+func (ld *LabelsDiff) AreLabelsEqual() bool {
+	return len(ld.Different) == 0 && len(ld.Extra) == 0 && len(ld.Missing) == 0
+}
+
+func (ld *LabelsDiff) AreAllExpectedLabelsPresent() bool {
+	return len(ld.Different) == 0 && len(ld.Missing) == 0
 }
 
 func (t *TestCaseState) resetLabelsInKubeHelper() error {

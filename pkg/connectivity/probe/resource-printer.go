@@ -35,13 +35,15 @@ func (r *Resources) RenderTable() string {
 	})
 	for _, ns := range nsSlice {
 		labels := r.Namespaces[ns]
+		nsLabelLines := labelsToLines(labels)
 		for _, pod := range nsToPod[ns] {
+			podLabelLines := labelsToLines(pod.Labels)
 			for _, cont := range pod.Containers {
 				table.Append([]string{
 					ns,
-					labelsToLines(labels),
+					nsLabelLines,
 					pod.Name,
-					labelsToLines(pod.Labels),
+					podLabelLines,
 					fmt.Sprintf("pod: %s\nservice: %s", pod.IP, pod.ServiceIP),
 					fmt.Sprintf("%s, port %s: %d on %s", cont.Name, cont.PortName, cont.Port, cont.Protocol),
 				})
@@ -54,9 +56,14 @@ func (r *Resources) RenderTable() string {
 }
 
 func labelsToLines(labels map[string]string) string {
+	var keys []string
+	for key := range labels {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
 	var lines []string
-	for k, v := range labels {
-		lines = append(lines, fmt.Sprintf("%s: %s", k, v))
+	for _, key := range keys {
+		lines = append(lines, fmt.Sprintf("%s: %s", key, labels[key]))
 	}
 	return strings.Join(lines, "\n")
 }
