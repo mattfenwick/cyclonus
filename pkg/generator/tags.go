@@ -67,6 +67,7 @@ const (
 	TagAnyPort      = "any-port"
 	TagNumberedPort = "numbered-port"
 	TagNamedPort    = "named-port"
+	TagEndPort      = "end-port"
 )
 
 const (
@@ -126,6 +127,7 @@ var AllTags = map[string][]string{
 		TagAnyPort,
 		TagNumberedPort,
 		TagNamedPort,
+		TagEndPort,
 	},
 	TagProtocol: {
 		TagTCPProtocol,

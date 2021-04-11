@@ -8,6 +8,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+var (
+	eighty     = int32(80)
+	eightyFour = int32(84)
+)
+
 func describeDirectionality(isIngress bool) string {
 	if isIngress {
 		return TagIngress
@@ -46,6 +51,14 @@ func describeProtocol(protocol *v1.Protocol) *string {
 	return &tag
 }
 
+func describeEndPort(port *int32) *string {
+	if port == nil {
+		return nil
+	}
+	tag := TagEndPort
+	return &tag
+}
+
 func (t *TestCaseGenerator) ZeroPortProtocolTestCases() []*TestCase {
 	var cases []*TestCase
 	for _, isIngress := range []bool{false, true} {
@@ -81,7 +94,13 @@ func networkPolicyPorts() []NetworkPolicyPort {
 		NetworkPolicyPort{Protocol: &udp, Port: &portServe80UDP},
 		NetworkPolicyPort{Protocol: &udp, Port: &portServe81UDP},
 		NetworkPolicyPort{Protocol: &sctp, Port: &portServe80SCTP},
-		NetworkPolicyPort{Protocol: &sctp, Port: &portServe81SCTP})
+		NetworkPolicyPort{Protocol: &sctp, Port: &portServe81SCTP},
+		NetworkPolicyPort{Protocol: &tcp, Port: &port53, EndPort: &eighty},
+		NetworkPolicyPort{Protocol: &tcp, Port: &port53, EndPort: &eightyFour},
+		NetworkPolicyPort{Protocol: &udp, Port: &port53, EndPort: &eighty},
+		NetworkPolicyPort{Protocol: &udp, Port: &port53, EndPort: &eightyFour},
+		NetworkPolicyPort{Protocol: &sctp, Port: &port53, EndPort: &eighty},
+		NetworkPolicyPort{Protocol: &sctp, Port: &port53, EndPort: &eightyFour})
 	return npps
 }
 
@@ -95,6 +114,9 @@ func (t *TestCaseGenerator) SinglePortProtocolTestCases() []*TestCase {
 				describePort(npp.Port),
 			)
 			if tag := describeProtocol(npp.Protocol); tag != nil {
+				tags.Add(*tag)
+			}
+			if tag := describeEndPort(npp.EndPort); tag != nil {
 				tags.Add(*tag)
 			}
 			cases = append(cases, NewSingleStepTestCase("", tags, ProbeAllAvailable,

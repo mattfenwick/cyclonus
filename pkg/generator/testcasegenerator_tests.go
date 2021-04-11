@@ -16,10 +16,10 @@ func RunTestCaseGeneratorTests() {
 			Expect(len(gen.UpstreamE2ETestCases())).To(Equal(13))
 			Expect(len(gen.TargetTestCases())).To(Equal(6))
 			Expect(len(gen.ExampleTestCases())).To(Equal(1))
-			Expect(len(gen.PortProtocolTestCases())).To(Equal(58))
+			Expect(len(gen.PortProtocolTestCases())).To(Equal(70))
 			Expect(len(gen.ConflictTestCases())).To(Equal(16))
 
-			Expect(len(gen.GenerateTestCases())).To(Equal(216))
+			Expect(len(gen.GenerateTestCases())).To(Equal(228))
 		})
 	})
 }
