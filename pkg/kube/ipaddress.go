@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	networkingv1 "k8s.io/api/networking/v1"
 	"net"
@@ -36,4 +37,10 @@ func IsIPAddressMatchForIPBlock(ip string, ipBlock *networkingv1.IPBlock) (bool,
 		}
 	}
 	return true, nil
+}
+
+func MakeIPV4CIDR(ipString string, bits int) string {
+	mask := net.CIDRMask(bits, 32)
+	ip := net.ParseIP(ipString)
+	return fmt.Sprintf("%s/%d", ip.Mask(mask).String(), bits)
 }

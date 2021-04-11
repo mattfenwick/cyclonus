@@ -1,10 +1,12 @@
 package kube
 
 import (
+	"fmt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/networking/v1"
+	"net"
 )
 
 func RunIPAddressTests() {
@@ -149,6 +151,52 @@ func RunIPAddressTests() {
 				isMatchWitExcept, err := IsIPAddressMatchForIPBlock(c.IP, c.IPBlock)
 				Expect(err).To(BeNil())
 				Expect(isMatchWitExcept).To(Equal(c.IsMatch))
+			}
+		})
+	})
+
+	Describe("Make CIDR from IPAddress", func() {
+		It("should build normalized CIDRs correctly", func() {
+			testCases := []struct {
+				IP       string
+				Bits     int
+				Expected string
+			}{
+				{
+					IP:       "255.255.255.255",
+					Bits:     32,
+					Expected: "255.255.255.255/32",
+				},
+				{
+					IP:       "255.255.255.255",
+					Bits:     31,
+					Expected: "255.255.255.254/31",
+				},
+				{
+					IP:       "255.255.255.255",
+					Bits:     30,
+					Expected: "255.255.255.252/30",
+				},
+				{
+					IP:       "255.255.255.255",
+					Bits:     28,
+					Expected: "255.255.255.240/28",
+				},
+				{
+					IP:       "255.255.255.255",
+					Bits:     24,
+					Expected: "255.255.255.0/24",
+				},
+				{
+					IP:       "255.255.255.255",
+					Bits:     16,
+					Expected: "255.255.0.0/16",
+				},
+			}
+			for _, tc := range testCases {
+				fmt.Printf("%+v\n", net.ParseIP(tc.IP))
+				actual := MakeIPV4CIDR(tc.IP, tc.Bits)
+				Expect(actual).To(Equal(tc.Expected))
 			}
 		})
 	})
