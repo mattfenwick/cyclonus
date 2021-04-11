@@ -121,7 +121,7 @@ func RunGenerateCommand(args *GenerateArgs) {
 	}
 	fmt.Printf("testing %d cases\n\n", len(testCases))
 	for i, testCase := range testCases {
-		logrus.Infof("test #%d: %s\n - tags: %+v", i+1, testCase.Description, strings.Join(testCase.Tags.Keys(), ", "))
+		fmt.Printf("test #%d: %s\n - tags: %+v\n", i+1, testCase.Description, strings.Join(testCase.Tags.Keys(), ", "))
 	}
 
 	if args.DryRun {
@@ -139,13 +139,13 @@ func RunGenerateCommand(args *GenerateArgs) {
 	}
 
 	for i, testCase := range testCases {
-		logrus.Infof("starting test case #%d", i+1)
+		fmt.Printf("starting test case #%d\n", i+1)
 
 		result := interpreter.ExecuteTestCase(testCase)
 		utils.DoOrDie(result.Err)
 
 		printer.PrintTestCaseResult(result)
-		logrus.Infof("finished policy #%d", i+1)
+		fmt.Printf("finished policy #%d\n", i+1)
 	}
 
 	printer.PrintSummary()
