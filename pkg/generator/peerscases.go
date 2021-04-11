@@ -13,9 +13,8 @@ type peer struct {
 }
 
 func ipBlockPeers(podIP string) []*peer {
-	// TODO normalize these cidrs
-	cidr24 := fmt.Sprintf("%s/24", podIP)
-	cidr28 := fmt.Sprintf("%s/28", podIP)
+	cidr24 := kube.MakeIPV4CIDR(podIP, 24)
+	cidr28 := kube.MakeIPV4CIDR(podIP, 28)
 	return []*peer{
 		{Description: "simple ipblock", Peer: NetworkPolicyPeer{IPBlock: &IPBlock{CIDR: cidr24}}},
 		{Description: "ipblock with except", Peer: NetworkPolicyPeer{IPBlock: &IPBlock{CIDR: cidr24, Except: []string{cidr28}}}},
