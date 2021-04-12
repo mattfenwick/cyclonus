@@ -37,7 +37,7 @@ kubectl get pods -A
 # run cyclonus
 if [ "$RUN_FROM_SOURCE" == true ]; then
   # don't quote this -- we want word splitting here!
-  go run ../cmd/cyclonus/main.go $FROM_SOURCE_ARGS
+  go run ../../cmd/cyclonus/main.go $FROM_SOURCE_ARGS
 else
   docker pull mfenwick100/cyclonus:latest
   kind load docker-image mfenwick100/cyclonus:latest --name "$CLUSTER_NAME"
