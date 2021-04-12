@@ -14,5 +14,5 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Run Cyclonus
-        working-directory: hack
+        working-directory: hack/kind
         run: CNI=ovn-kubernetes RUN_FROM_SOURCE=true ./run-cyclonus.sh

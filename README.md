@@ -11,18 +11,18 @@ Grab the [latest release](https://github.com/mattfenwick/cyclonus/releases) to g
 
 ### Run as a kubernetes job
 
-Take a look at the [hack directory](./hack):
+Take a look at the [kind directory](./hack/kind):
 
 ```
-ls hack
-antrea              calico              cilium              flannel             run-cyclonus-job.sh
+ls hack/kind 
+antrea          calico          cilium          ovn-kubernetes  run-cyclonus.sh
 ```
 
 Choose the right job for your CNI, then run:
 
 ```
-cd hack/calico
-./github-action.sh
+cd hack/kind
+CNI=calico RUN_FROM_SOURCE=false ./run-cyclonus.sh
 ```
 
 This will:
