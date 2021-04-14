@@ -5,7 +5,7 @@
 ```bash
 sonobuoy gen plugin \
   --name=cyclonus \
-  --image=mfenwick100/sonobuoy-cyclonus:latest \
+  --image=mfenwick100/cyclonus:latest \
   --cmd ./run-sonobuoy-plugin.sh \ > cyclonus-plugin.yaml
 ```
 

@@ -3,10 +3,11 @@
 set -xv
 set -eou pipefail
 
+CYCLONUS_ARGS=${CYCLONUS_ARGS:-"generate --include conflict --exclude egress,direction"}
 results_dir="${RESULTS_DIR:-/tmp/results}"
 
 
-./cyclonus generate --include conflict --exclude egress,direction > "${results_dir}"/results.txt
+./cyclonus $CYCLONUS_ARGS > "${results_dir}"/results.txt
 
 
 cd "${results_dir}"

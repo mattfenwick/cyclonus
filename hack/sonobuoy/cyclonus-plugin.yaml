@@ -5,7 +5,7 @@ sonobuoy-config:
 spec:
   command:
   - ./run-sonobuoy-plugin.sh
-  image: mfenwick100/cyclonus-sonobuoy:latest
+  image: mfenwick100/cyclonus:latest
   imagePullPolicy: IfNotPresent
   name: plugin
   resources: {}
