@@ -7,7 +7,7 @@ KIND_VERSION=${KIND_VERSION:-v0.10.0}
 CNI=${CNI:-calico}
 CLUSTER_NAME="netpol-$CNI"
 RUN_FROM_SOURCE=${RUN_FROM_SOURCE:-true}
-FROM_SOURCE_ARGS=${FROM_SOURCE_ARGS:-"generate include --conflict"}
+FROM_SOURCE_ARGS=${FROM_SOURCE_ARGS:-"generate --include conflict"}
 
 # install kind if not found
 if ! command -v kind &> /dev/null
