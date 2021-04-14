@@ -11,6 +11,39 @@ Grab the [latest release](https://github.com/mattfenwick/cyclonus/releases) to g
 
 ### Run as a kubernetes job
 
+Create a job.yaml file:
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cyclonus
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - command:
+            - ./cyclonus
+            - generate
+          name: cyclonus
+          imagePullPolicy: IfNotPresent
+          image: mfenwick100/cyclonus:latest
+      serviceAccount: cyclonus
+```
+
+Then create a namespace, service account, and job:
+```bash
+kubectl create ns netpol
+kubectl create clusterrolebinding cyclonus --clusterrole=cluster-admin --serviceaccount=netpol:cyclonus
+kubectl create sa cyclonus -n netpol
+  
+kubectl create -f job.yaml
+```
+
+Use `kubectl logs -f` to watch your job go!
+
+### Run on KinD
+
 Take a look at the [kind directory](./hack/kind):
 
 ```
