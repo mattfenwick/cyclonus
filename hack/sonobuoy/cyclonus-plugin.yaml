@@ -1,0 +1,18 @@
+sonobuoy-config:
+  driver: Job
+  plugin-name: cyclonus
+  result-format: raw
+spec:
+  command:
+  - ./run-sonobuoy-plugin.sh
+  - generate
+  - "--include=conflict"
+  - "--exclude=egress,direction"
+  image: mfenwick100/cyclonus:latest
+  imagePullPolicy: IfNotPresent
+  name: plugin
+  resources: {}
+  volumeMounts:
+  - mountPath: /tmp/results
+    name: results
+
