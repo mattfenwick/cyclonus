@@ -72,6 +72,8 @@ func SetupGenerateCommand() *cobra.Command {
 }
 
 func RunGenerateCommand(args *GenerateArgs) {
+	fmt.Printf("args: \n%s\n", utils.JsonString(args))
+
 	RunVersionCommand()
 
 	utils.DoOrDie(generator.ValidateTags(append(args.Include, args.Exclude...)))
