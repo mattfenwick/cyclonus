@@ -37,7 +37,7 @@ kubectl create ns netpol
 kubectl create clusterrolebinding cyclonus --clusterrole=cluster-admin --serviceaccount=netpol:cyclonus
 kubectl create sa cyclonus -n netpol
   
-kubectl create -f job.yaml
+kubectl create -f job.yaml -n netpol
 ```
 
 Use `kubectl logs -f` to watch your job go!
