@@ -350,6 +350,10 @@ cyclonus analyze \
 +-----------------+------------------------------+-------------------+-----------------------------+
 ```
 
+## Sonobuoy plugin
+
+Check out [our sonobuoy plugin](./hack/sonobuoy)!
+
 ## Developer guide
 
 ### Setup
