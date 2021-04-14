@@ -12,7 +12,7 @@ RESULTS_DIR="${RESULTS_DIR:-/tmp/results}"
 
 cd "${RESULTS_DIR}"
 
-  # Sonobuoy worker expects a tar file.
+# Sonobuoy worker expects a tar file.
 tar czf results.tar.gz results.txt
 
 # Signal to the worker that we are done and where to find the results.

@@ -8,7 +8,7 @@ spec:
   - generate
   - "--include=conflict"
   - "--exclude=egress,direction"
-  image: mfenwick100/cyclonus:latest
+  image: mfenwick100/sonobuoy-cyclonus:latest
   imagePullPolicy: IfNotPresent
   name: plugin
   resources: {}
