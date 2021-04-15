@@ -16,8 +16,11 @@ done
 kubectl get nodes
 kubectl get all -A
 
-kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
-kubectl -n kube-system set env daemonset/calico-node FELIX_IGNORELOOSERPF=true
+kubectl apply -f calico.yaml
+# was: had to add 2 entries to calico configmap:
+#   https://docs.projectcalico.org/networking/ipv6#enable-ipv6-only
+#kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+
 kubectl -n kube-system set env daemonset/calico-node FELIX_XDPENABLED=false
 kubectl -n kube-system set env daemonset/calico-node FELIX_IPV6SUPPORT=true
 kubectl -n kube-system set env daemonset/calico-node IP6=autodetect
