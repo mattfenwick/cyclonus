@@ -4,9 +4,16 @@ set -o errexit -o nounset -o pipefail
 set -xv
 
 CLUSTER=${CLUSTER:-netpol-calico-ipv6}
+PLATFORM=${PLATFORM:-"linux"}
 
 
-kind create cluster --name "$CLUSTER" --config kind-config.yaml
+if [[ $PLATFORM == "linux" ]]; then
+  CONFIG=kind-config-linux.yaml
+else
+  CONFIG=kind-config-mac.yaml
+fi
+
+kind create cluster --name "$CLUSTER" --config $CONFIG
 
 
 kubectl get nodes
