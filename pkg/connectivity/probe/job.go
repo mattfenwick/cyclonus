@@ -5,6 +5,8 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	"net"
+	"strconv"
 )
 
 type Jobs struct {
@@ -51,7 +53,7 @@ func (j *Job) Key() string {
 }
 
 func (j *Job) ToAddress() string {
-	return fmt.Sprintf("%s:%d", j.ToHost, j.ResolvedPort)
+	return net.JoinHostPort(j.ToHost, strconv.Itoa(j.ResolvedPort))
 }
 
 func (j *Job) ClientCommand() []string {

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	"net"
+	"strconv"
 )
 
 type Batch struct {
@@ -44,7 +46,7 @@ type Request struct {
 }
 
 func (r *Request) Address() string {
-	return fmt.Sprintf("%s:%d", r.Host, r.Port)
+	return net.JoinHostPort(r.Host, strconv.Itoa(r.Port))
 }
 
 func (r *Request) Command() []string {

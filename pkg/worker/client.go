@@ -51,7 +51,7 @@ func NewDefaultClient(host string) *Client {
 
 func NewClient(host string, port int) *Client {
 	return &Client{Resty: resty.New().
-		SetHostURL(fmt.Sprintf("%s:%d", host, port)).
+		SetHostURL(net.JoinHostPort(host, strconv.Itoa(port))).
 		//SetDebug(false).
 		SetTimeout(30 * time.Second)}
 }
