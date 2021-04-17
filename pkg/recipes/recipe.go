@@ -31,7 +31,7 @@ func (r *Recipe) Policies() []*networkingv1.NetworkPolicy {
 }
 
 func (r *Recipe) RunProbe() *probe.Table {
-	runner := probe.NewSimulatedRunner(matcher.BuildNetworkPolicies(true, r.Policies()))
+	runner := probe.NewSimulatedRunner(matcher.BuildNetworkPolicies(true, r.Policies()), &probe.JobBuilder{TimeoutSeconds: 5})
 	return runner.RunProbeForConfig(generator.NewProbeConfig(intstr.FromInt(r.Port), r.Protocol, generator.ProbeModeServiceName), r.Resources)
 }
 

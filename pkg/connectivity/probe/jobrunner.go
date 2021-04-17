@@ -11,23 +11,24 @@ import (
 )
 
 type Runner struct {
-	JobRunner JobRunner
+	JobRunner  JobRunner
+	JobBuilder *JobBuilder
 }
 
-func NewSimulatedRunner(policies *matcher.Policy) *Runner {
-	return &Runner{JobRunner: &SimulatedJobRunner{Policies: policies}}
+func NewSimulatedRunner(policies *matcher.Policy, jobBuilder *JobBuilder) *Runner {
+	return &Runner{JobRunner: &SimulatedJobRunner{Policies: policies}, JobBuilder: jobBuilder}
 }
 
-func NewKubeRunner(kubernetes kube.IKubernetes, workers int) *Runner {
-	return &Runner{JobRunner: &KubeJobRunner{Kubernetes: kubernetes, Workers: workers}}
+func NewKubeRunner(kubernetes kube.IKubernetes, workers int, jobBuilder *JobBuilder) *Runner {
+	return &Runner{JobRunner: &KubeJobRunner{Kubernetes: kubernetes, Workers: workers}, JobBuilder: jobBuilder}
 }
 
-func NewKubeBatchRunner(kubernetes kube.IKubernetes, workers int) *Runner {
-	return &Runner{JobRunner: NewKubeBatchJobRunner(kubernetes, workers)}
+func NewKubeBatchRunner(kubernetes kube.IKubernetes, workers int, jobBuilder *JobBuilder) *Runner {
+	return &Runner{JobRunner: NewKubeBatchJobRunner(kubernetes, workers), JobBuilder: jobBuilder}
 }
 
 func (p *Runner) RunProbeForConfig(probeConfig *generator.ProbeConfig, resources *Resources) *Table {
-	return NewTableFromJobResults(resources, p.runProbe(resources.GetJobsForProbeConfig(probeConfig)))
+	return NewTableFromJobResults(resources, p.runProbe(p.JobBuilder.GetJobsForProbeConfig(resources, probeConfig)))
 }
 
 func (p *Runner) runProbe(jobs *Jobs) []*JobResult {

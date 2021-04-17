@@ -1,13 +1,11 @@
 package probe
 
 import (
-	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"sort"
 	"time"
 )
@@ -269,96 +267,4 @@ func (r *Resources) CreateResourcesInKube(kubernetes kube.IKubernetes) error {
 
 func KubeNamespace(ns string, labels map[string]string) *v1.Namespace {
 	return &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns, Labels: labels}}
-}
-
-func (r *Resources) GetJobsForProbeConfig(config *generator.ProbeConfig) *Jobs {
-	if config.AllAvailable {
-		return r.GetJobsAllAvailableServers(config.Mode)
-	} else if config.PortProtocol != nil {
-		return r.GetJobsForNamedPortProtocol(config.PortProtocol.Port, config.PortProtocol.Protocol, config.Mode)
-	} else {
-		panic(errors.Errorf("invalid ProbeConfig %+v", config))
-	}
-}
-
-func (r *Resources) GetJobsForNamedPortProtocol(port intstr.IntOrString, protocol v1.Protocol, mode generator.ProbeMode) *Jobs {
-	jobs := &Jobs{}
-	for _, podFrom := range r.Pods {
-		for _, podTo := range r.Pods {
-			job := &Job{
-				FromKey:             podFrom.PodString().String(),
-				FromNamespace:       podFrom.Namespace,
-				FromNamespaceLabels: r.Namespaces[podFrom.Namespace],
-				FromPod:             podFrom.Name,
-				FromPodLabels:       podFrom.Labels,
-				FromContainer:       podFrom.Containers[0].Name,
-				FromIP:              podFrom.IP,
-				ToKey:               podTo.PodString().String(),
-				ToHost:              podTo.Host(mode),
-				ToNamespace:         podTo.Namespace,
-				ToNamespaceLabels:   r.Namespaces[podTo.Namespace],
-				ToPodLabels:         podTo.Labels,
-				ToIP:                podTo.IP,
-				ResolvedPort:        -1,
-				ResolvedPortName:    "",
-				Protocol:            protocol,
-			}
-
-			switch port.Type {
-			case intstr.String:
-				job.ResolvedPortName = port.StrVal
-				// TODO what about protocol?
-				portInt, err := podTo.ResolveNamedPort(port.StrVal)
-				if err != nil {
-					jobs.BadNamedPort = append(jobs.BadNamedPort, job)
-					continue
-				}
-				job.ResolvedPort = portInt
-			case intstr.Int:
-				job.ResolvedPort = int(port.IntVal)
-				// TODO what about protocol?
-				portName, err := podTo.ResolveNumberedPort(int(port.IntVal))
-				if err != nil {
-					jobs.BadPortProtocol = append(jobs.BadPortProtocol, job)
-					continue
-				}
-				job.ResolvedPortName = portName
-			default:
-				panic(errors.Errorf("invalid IntOrString value %+v", port))
-			}
-
-			jobs.Valid = append(jobs.Valid, job)
-		}
-	}
-	return jobs
-}
-
-func (r *Resources) GetJobsAllAvailableServers(mode generator.ProbeMode) *Jobs {
-	var jobs []*Job
-	for _, podFrom := range r.Pods {
-		for _, podTo := range r.Pods {
-			for _, contTo := range podTo.Containers {
-				jobs = append(jobs, &Job{
-					FromKey:             podFrom.PodString().String(),
-					FromNamespace:       podFrom.Namespace,
-					FromNamespaceLabels: r.Namespaces[podFrom.Namespace],
-					FromPod:             podFrom.Name,
-					FromPodLabels:       podFrom.Labels,
-					FromContainer:       podFrom.Containers[0].Name,
-					FromIP:              podFrom.IP,
-					ToKey:               podTo.PodString().String(),
-					ToHost:              podTo.Host(mode),
-					ToNamespace:         podTo.Namespace,
-					ToNamespaceLabels:   r.Namespaces[podTo.Namespace],
-					ToPodLabels:         podTo.Labels,
-					ToContainer:         contTo.Name,
-					ToIP:                podTo.IP,
-					ResolvedPort:        contTo.Port,
-					ResolvedPortName:    contTo.PortName,
-					Protocol:            contTo.Protocol,
-				})
-			}
-		}
-	}
-	return &Jobs{Valid: jobs}
 }

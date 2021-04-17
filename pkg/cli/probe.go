@@ -24,6 +24,7 @@ type ProbeArgs struct {
 	PodCreationTimeoutSeconds int
 	PolicyPath                string
 	ProbeMode                 string
+	JobTimeoutSeconds         int
 
 	// what to probe on
 	ProbeAllAvailable bool
@@ -59,6 +60,7 @@ func SetupProbeCommand() *cobra.Command {
 	command.Flags().StringSliceVar(&args.Protocols, "protocol", []string{"tcp"}, "protocols to run probes on")
 
 	command.Flags().StringVar(&args.ProbeMode, "probe-mode", generator.ProbeModeServiceName, "probe mode to use, must be one of "+strings.Join(generator.AllProbeModes, ", "))
+	command.Flags().IntVar(&args.JobTimeoutSeconds, "job-timeout-seconds", 10, "number of seconds to pass on to 'agnhost connect --timeout=%ds' flag")
 
 	command.Flags().BoolVar(&args.Noisy, "noisy", false, "if true, print all results")
 	command.Flags().BoolVar(&args.IgnoreLoopback, "ignore-loopback", false, "if true, ignore loopback for truthtable correctness verification")
@@ -92,6 +94,7 @@ func RunProbeCommand(args *ProbeArgs) {
 		VerifyClusterStateBeforeTestCase: false,
 		BatchJobs:                        false,
 		IgnoreLoopback:                   args.IgnoreLoopback,
+		JobTimeoutSeconds:                args.JobTimeoutSeconds,
 	}
 	interpreter := connectivity.NewInterpreter(kubernetes, resources, interpreterConfig)
 

@@ -237,9 +237,11 @@ func ProbeSyntheticConnectivity(explainedPolicies *matcher.Policy, modelPath str
 		err = json.Unmarshal(bs, &config)
 		utils.DoOrDie(errors.Wrapf(err, "unable to unmarshal json"))
 
+		jobBuilder := &probe.JobBuilder{TimeoutSeconds: 10}
+
 		// run probes
 		for _, probeConfig := range config.Probes {
-			probeResult := probe.NewSimulatedRunner(explainedPolicies).
+			probeResult := probe.NewSimulatedRunner(explainedPolicies, jobBuilder).
 				RunProbeForConfig(generator.NewProbeConfig(probeConfig.Port, probeConfig.Protocol, generator.ProbeModeServiceName), config.Resources)
 
 			logrus.Infof("probe on port %s, protocol %s", probeConfig.Port.String(), probeConfig.Protocol)
@@ -291,7 +293,7 @@ func ProbeSyntheticConnectivity(explainedPolicies *matcher.Policy, modelPath str
 		})
 	}
 
-	simRunner := probe.NewSimulatedRunner(explainedPolicies)
+	simRunner := probe.NewSimulatedRunner(explainedPolicies, &probe.JobBuilder{TimeoutSeconds: 10})
 	simulatedProbe := simRunner.RunProbeForConfig(generator.ProbeAllAvailable, resources)
 	fmt.Printf("Ingress:\n%s\n", simulatedProbe.RenderIngress())
 	fmt.Printf("Egress:\n%s\n", simulatedProbe.RenderEgress())

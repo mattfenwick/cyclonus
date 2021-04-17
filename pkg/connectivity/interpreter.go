@@ -26,38 +26,38 @@ type InterpreterConfig struct {
 	VerifyClusterStateBeforeTestCase bool
 	BatchJobs                        bool
 	IgnoreLoopback                   bool
+	JobTimeoutSeconds                int
+}
+
+func (i *InterpreterConfig) PerturbationWaitDuration() time.Duration {
+	return time.Duration(i.PerturbationWaitSeconds) * time.Second
 }
 
 type Interpreter struct {
-	kubernetes                       kube.IKubernetes
-	resources                        *probe.Resources
-	kubeProbeRetries                 int
-	perturbationWaitDuration         time.Duration
-	resetClusterBeforeTestCase       bool
-	verifyClusterStateBeforeTestCase bool
-	kubeRunner                       *probe.Runner
-	ignoreLoopback                   bool
+	kubernetes kube.IKubernetes
+	resources  *probe.Resources
+	kubeRunner *probe.Runner
+	jobBuilder *probe.JobBuilder
+	Config     *InterpreterConfig
 }
 
 func NewInterpreter(kubernetes kube.IKubernetes, resources *probe.Resources, config *InterpreterConfig) *Interpreter {
 	fmt.Printf("resources:\n%s\n", resources.RenderTable())
 
+	jobBuilder := &probe.JobBuilder{TimeoutSeconds: config.JobTimeoutSeconds}
 	var kubeRunner *probe.Runner
 	if config.BatchJobs {
-		kubeRunner = probe.NewKubeBatchRunner(kubernetes, defaultBatchWorkersCount)
+		kubeRunner = probe.NewKubeBatchRunner(kubernetes, defaultBatchWorkersCount, jobBuilder)
 	} else {
-		kubeRunner = probe.NewKubeRunner(kubernetes, defaultWorkersCount)
+		kubeRunner = probe.NewKubeRunner(kubernetes, defaultWorkersCount, jobBuilder)
 	}
 
 	return &Interpreter{
-		kubernetes:                       kubernetes,
-		resources:                        resources,
-		kubeProbeRetries:                 config.KubeProbeRetries,
-		perturbationWaitDuration:         time.Duration(config.PerturbationWaitSeconds) * time.Second,
-		resetClusterBeforeTestCase:       config.ResetClusterBeforeTestCase,
-		verifyClusterStateBeforeTestCase: config.VerifyClusterStateBeforeTestCase,
-		kubeRunner:                       kubeRunner,
-		ignoreLoopback:                   config.IgnoreLoopback,
+		kubernetes: kubernetes,
+		resources:  resources,
+		kubeRunner: kubeRunner,
+		jobBuilder: jobBuilder,
+		Config:     config,
 	}
 }
 
@@ -72,7 +72,7 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 		Policies:   []*networkingv1.NetworkPolicy{},
 	}
 
-	if t.resetClusterBeforeTestCase {
+	if t.Config.ResetClusterBeforeTestCase {
 		err = testCaseState.ResetClusterState()
 		if err != nil {
 			result.Err = err
@@ -81,7 +81,7 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 		logrus.Info("cluster state reset")
 	}
 
-	if t.verifyClusterStateBeforeTestCase {
+	if t.Config.VerifyClusterStateBeforeTestCase {
 		err = testCaseState.VerifyClusterState()
 		if err != nil {
 			result.Err = err
@@ -125,8 +125,8 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 			}
 		}
 
-		logrus.Infof("step %d: waiting %f seconds for perturbation to take effect", stepIndex+1, t.perturbationWaitDuration.Seconds())
-		time.Sleep(t.perturbationWaitDuration)
+		logrus.Infof("step %d: waiting %d seconds for perturbation to take effect", stepIndex+1, t.Config.PerturbationWaitSeconds)
+		time.Sleep(t.Config.PerturbationWaitDuration())
 
 		result.Steps = append(result.Steps, t.runProbe(testCaseState, step.Probe))
 	}
@@ -140,18 +140,18 @@ func (t *Interpreter) runProbe(testCaseState *TestCaseState, probeConfig *genera
 	logrus.Infof("running probe %+v", probeConfig)
 	logrus.Debugf("with resources:\n%s", testCaseState.Resources.RenderTable())
 
-	simRunner := probe.NewSimulatedRunner(parsedPolicy)
+	simRunner := probe.NewSimulatedRunner(parsedPolicy, t.jobBuilder)
 
 	stepResult := NewStepResult(
 		simRunner.RunProbeForConfig(probeConfig, testCaseState.Resources),
 		parsedPolicy,
 		append([]*networkingv1.NetworkPolicy{}, testCaseState.Policies...)) // this looks weird, but just making a new copy to avoid accidentally mutating it elsewhere
 
-	for i := 0; i <= t.kubeProbeRetries; i++ {
+	for i := 0; i <= t.Config.KubeProbeRetries; i++ {
 		logrus.Infof("running kube probe on try %d", i+1)
 		stepResult.AddKubeProbe(t.kubeRunner.RunProbeForConfig(probeConfig, testCaseState.Resources))
 		// no differences between synthetic and kube probes?  then we can stop
-		if stepResult.LastComparison().ValueCounts(t.ignoreLoopback)[DifferentComparison] == 0 {
+		if stepResult.LastComparison().ValueCounts(t.Config.IgnoreLoopback)[DifferentComparison] == 0 {
 			break
 		}
 	}
