@@ -9,14 +9,16 @@ import (
 	"net"
 )
 
+type ipCidrTestCase struct {
+	IP       string
+	CIDR     string
+	IsMember bool
+}
+
 func RunIPAddressTests() {
 	Describe("IPAddress and CIDRs", func() {
 		It("Determines whether an IPv4 address is in a CIDR", func() {
-			testCases := []struct {
-				IP       string
-				CIDR     string
-				IsMember bool
-			}{
+			testCases := []*ipCidrTestCase{
 				{
 					IP:       "1.2.3.3",
 					CIDR:     "1.2.3.0/24",
@@ -47,10 +49,50 @@ func RunIPAddressTests() {
 		})
 
 		It("Determines whether an IPv6 address is in a CIDR", func() {
+			testCases := []*ipCidrTestCase{
+				{
+					IP:       "fd00:10:244:a8:96fd:be93:52d8:6b85",
+					CIDR:     "fd00:10:244:a8:96fd:be93:52d8:6b00/120",
+					IsMember: true,
+				},
+				{
+					IP:       "fd00:10:244:a8:96fd:be93:52d8:6b85",
+					CIDR:     "fd00:10:244:a8:96fd:be93:52d8:6b80/124",
+					IsMember: true,
+				},
+				{
+					IP:       "fd00:10:244:a8:96fd:be93:52d8:6b90",
+					CIDR:     "fd00:10:244:a8:96fd:be93:52d8:6b80/124",
+					IsMember: false,
+				},
+				{
+					IP:       "2001:0db8::1.2.3.4",
+					CIDR:     "2001:db8::/32",
+					IsMember: true,
+				},
+				{
+					IP:       "2001:0db9::",
+					CIDR:     "2001:db8::/32",
+					IsMember: false,
+				},
+				{
+					IP:       "2001:db8::68",
+					CIDR:     "2001:db8::/32",
+					IsMember: true,
+				},
+			}
+
+			for _, c := range testCases {
+				log.Infof("looking at %+v", c)
+				isInCidr, err := IsIPInCIDR(c.IP, c.CIDR)
+				Expect(err).To(BeNil())
+				Expect(isInCidr).To(Equal(c.IsMember))
+			}
+		})
+
+		It("Determines whether an IPv4-mapped IPv6 address id in a CIDR", func() {
 			// TODO
-			// 2001:db8::/32
-			// 2001:db8::68
-			// IPv4-mapped IPv6 ("::ffff:192.0.2.1")
+			// ::ffff:192.0.2.1
 		})
 
 		It("reports an error for malformed IP addresses and CIDRs", func() {
