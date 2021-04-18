@@ -3,10 +3,10 @@ package probe
 import (
 	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"net"
 	"strconv"
+	"strings"
 )
 
 type Jobs struct {
@@ -46,6 +46,8 @@ type Job struct {
 	ResolvedPort     int
 	ResolvedPortName string
 	Protocol         v1.Protocol
+
+	TimeoutSeconds int
 }
 
 func (j *Job) Key() string {
@@ -57,16 +59,9 @@ func (j *Job) ToAddress() string {
 }
 
 func (j *Job) ClientCommand() []string {
-	switch j.Protocol {
-	case v1.ProtocolSCTP:
-		return []string{"/agnhost", "connect", j.ToAddress(), "--timeout=1s", "--protocol=sctp"}
-	case v1.ProtocolTCP:
-		return []string{"/agnhost", "connect", j.ToAddress(), "--timeout=1s", "--protocol=tcp"}
-	case v1.ProtocolUDP:
-		return []string{"/agnhost", "connect", j.ToAddress(), "--timeout=1s", "--protocol=udp"}
-	default:
-		panic(errors.Errorf("protocol %s not supported", j.Protocol))
-	}
+	return []string{"/agnhost", "connect", j.ToAddress(),
+		fmt.Sprintf("--timeout=%ds", j.TimeoutSeconds),
+		fmt.Sprintf("--protocol=%s", strings.ToLower(string(j.Protocol)))}
 }
 
 func (j *Job) KubeExecCommand() []string {

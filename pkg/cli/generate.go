@@ -31,6 +31,7 @@ type GenerateArgs struct {
 	DestinationType           string
 	Mock                      bool
 	DryRun                    bool
+	JobTimeoutSeconds         int
 }
 
 func SetupGenerateCommand() *cobra.Command {
@@ -61,6 +62,7 @@ func SetupGenerateCommand() *cobra.Command {
 	command.Flags().StringVar(&args.Context, "context", "", "kubernetes context to use; if empty, uses default context")
 	command.Flags().BoolVar(&args.CleanupNamespaces, "cleanup-namespaces", false, "if true, clean up namespaces after completion")
 	command.Flags().StringVar(&args.DestinationType, "destination-type", "", "override to set what to direct requests at; if not specified, the tests will be left as-is; one of "+strings.Join(generator.AllProbeModes, ", "))
+	command.Flags().IntVar(&args.JobTimeoutSeconds, "job-timeout-seconds", 10, "number of seconds to pass on to 'agnhost connect --timeout=%ds' flag")
 
 	command.Flags().StringSliceVar(&args.Include, "include", []string{}, "include tests with any of these tags; if empty, all tests will be included.  Valid tags:\n"+strings.Join(generator.TagSlice, "\n"))
 	command.Flags().StringSliceVar(&args.Exclude, "exclude", []string{generator.TagMultiPeer, generator.TagUpstreamE2E, generator.TagExample}, "exclude tests with any of these tags.  See 'include' field for valid tags")
@@ -104,6 +106,7 @@ func RunGenerateCommand(args *GenerateArgs) {
 		VerifyClusterStateBeforeTestCase: true,
 		BatchJobs:                        args.BatchJobs,
 		IgnoreLoopback:                   args.IgnoreLoopback,
+		JobTimeoutSeconds:                args.JobTimeoutSeconds,
 	}
 	interpreter := connectivity.NewInterpreter(kubernetes, resources, interpreterConfig)
 	printer := &connectivity.Printer{
