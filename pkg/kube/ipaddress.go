@@ -39,8 +39,34 @@ func IsIPAddressMatchForIPBlock(ip string, ipBlock *networkingv1.IPBlock) (bool,
 	return true, nil
 }
 
-func MakeIPV4CIDR(ipString string, bits int) string {
-	mask := net.CIDRMask(bits, 32)
+func IsIPV4Address(s string) bool {
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '.':
+			return true
+		case ':':
+			return false
+		}
+	}
+	panic(errors.Errorf("address %s is neither IPv4 nor IPv6", s))
+}
+
+func MakeCIDRFromZeroes(ipString string, zeroes int) string {
+	if IsIPV4Address(ipString) {
+		return makeCidr(ipString, 32-zeroes, 32)
+	}
+	return makeCidr(ipString, 128-zeroes, 128)
+}
+
+func MakeCIDRFromOnes(ipString string, ones int) string {
+	if IsIPV4Address(ipString) {
+		return makeCidr(ipString, ones, 32)
+	}
+	return makeCidr(ipString, ones, 128)
+}
+
+func makeCidr(ipString string, ones int, bits int) string {
+	mask := net.CIDRMask(ones, bits)
 	ip := net.ParseIP(ipString)
-	return fmt.Sprintf("%s/%d", ip.Mask(mask).String(), bits)
+	return fmt.Sprintf("%s/%d", ip.Mask(mask).String(), ones)
 }
