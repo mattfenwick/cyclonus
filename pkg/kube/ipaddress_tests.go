@@ -11,7 +11,7 @@ import (
 
 func RunIPAddressTests() {
 	Describe("IPAddress and CIDRs", func() {
-		It("Determines whether an IP address is in a CIDR", func() {
+		It("Determines whether an IPv4 address is in a CIDR", func() {
 			testCases := []struct {
 				IP       string
 				CIDR     string
@@ -46,7 +46,8 @@ func RunIPAddressTests() {
 			}
 		})
 
-		It("Handles IPv6 addresses and CIDRs", func() {
+		It("Determines whether an IPv6 address is in a CIDR", func() {
+			// TODO
 			// 2001:db8::/32
 			// 2001:db8::68
 			// IPv4-mapped IPv6 ("::ffff:192.0.2.1")
@@ -156,46 +157,120 @@ func RunIPAddressTests() {
 	})
 
 	Describe("Make CIDR from IPAddress", func() {
-		It("should build normalized CIDRs correctly", func() {
+		It("should build normalized IPV4 CIDRs correctly", func() {
+			testCases := []struct {
+				IP       string
+				Zeroes   int
+				Expected string
+			}{
+				{
+					IP:       "255.255.255.255",
+					Zeroes:   0,
+					Expected: "255.255.255.255/32",
+				},
+				{
+					IP:       "255.255.255.255",
+					Zeroes:   1,
+					Expected: "255.255.255.254/31",
+				},
+				{
+					IP:       "255.255.255.255",
+					Zeroes:   2,
+					Expected: "255.255.255.252/30",
+				},
+				{
+					IP:       "255.255.255.255",
+					Zeroes:   4,
+					Expected: "255.255.255.240/28",
+				},
+				{
+					IP:       "255.255.255.255",
+					Zeroes:   8,
+					Expected: "255.255.255.0/24",
+				},
+				{
+					IP:       "255.255.255.255",
+					Zeroes:   16,
+					Expected: "255.255.0.0/16",
+				},
+			}
+			for _, tc := range testCases {
+				fmt.Printf("%+v\n", net.ParseIP(tc.IP))
+				actual := MakeCIDRFromZeroes(tc.IP, tc.Zeroes)
+				Expect(actual).To(Equal(tc.Expected))
+			}
+		})
+
+		It("should build normalized IPV6 CIDRs correctly", func() {
 			testCases := []struct {
 				IP       string
 				Bits     int
 				Expected string
 			}{
 				{
-					IP:       "255.255.255.255",
+					IP:       "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+					Bits:     128,
+					Expected: "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff/128",
+				},
+				{
+					IP:       "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+					Bits:     127,
+					Expected: "ffff:ffff:ffff:ffff:ffff:ffff:ffff:fffe/127",
+				},
+				{
+					IP:       "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+					Bits:     126,
+					Expected: "ffff:ffff:ffff:ffff:ffff:ffff:ffff:fffc/126",
+				},
+				{
+					IP:       "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+					Bits:     124,
+					Expected: "ffff:ffff:ffff:ffff:ffff:ffff:ffff:fff0/124",
+				},
+				{
+					IP:       "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+					Bits:     120,
+					Expected: "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ff00/120",
+				},
+				{
+					IP:       "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+					Bits:     112,
+					Expected: "ffff:ffff:ffff:ffff:ffff:ffff:ffff:0/112",
+				},
+				{
+					IP:       "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+					Bits:     96,
+					Expected: "ffff:ffff:ffff:ffff:ffff:ffff::/96",
+				},
+				{
+					IP:       "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+					Bits:     80,
+					Expected: "ffff:ffff:ffff:ffff:ffff::/80",
+				},
+				{
+					IP:       "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+					Bits:     64,
+					Expected: "ffff:ffff:ffff:ffff::/64",
+				},
+				{
+					IP:       "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+					Bits:     48,
+					Expected: "ffff:ffff:ffff::/48",
+				},
+				{
+					IP:       "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
 					Bits:     32,
-					Expected: "255.255.255.255/32",
+					Expected: "ffff:ffff::/32",
 				},
 				{
-					IP:       "255.255.255.255",
-					Bits:     31,
-					Expected: "255.255.255.254/31",
-				},
-				{
-					IP:       "255.255.255.255",
-					Bits:     30,
-					Expected: "255.255.255.252/30",
-				},
-				{
-					IP:       "255.255.255.255",
-					Bits:     28,
-					Expected: "255.255.255.240/28",
-				},
-				{
-					IP:       "255.255.255.255",
-					Bits:     24,
-					Expected: "255.255.255.0/24",
-				},
-				{
-					IP:       "255.255.255.255",
+					IP:       "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
 					Bits:     16,
-					Expected: "255.255.0.0/16",
+					Expected: "ffff::/16",
 				},
 			}
 			for _, tc := range testCases {
 				fmt.Printf("%+v\n", net.ParseIP(tc.IP))
-				actual := MakeIPV4CIDR(tc.IP, tc.Bits)
+				actual := MakeCIDRFromOnes(tc.IP, tc.Bits)
 				Expect(actual).To(Equal(tc.Expected))
 			}
 		})

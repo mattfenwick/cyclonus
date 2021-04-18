@@ -13,11 +13,11 @@ type peer struct {
 }
 
 func ipBlockPeers(podIP string) []*peer {
-	cidr24 := kube.MakeIPV4CIDR(podIP, 24)
-	cidr28 := kube.MakeIPV4CIDR(podIP, 28)
+	cidrBut8 := kube.MakeCIDRFromZeroes(podIP, 8)
+	cidrBut4 := kube.MakeCIDRFromZeroes(podIP, 4)
 	return []*peer{
-		{Description: "simple ipblock", Peer: NetworkPolicyPeer{IPBlock: &IPBlock{CIDR: cidr24}}},
-		{Description: "ipblock with except", Peer: NetworkPolicyPeer{IPBlock: &IPBlock{CIDR: cidr24, Except: []string{cidr28}}}},
+		{Description: "simple ipblock", Peer: NetworkPolicyPeer{IPBlock: &IPBlock{CIDR: cidrBut8}}},
+		{Description: "ipblock with except", Peer: NetworkPolicyPeer{IPBlock: &IPBlock{CIDR: cidrBut8, Except: []string{cidrBut4}}}},
 	}
 }
 
@@ -85,8 +85,9 @@ func describePeer(peer NetworkPolicyPeer) []string {
 
 func (t *TestCaseGenerator) SinglePeersTestCases() []*TestCase {
 	var cases []*TestCase
+	peers := makePeers(t.PodIP)
 	for _, isIngress := range []bool{true, false} {
-		for _, p := range makePeers(t.PodIP) {
+		for _, p := range peers {
 			tags := append(describePeer(p.Peer), describeDirectionality(isIngress))
 			cases = append(cases,
 				NewSingleStepTestCase(p.Description, NewStringSet(tags...), ProbeAllAvailable,
@@ -98,9 +99,10 @@ func (t *TestCaseGenerator) SinglePeersTestCases() []*TestCase {
 
 func (t *TestCaseGenerator) TwoPeersTestCases() []*TestCase {
 	var cases []*TestCase
+	peers := makePeers(t.PodIP)
 	for _, isIngress := range []bool{true, false} {
-		for i, p1 := range makePeers(t.PodIP) {
-			for j, p2 := range makePeers(t.PodIP) {
+		for i, p1 := range peers {
+			for j, p2 := range peers {
 				if i < j {
 					dir := describeDirectionality(isIngress)
 					tags := append(describePeer(p1.Peer), TagMultiPeer, dir)
