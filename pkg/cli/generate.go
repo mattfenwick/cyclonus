@@ -83,7 +83,7 @@ func RunGenerateCommand(args *GenerateArgs) {
 	externalIPs := []string{} // "http://www.google.com"} // TODO make these be IPs?  or not?
 
 	var kubernetes kube.IKubernetes
-	if args.Mock || args.DryRun {
+	if args.Mock {
 		kubernetes = kube.NewMockKubernetes(1.0)
 	} else {
 		kubeClient, err := kube.NewKubernetesForContext(args.Context)
