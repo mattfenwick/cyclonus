@@ -22,6 +22,7 @@ func main() {
 		"1:2:3:4:0:0:0:0",
 		"::",
 		"::12:34",
+		"2001:db9::",
 	}
 	for _, i := range ips {
 		ip := net.ParseIP(i)
@@ -36,6 +37,8 @@ func main() {
 	invalidIPs := []string{
 		"fc00:f853:ccd:e793::99999999",
 		"fc00:f853:ccd:e793::aaaa:bbbb:cccc:9999",
+		"2001:db9",
+		"2001:0db9",
 	}
 	for _, i := range invalidIPs {
 		ip := net.ParseIP(i)
