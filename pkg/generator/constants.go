@@ -56,6 +56,10 @@ var (
 				Protocol: &udp,
 				Port:     &port53,
 			},
+			{
+				Protocol: &tcp,
+				Port:     &port53,
+			},
 		},
 	}
 
