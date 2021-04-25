@@ -374,6 +374,11 @@ Check out [our sonobuoy plugin](./hack/sonobuoy)!
 
         go run cmd/cyclonus/main.go generate --mode=example
 
+ - run format, vet, tests
+
+        make fmt
+        make vet
+        make test
 
 ## How to Release Binaries
 
