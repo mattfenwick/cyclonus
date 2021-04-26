@@ -1,15 +1,16 @@
 sonobuoy-config:
   driver: Job
   plugin-name: cyclonus
-  result-format: raw
+  result-format: junit
 spec:
   command:
   - ./run-sonobuoy-plugin.sh
   - generate
   - "--include=conflict"
   - "--exclude=egress,direction"
+  - "--junit-results-file=/tmp/results/junit.xml"
   image: mfenwick100/sonobuoy-cyclonus:latest
-  imagePullPolicy: IfNotPresent
+  imagePullPolicy: Always
   name: plugin
   resources: {}
   volumeMounts:
