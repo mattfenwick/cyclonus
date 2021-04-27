@@ -417,3 +417,10 @@ goreleaser release --snapshot --rm-dist
 ## Motivation and History
 
 Testing network policies for CNI providers on Kubernetes has historically been very difficult, requiring a lot of boiler plate.  This was recently improved upstream via truth table based tests ([see KEP](https://github.com/kubernetes/enhancements/tree/master/keps/sig-network/1611-network-policy-validation)).  Cyclonus is the next evolution of the truth table tests which are part of upstream Kubernetes.  Cyclonus generates hundreds of network policies, their connectivity tables, and outputs results in the same, easy to read format.
+
+## Thanks to contributors
+
+ - @dougsland
+ - @jayunit100
+ - @johnSchnake
+ - @enhaocui
