@@ -2,6 +2,8 @@ package cli
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/mattfenwick/cyclonus/pkg/connectivity"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
@@ -9,7 +11,6 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
 type GenerateArgs struct {
@@ -32,6 +33,7 @@ type GenerateArgs struct {
 	Mock                      bool
 	DryRun                    bool
 	JobTimeoutSeconds         int
+	JunitResultsFile          string
 }
 
 func SetupGenerateCommand() *cobra.Command {
@@ -69,6 +71,8 @@ func SetupGenerateCommand() *cobra.Command {
 
 	command.Flags().BoolVar(&args.Mock, "mock", false, "if true, use a mock kube runner (i.e. don't actually run tests against kubernetes; instead, product fake results")
 	command.Flags().BoolVar(&args.DryRun, "dry-run", false, "if true, don't actually do anything: just print out what would be done")
+
+	command.Flags().StringVar(&args.JunitResultsFile, "junit-results-file", "", "output junit results to the specified file")
 
 	return command
 }
@@ -110,8 +114,9 @@ func RunGenerateCommand(args *GenerateArgs) {
 	}
 	interpreter := connectivity.NewInterpreter(kubernetes, resources, interpreterConfig)
 	printer := &connectivity.Printer{
-		Noisy:          args.Noisy,
-		IgnoreLoopback: args.IgnoreLoopback,
+		Noisy:            args.Noisy,
+		IgnoreLoopback:   args.IgnoreLoopback,
+		JunitResultsFile: args.JunitResultsFile,
 	}
 
 	zcPod, err := resources.GetPod("z", "c")
