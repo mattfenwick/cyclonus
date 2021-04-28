@@ -8,6 +8,7 @@ policies that suit your needs!
 ## Quickstart
 
 Users: check out our [Quickstart guide](./docs/quickstart.md)
+
 Developers: check out our [Developer guide](./docs/developer-guide.md)
 
 
