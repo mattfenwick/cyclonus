@@ -20,7 +20,6 @@ type GenerateArgs struct {
 	PerturbationWaitSeconds   int
 	PodCreationTimeoutSeconds int
 	Retries                   int
-	BatchJobs                 bool
 	Context                   string
 	ServerPorts               []int
 	ServerProtocols           []string
@@ -34,6 +33,7 @@ type GenerateArgs struct {
 	DryRun                    bool
 	JobTimeoutSeconds         int
 	JunitResultsFile          string
+	//BatchJobs                 bool
 }
 
 func SetupGenerateCommand() *cobra.Command {
@@ -54,7 +54,7 @@ func SetupGenerateCommand() *cobra.Command {
 	command.Flags().StringSliceVar(&args.ServerNamespaces, "namespace", []string{"x", "y", "z"}, "namespaces to create/use pods in")
 	command.Flags().StringSliceVar(&args.ServerPods, "pod", []string{"a", "b", "c"}, "pods to create in namespaces")
 
-	command.Flags().BoolVar(&args.BatchJobs, "batch-jobs", false, "if true, run jobs in batches to avoid saturating the Kube APIServer with too many exec requests")
+	//command.Flags().BoolVar(&args.BatchJobs, "batch-jobs", false, "if true, run jobs in batches to avoid saturating the Kube APIServer with too many exec requests")
 	command.Flags().IntVar(&args.Retries, "retries", 1, "number of kube probe retries to allow, if probe fails")
 	command.Flags().BoolVar(&args.AllowDNS, "allow-dns", true, "if using egress, allow udp over port 53 for DNS resolution")
 	command.Flags().BoolVar(&args.Noisy, "noisy", false, "if true, print all results")
@@ -100,7 +100,8 @@ func RunGenerateCommand(args *GenerateArgs) {
 
 	serverProtocols := parseProtocols(args.ServerProtocols)
 
-	resources, err := probe.NewDefaultResources(kubernetes, args.ServerNamespaces, args.ServerPods, args.ServerPorts, serverProtocols, externalIPs, args.PodCreationTimeoutSeconds, args.BatchJobs)
+	batchJobs := false // args.BatchJobs
+	resources, err := probe.NewDefaultResources(kubernetes, args.ServerNamespaces, args.ServerPods, args.ServerPorts, serverProtocols, externalIPs, args.PodCreationTimeoutSeconds, batchJobs)
 	utils.DoOrDie(err)
 
 	interpreterConfig := &connectivity.InterpreterConfig{
@@ -108,7 +109,7 @@ func RunGenerateCommand(args *GenerateArgs) {
 		KubeProbeRetries:                 args.Retries,
 		PerturbationWaitSeconds:          args.PerturbationWaitSeconds,
 		VerifyClusterStateBeforeTestCase: true,
-		BatchJobs:                        args.BatchJobs,
+		BatchJobs:                        batchJobs,
 		IgnoreLoopback:                   args.IgnoreLoopback,
 		JobTimeoutSeconds:                args.JobTimeoutSeconds,
 	}
