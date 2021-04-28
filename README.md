@@ -11,11 +11,11 @@ Users: check out our [Quickstart guide](./docs/quickstart.md)
 
 Developers: check out our [Developer guide](./docs/developer-guide.md)
 
-
-## Cyclonus functionality
+Cyclonus functionality:
 
  - [run a single network policy test on a cluster](./docs/probe.md)
  - [run network policy conformance tests on a cluster](./docs/generator.md)
+ - [understand test runs](./docs/test-runs.md)
  - [analyze network policies](./docs/analyze.md)
 
 

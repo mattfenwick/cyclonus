@@ -1,0 +1,316 @@
+# Understanding Cyclonus test runs
+
+## Namespaces, pods, services, and containers
+
+In a typical Cyclonus test, there are 3 pods (a, b, and c) in each of 3 namespaces (x, y, and z) for a total
+of 9 pods:
+
+ - x/a, x/b, x/c
+ - y/a, y/b, y/c
+ - z/a, z/b, z/c
+
+Each namespace is labeled with `ns: $NS` (example: `ns: x` for namespace x).  This allows namespaces to be uniquely
+targeted by network policy's namespace selectors.
+
+Each pod is labeled with `pod: $POD` (example: `pod: a` for pod a).  This allows pods to be uniquely
+targeted by network policy's target selectors and pod selectors.
+
+Each pod has a service which specifically targets that pod's labels, named `s-$NS-$POD` (example: `s-x-a` for pod a in
+namespace x).  There are three modes to test network policies in:
+
+ - hit services by name -- example: `s-x-a.x.svc.cluster.local`
+ - hit services by IP -- example: `10.96.59.73`
+ - hit pods by IP -- example: `10.244.1.248`
+
+Tests can run over multiple protocols and ports.  A typical test run includes protocols TCP and UDP (often
+SCTP as well), and ports 80 and 81.  Each port/protocol combination is served by a container running `agnhost` (docker
+image: k8s.gcr.io/e2e-test-images/agnhost) which is capable of serving a specific protocol on a specific port.  Thus,
+if your test includes protocols TCP and UDP, and ports 80 and 81, each pod will have 4 containers.  Named ports are
+included as well -- `serve-80-udp` is the name for port 80 on UDP.
+
+```
++-----------+-----------+-----+------------+------------------------+--------------------------------+
+| NAMESPACE | NS LABELS | POD | POD LABELS |          IPS           |        CONTAINERS/PORTS        |
++-----------+-----------+-----+------------+------------------------+--------------------------------+
+| x         | ns: x     | a   | pod: a     | pod: 10.244.1.248      | cont-80-tcp, port              |
+|           |           |     |            | service: 10.96.59.73   | serve-80-tcp: 80 on TCP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-80-udp, port              |
+|           |           |     |            |                        | serve-80-udp: 80 on UDP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-81-tcp, port              |
+|           |           |     |            |                        | serve-81-tcp: 81 on TCP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-81-udp, port              |
+|           |           |     |            |                        | serve-81-udp: 81 on UDP        |
++           +           +-----+------------+------------------------+--------------------------------+
+|           |           | b   | pod: b     | pod: 10.244.2.83       | cont-80-tcp, port              |
+|           |           |     |            | service: 10.96.170.110 | serve-80-tcp: 80 on TCP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-80-udp, port              |
+|           |           |     |            |                        | serve-80-udp: 80 on UDP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-81-tcp, port              |
+|           |           |     |            |                        | serve-81-tcp: 81 on TCP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-81-udp, port              |
+|           |           |     |            |                        | serve-81-udp: 81 on UDP        |
++           +           +-----+------------+------------------------+--------------------------------+
+|           |           | c   | pod: c     | pod: 10.244.3.68       | cont-80-tcp, port              |
+|           |           |     |            | service: 10.96.128.86  | serve-80-tcp: 80 on TCP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-80-udp, port              |
+|           |           |     |            |                        | serve-80-udp: 80 on UDP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-81-tcp, port              |
+|           |           |     |            |                        | serve-81-tcp: 81 on TCP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-81-udp, port              |
+|           |           |     |            |                        | serve-81-udp: 81 on UDP        |
++-----------+-----------+-----+------------+------------------------+--------------------------------+
+| y         | ns: y     | a   | pod: a     | pod: 10.244.1.77       | cont-80-tcp, port              |
+|           |           |     |            | service: 10.96.20.246  | serve-80-tcp: 80 on TCP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-80-udp, port              |
+|           |           |     |            |                        | serve-80-udp: 80 on UDP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-81-tcp, port              |
+|           |           |     |            |                        | serve-81-tcp: 81 on TCP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-81-udp, port              |
+|           |           |     |            |                        | serve-81-udp: 81 on UDP        |
++           +           +-----+------------+------------------------+--------------------------------+
+|           |           | b   | pod: b     | pod: 10.244.2.248      | cont-80-tcp, port              |
+|           |           |     |            | service: 10.96.251.243 | serve-80-tcp: 80 on TCP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-80-udp, port              |
+|           |           |     |            |                        | serve-80-udp: 80 on UDP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-81-tcp, port              |
+|           |           |     |            |                        | serve-81-tcp: 81 on TCP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-81-udp, port              |
+|           |           |     |            |                        | serve-81-udp: 81 on UDP        |
++           +           +-----+------------+------------------------+--------------------------------+
+|           |           | c   | pod: c     | pod: 10.244.3.203      | cont-80-tcp, port              |
+|           |           |     |            | service: 10.96.222.28  | serve-80-tcp: 80 on TCP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-80-udp, port              |
+|           |           |     |            |                        | serve-80-udp: 80 on UDP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-81-tcp, port              |
+|           |           |     |            |                        | serve-81-tcp: 81 on TCP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-81-udp, port              |
+|           |           |     |            |                        | serve-81-udp: 81 on UDP        |
++-----------+-----------+-----+------------+------------------------+--------------------------------+
+| z         | ns: z     | a   | pod: a     | pod: 10.244.1.83       | cont-80-tcp, port              |
+|           |           |     |            | service: 10.96.27.182  | serve-80-tcp: 80 on TCP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-80-udp, port              |
+|           |           |     |            |                        | serve-80-udp: 80 on UDP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-81-tcp, port              |
+|           |           |     |            |                        | serve-81-tcp: 81 on TCP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-81-udp, port              |
+|           |           |     |            |                        | serve-81-udp: 81 on UDP        |
++           +           +-----+------------+------------------------+--------------------------------+
+|           |           | b   | pod: b     | pod: 10.244.2.116      | cont-80-tcp, port              |
+|           |           |     |            | service: 10.96.2.168   | serve-80-tcp: 80 on TCP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-80-udp, port              |
+|           |           |     |            |                        | serve-80-udp: 80 on UDP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-81-tcp, port              |
+|           |           |     |            |                        | serve-81-tcp: 81 on TCP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-81-udp, port              |
+|           |           |     |            |                        | serve-81-udp: 81 on UDP        |
++           +           +-----+------------+------------------------+--------------------------------+
+|           |           | c   | pod: c     | pod: 10.244.3.212      | cont-80-tcp, port              |
+|           |           |     |            | service: 10.96.200.9   | serve-80-tcp: 80 on TCP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-80-udp, port              |
+|           |           |     |            |                        | serve-80-udp: 80 on UDP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-81-tcp, port              |
+|           |           |     |            |                        | serve-81-tcp: 81 on TCP        |
++           +           +     +            +                        +--------------------------------+
+|           |           |     |            |                        | cont-81-udp, port              |
+|           |           |     |            |                        | serve-81-udp: 81 on UDP        |
++-----------+-----------+-----+------------+------------------------+--------------------------------+
+```
+
+## Understanding a test case
+
+Each test case consists of one or more steps.  A step consists of an action (create/update/delete a network policy,
+create a pod or namespace, create/update/delete a label on a pod or namespace) followed by a connectivity probe.
+
+Cyclonus prints out the network policies present at each step: 
+
+```
+evaluating test case: direction,ingress,numbered-port,port,protocol,udp
+step 1 on all available ports/protocols:
+Policy explanation:
++---------+---------------+--------------+-------------------------------+-------------------------+
+|  TYPE   |    TARGET     | SOURCE RULES |             PEER              |      PORT/PROTOCOL      |
++---------+---------------+--------------+-------------------------------+-------------------------+
+| Ingress | namespace: x  | x/base       | no ips                        | no ports, no protocols  |
+|         | Match labels: |              |                               |                         |
+|         |   pod: a      |              |                               |                         |
++         +               +              +-------------------------------+-------------------------+
+|         |               |              | namespace: Match expressions: | port 81 on protocol UDP |
+|         |               |              |   ns In [x y]                 |                         |
+|         |               |              | pods: Match expressions:      |                         |
+|         |               |              |   pod In [b c]                |                         |
++---------+---------------+--------------+-------------------------------+-------------------------+
+|         |               |              |                               |                         |
++---------+---------------+--------------+-------------------------------+-------------------------+
+| Egress  | namespace: x  | x/base       | ports for all IPs             | port 53 on protocol UDP |
+|         | Match labels: |              |                               |                         |
+|         |   pod: a      |              |                               |                         |
++         +               +              +-------------------------------+-------------------------+
+|         |               |              | namespace: Match expressions: | port 80 on protocol TCP |
+|         |               |              |   ns In [y z]                 |                         |
+|         |               |              | pods: Match expressions:      |                         |
+|         |               |              |   pod In [a b]                |                         |
++         +               +              +-------------------------------+-------------------------+
+|         |               |              | namespace: all                | port 53 on protocol UDP |
+|         |               |              | pods: all                     |                         |
+|         |               |              |                               |                         |
++---------+---------------+--------------+-------------------------------+-------------------------+
+
+
+
+Results for network policies:
+Network policy:
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  creationTimestamp: null
+  name: base
+  namespace: x
+spec:
+  egress:
+  - ports:
+    - port: 80
+      protocol: TCP
+    to:
+    - namespaceSelector:
+        matchExpressions:
+        - key: ns
+          operator: In
+          values:
+          - "y"
+          - z
+      podSelector:
+        matchExpressions:
+        - key: pod
+          operator: In
+          values:
+          - a
+          - b
+  - ports:
+    - port: 53
+      protocol: UDP
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchExpressions:
+        - key: ns
+          operator: In
+          values:
+          - x
+          - "y"
+      podSelector:
+        matchExpressions:
+        - key: pod
+          operator: In
+          values:
+          - b
+          - c
+    ports:
+    - port: 81
+      protocol: UDP
+  podSelector:
+    matchLabels:
+      pod: a
+  policyTypes:
+  - Ingress
+  - Egress
+```
+
+## Cyclonus truth tables: human-readable pod<->pod connectivity
+
+Next, Cyclonus prints out the connectivity table in the following format:
+
+```
+0 wrong, 9 ignored, 72 correct
++--------+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+| TCP/80 | X/A | X/B | X/C | Y/A | Y/B | Y/C | Z/A | Z/B | Z/C |
+| TCP/81 |     |     |     |     |     |     |     |     |     |
+| UDP/80 |     |     |     |     |     |     |     |     |     |
+| UDP/81 |     |     |     |     |     |     |     |     |     |
++--------+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+| x/a    | X   | X   | X   | .   | .   | X   | .   | .   | X   |
+|        | X   | X   | X   | X   | X   | X   | X   | X   | X   |
+|        | X   | X   | X   | X   | X   | X   | X   | X   | X   |
+|        | X   | X   | X   | X   | X   | X   | X   | X   | X   |
++--------+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+| x/b    | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | .   | .   | .   | .   | .   | .   | .   | .   | .   |
++--------+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+| x/c    | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | .   | .   | .   | .   | .   | .   | .   | .   | .   |
++--------+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+| y/a    | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | X   | .   | .   | .   | .   | .   | .   | .   | .   |
++--------+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+| y/b    | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | .   | .   | .   | .   | .   | .   | .   | .   | .   |
++--------+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+| y/c    | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | .   | .   | .   | .   | .   | .   | .   | .   | .   |
++--------+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+| z/a    | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | X   | .   | .   | .   | .   | .   | .   | .   | .   |
++--------+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+| z/b    | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | X   | .   | .   | .   | .   | .   | .   | .   | .   |
++--------+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+| z/c    | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | X   | .   | .   | .   | .   | .   | .   | .   | .   |
+|        | X   | .   | .   | .   | .   | .   | .   | .   | .   |
++--------+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+```
+
+Recall that we have 9 pods in our test.  Therefore, we have 9 x 9 = 81 combinations of source/destination.
+Additionally, for each pod/pod combination we test multiple ports and protocols.  In this example, we have 2 ports and
+2 protocols, so overall we have 81 x 2 x 2 = 324 data points, each represented by a `.` or `X`.
+
+The leftmost column is the *source* pod.  The topmost row is the *destination* pod.
+
+The top/left cell shows the table schema -- the order of protocol/port in this cell corresponds to the protocol/port
+used for each pod->pod request, in the same order for the appropriate cell.
+
+An `X` means the connection was blocked, while an `.` means the connection was allowed.
+
+Cyclonus uses its network policy engine to calculate expected connectivity, then runs actual requests on the kube
+cluster.  Finally, it compares actual connectivity to expected connectivity, flagging and reporting any differences.
