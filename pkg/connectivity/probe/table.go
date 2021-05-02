@@ -135,7 +135,7 @@ func (t *Table) renderUniformMultiTable(render func(*JobResult) string) string {
 		for _, k := range keys {
 			lines = append(lines, render(dict[k]))
 		}
-		return strings.Join(lines, "\n")
+		return strings.Join(lines, " ")
 	})
 }
 
