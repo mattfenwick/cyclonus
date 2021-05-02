@@ -4,7 +4,6 @@ import (
 	"encoding/xml"
 	junit "github.com/jstemmer/go-junit-report/formatter"
 	"github.com/sirupsen/logrus"
-	"io"
 	"os"
 )
 
@@ -13,15 +12,9 @@ type JUnitTestResult struct {
 	Name   string
 }
 
-func PrintJUnitResults(filename string, results []*Result, ignoreLoopback bool) {
+func PrintJUnitResults(filename string, results []*Result, ignoreLoopback bool) error {
 	if filename == "" {
-		return
-	}
-
-	f, err := os.Create(filename)
-	if err != nil {
-		logrus.Errorf("Unable to create file %q for junit output: %v\n", filename, err)
-		return
+		return nil
 	}
 
 	var junitResults []*JUnitTestResult
@@ -32,20 +25,20 @@ func PrintJUnitResults(filename string, results []*Result, ignoreLoopback bool) 
 		})
 	}
 
-	defer f.Close()
-	if err := printJunit(f, junitResults); err != nil {
-		logrus.Errorf("Unable to write junit output: %v\n", err)
+	f, err := os.Create(filename)
+	if err != nil {
+		logrus.Errorf("Unable to create file %q for junit output: %v\n", filename, err)
+		return err
 	}
-}
+	defer f.Close()
 
-func printJunit(w io.Writer, results []*JUnitTestResult) error {
-	s := resultsToJUnit(results)
-	enc := xml.NewEncoder(w)
+	junitTestSuite := ResultsToJUnit(junitResults)
+	enc := xml.NewEncoder(f)
 	enc.Indent("", "    ")
-	return enc.Encode(s)
+	return enc.Encode(junitTestSuite)
 }
 
-func resultsToJUnit(results []*JUnitTestResult) junit.JUnitTestSuite {
+func ResultsToJUnit(results []*JUnitTestResult) junit.JUnitTestSuite {
 	var testCases []junit.JUnitTestCase
 	failed := 0
 
@@ -55,6 +48,7 @@ func resultsToJUnit(results []*JUnitTestResult) junit.JUnitTestSuite {
 		}
 		if !result.Passed {
 			testCase.Failure = &junit.JUnitFailure{}
+			failed++
 		}
 		testCases = append(testCases, testCase)
 	}

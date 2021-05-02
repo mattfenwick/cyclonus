@@ -2,6 +2,7 @@ package connectivity
 
 import (
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"math"
 	"sort"
 	"strings"
@@ -33,7 +34,10 @@ func (t *Printer) PrintSummary() {
 
 	fmt.Printf("Feature results:\n%s\n\n", t.printMarkdownFeatureTable(summary.FeaturePrimaryCounts, summary.FeatureCounts))
 	fmt.Printf("Tag results:\n%s\n", t.printMarkdownFeatureTable(summary.TagPrimaryCounts, summary.TagCounts))
-	PrintJUnitResults(t.JunitResultsFile, t.Results, t.IgnoreLoopback)
+
+	if err := PrintJUnitResults(t.JunitResultsFile, t.Results, t.IgnoreLoopback); err != nil {
+		log.Errorf("unable to dump JUnit test results: %+v", err)
+	}
 }
 
 const (
