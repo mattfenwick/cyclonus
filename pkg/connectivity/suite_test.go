@@ -10,5 +10,6 @@ import (
 func TestConnectivity(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunTestCaseStateTests()
+	RunPrinterTests()
 	RunSpecs(t, "connectivity suite")
 }
