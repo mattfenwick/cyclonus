@@ -15,17 +15,17 @@ func RunPrinterTests() {
 	Describe("Test junit file print", func() {
 		testCases := []struct {
 			desc       string
-			summary    *Summary
+			summary    *SummaryTable
 			expectFile string
 			expectErr  string
 		}{
 			{
 				desc:       "Empty summary",
-				summary:    &Summary{},
+				summary:    &SummaryTable{},
 				expectFile: "testdata/empty-summary.golden.xml",
 			}, {
 				desc: "2 pass 2 fail",
-				summary: &Summary{
+				summary: &SummaryTable{
 					Tests: [][]string{
 						{"1: test1", "passed", ""},
 						{"2: test2 with spaces", "failed", ""},
@@ -36,7 +36,7 @@ func RunPrinterTests() {
 				expectFile: "testdata/2-pass-2-fail.golden.xml",
 			}, {
 				desc: "Uses failure count from summary",
-				summary: &Summary{
+				summary: &SummaryTable{
 					Failed: 10,
 				},
 				expectFile: "testdata/use-summary-failure-count.golden.xml",

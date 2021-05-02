@@ -24,7 +24,7 @@ type Printer struct {
 }
 
 func (t *Printer) PrintSummary() {
-	summary := (&CombinedResults{Results: t.Results}).Summary(t.IgnoreLoopback)
+	summary := NewSummaryTableFromResults(t.IgnoreLoopback, t.Results)
 	t.printTestSummary(summary.Tests)
 	for primary, counts := range summary.TagCounts {
 		fmt.Println(passFailTable(primary, counts, nil, nil))
@@ -103,7 +103,7 @@ func (t *Printer) printMarkdownFeatureTable(primaryCounts map[string]map[bool]in
 
 func (t *Printer) printTestSummary(rows [][]string) {
 	tableString := &strings.Builder{}
-	tableString.WriteString("Summary:\n")
+	tableString.WriteString("SummaryTable:\n")
 	table := tablewriter.NewWriter(tableString)
 	table.SetRowLine(true)
 

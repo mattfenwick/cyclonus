@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func PrintJUnitResults(filename string, summary *Summary) {
+func PrintJUnitResults(filename string, summary *SummaryTable) {
 	if filename == "" {
 		return
 	}
@@ -27,14 +27,14 @@ func PrintJUnitResults(filename string, summary *Summary) {
 	}
 }
 
-func printJunit(w io.Writer, summary *Summary) error {
+func printJunit(w io.Writer, summary *SummaryTable) error {
 	s := summaryToJunit(summary)
 	enc := xml.NewEncoder(w)
 	enc.Indent("", "    ")
 	return enc.Encode(s)
 }
 
-func summaryToJunit(summary *Summary) junit.JUnitTestSuite {
+func summaryToJunit(summary *SummaryTable) junit.JUnitTestSuite {
 	s := junit.JUnitTestSuite{
 		Name:      "cyclonus",
 		Failures:  summary.Failed,
