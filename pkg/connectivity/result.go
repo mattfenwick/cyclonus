@@ -31,6 +31,15 @@ func (r *Result) Features() map[string][]string {
 	return r.TestCase.GetFeatures()
 }
 
+func (r *Result) Passed(ignoreLoopback bool) bool {
+	for _, step := range r.Steps {
+		if step.LastComparison().ValueCounts(ignoreLoopback)[DifferentComparison] > 0 {
+			return false
+		}
+	}
+	return true
+}
+
 type CombinedResults struct {
 	Results []*Result
 }
@@ -60,13 +69,7 @@ func (c *CombinedResults) Summary(ignoreLoopback bool) *Summary {
 	passedTotal, failedTotal := 0, 0
 
 	for testNumber, result := range c.Results {
-		// preprocess to figure out whether it passed or failed
-		passed := true
-		for _, step := range result.Steps {
-			if step.LastComparison().ValueCounts(ignoreLoopback)[DifferentComparison] > 0 {
-				passed = false
-			}
-		}
+		passed := result.Passed(ignoreLoopback)
 
 		for primary, subs := range result.Features() {
 			if _, ok := summary.FeatureCounts[primary]; !ok {

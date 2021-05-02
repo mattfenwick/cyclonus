@@ -30,6 +30,7 @@ func PrintJUnitResults(filename string, summary *Summary) {
 func printJunit(w io.Writer, summary *Summary) error {
 	s := summaryToJunit(summary)
 	enc := xml.NewEncoder(w)
+	enc.Indent("", "    ")
 	return enc.Encode(s)
 }
 
