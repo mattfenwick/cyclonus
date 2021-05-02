@@ -6,11 +6,14 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"os"
-	"strconv"
-	"strings"
 )
 
-func PrintJUnitResults(filename string, summary *SummaryTable) {
+type JUnitTestResult struct {
+	Passed bool
+	Name   string
+}
+
+func PrintJUnitResults(filename string, results []*Result, ignoreLoopback bool) {
 	if filename == "" {
 		return
 	}
@@ -21,58 +24,43 @@ func PrintJUnitResults(filename string, summary *SummaryTable) {
 		return
 	}
 
+	var junitResults []*JUnitTestResult
+	for _, result := range results {
+		junitResults = append(junitResults, &JUnitTestResult{
+			Passed: result.Passed(ignoreLoopback),
+			Name:   result.TestCase.Description,
+		})
+	}
+
 	defer f.Close()
-	if err := printJunit(f, summary); err != nil {
+	if err := printJunit(f, junitResults); err != nil {
 		logrus.Errorf("Unable to write junit output: %v\n", err)
 	}
 }
 
-func printJunit(w io.Writer, summary *SummaryTable) error {
-	s := summaryToJunit(summary)
+func printJunit(w io.Writer, results []*JUnitTestResult) error {
+	s := resultsToJUnit(results)
 	enc := xml.NewEncoder(w)
 	enc.Indent("", "    ")
 	return enc.Encode(s)
 }
 
-func summaryToJunit(summary *SummaryTable) junit.JUnitTestSuite {
-	s := junit.JUnitTestSuite{
+func resultsToJUnit(results []*JUnitTestResult) junit.JUnitTestSuite {
+	var testCases []junit.JUnitTestCase
+	failed := 0
+
+	for _, result := range results {
+		testCase := junit.JUnitTestCase{
+			Name: result.Name,
+		}
+		if !result.Passed {
+			testCase.Failure = &junit.JUnitFailure{}
+		}
+		testCases = append(testCases, testCase)
+	}
+	return junit.JUnitTestSuite{
 		Name:      "cyclonus",
-		Failures:  summary.Failed,
-		TestCases: []junit.JUnitTestCase{},
+		Failures:  failed,
+		TestCases: testCases,
 	}
-
-	for _, testStrings := range summary.Tests {
-		_, testName, passed := parseTestStrings(testStrings)
-		// Only cases where the testname are non-empty are new tests, otherwise it
-		// is multi-line output of the test.
-		if testName == "" {
-			continue
-		}
-		tc := junit.JUnitTestCase{
-			Name: testName,
-		}
-		if !passed {
-			tc.Failure = &junit.JUnitFailure{}
-		}
-		s.TestCases = append(s.TestCases, tc)
-	}
-	return s
-}
-
-func parseTestStrings(input []string) (testNumber int, testName string, passed bool) {
-	split := strings.SplitN(input[0], ": ", 2)
-	if len(split) < 2 {
-		return 0, "", false
-	}
-
-	testNumber, err := strconv.Atoi(split[0])
-	if err != nil {
-		logrus.Errorf("error parsing test number from string %q for junit: %v", split[0], err)
-	}
-
-	if len(input) > 1 && input[1] == "passed" {
-		passed = true
-	}
-
-	return testNumber, split[1], passed
 }

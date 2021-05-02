@@ -33,7 +33,7 @@ func (t *Printer) PrintSummary() {
 
 	fmt.Printf("Feature results:\n%s\n\n", t.printMarkdownFeatureTable(summary.FeaturePrimaryCounts, summary.FeatureCounts))
 	fmt.Printf("Tag results:\n%s\n", t.printMarkdownFeatureTable(summary.TagPrimaryCounts, summary.TagCounts))
-	PrintJUnitResults(t.JunitResultsFile, summary)
+	PrintJUnitResults(t.JunitResultsFile, t.Results, t.IgnoreLoopback)
 }
 
 const (
