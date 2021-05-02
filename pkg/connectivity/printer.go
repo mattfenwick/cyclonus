@@ -1,21 +1,16 @@
 package connectivity
 
 import (
-	"encoding/xml"
 	"fmt"
-	"io"
+	log "github.com/sirupsen/logrus"
 	"math"
-	"os"
 	"sort"
-	"strconv"
 	"strings"
 
-	junit "github.com/jstemmer/go-junit-report/formatter"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,7 +25,7 @@ type Printer struct {
 }
 
 func (t *Printer) PrintSummary() {
-	summary := (&CombinedResults{Results: t.Results}).Summary(t.IgnoreLoopback)
+	summary := NewSummaryTableFromResults(t.IgnoreLoopback, t.Results)
 	t.printTestSummary(summary.Tests)
 	for primary, counts := range summary.TagCounts {
 		fmt.Println(passFailTable(primary, counts, nil, nil))
@@ -39,66 +34,10 @@ func (t *Printer) PrintSummary() {
 
 	fmt.Printf("Feature results:\n%s\n\n", t.printMarkdownFeatureTable(summary.FeaturePrimaryCounts, summary.FeatureCounts))
 	fmt.Printf("Tag results:\n%s\n", t.printMarkdownFeatureTable(summary.TagPrimaryCounts, summary.TagCounts))
-	if t.JunitResultsFile != "" {
-		f, err := os.Create(t.JunitResultsFile)
-		if err != nil {
-			logrus.Errorf("Unable to create file %q for junit output: %v\n", t.JunitResultsFile, err)
-		} else {
-			defer f.Close()
-			if err := printJunit(f, summary); err != nil {
-				logrus.Errorf("Unable to write junit output: %v\n", err)
-			}
-		}
+
+	if err := PrintJUnitResults(t.JunitResultsFile, t.Results, t.IgnoreLoopback); err != nil {
+		log.Errorf("unable to dump JUnit test results: %+v", err)
 	}
-}
-
-func printJunit(w io.Writer, summary *Summary) error {
-	s := summaryToJunit(summary)
-	enc := xml.NewEncoder(w)
-	return enc.Encode(s)
-}
-
-func summaryToJunit(summary *Summary) junit.JUnitTestSuite {
-	s := junit.JUnitTestSuite{
-		Name:      "cyclonus",
-		Failures:  summary.Failed,
-		TestCases: []junit.JUnitTestCase{},
-	}
-
-	for _, testStrings := range summary.Tests {
-		_, testName, passed := parseTestStrings(testStrings)
-		// Only cases where the testname are non-empty are new tests, otherwise it
-		// is multi-line output of the test.
-		if testName == "" {
-			continue
-		}
-		tc := junit.JUnitTestCase{
-			Name: testName,
-		}
-		if !passed {
-			tc.Failure = &junit.JUnitFailure{}
-		}
-		s.TestCases = append(s.TestCases, tc)
-	}
-	return s
-}
-
-func parseTestStrings(input []string) (testNumber int, testName string, passed bool) {
-	split := strings.SplitN(input[0], ": ", 2)
-	if len(split) < 2 {
-		return 0, "", false
-	}
-
-	testNumber, err := strconv.Atoi(split[0])
-	if err != nil {
-		logrus.Errorf("error parsing test number from string %q for junit: %v", split[0], err)
-	}
-
-	if len(input) > 1 && input[1] == "passed" {
-		passed = true
-	}
-
-	return testNumber, split[1], passed
 }
 
 const (
@@ -168,7 +107,7 @@ func (t *Printer) printMarkdownFeatureTable(primaryCounts map[string]map[bool]in
 
 func (t *Printer) printTestSummary(rows [][]string) {
 	tableString := &strings.Builder{}
-	tableString.WriteString("Summary:\n")
+	tableString.WriteString("SummaryTable:\n")
 	table := tablewriter.NewWriter(tableString)
 	table.SetRowLine(true)
 

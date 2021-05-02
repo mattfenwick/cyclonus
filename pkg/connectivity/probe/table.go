@@ -47,9 +47,9 @@ func NewTableFromJobResults(resources *Resources, jobResults []*JobResult) *Tabl
 	return table
 }
 
-func (t *Table) Set(from string, to string, value *Item) {
-	t.Wrapped.Set(from, to, value)
-}
+//func (t *Table) Set(from string, to string, value *Item) {
+//	t.Wrapped.Set(from, to, value)
+//}
 
 func (t *Table) Get(from string, to string) *Item {
 	return t.Wrapped.Get(from, to).(*Item)
