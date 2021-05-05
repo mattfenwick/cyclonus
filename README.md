@@ -21,19 +21,17 @@ Cyclonus functionality:
 
 ## Integrations
 
-### krew plugin
-
-Cyclonus is available as a [krew/kubectl plugin](https://github.com/mattfenwick/kubectl-cyclonus):
+Cyclonus is available as a [**krew/kubectl plugin**](https://github.com/mattfenwick/kubectl-cyclonus):
 
  - [Set up krew](https://krew.sigs.k8s.io/docs/user-guide/quickstart/)
- - install cyclonus through krew: `kubectl krew install cyclonus`
- - use cyclonus as a kubectl plugin: `kubectl cyclonus -h`
+ - install: `kubectl krew install cyclonus`
+ - use: `kubectl cyclonus -h`
 
-Antrea testing: [Cyclonus runs network policy tests for Antrea on a daily basis](https://github.com/vmware-tanzu/antrea/actions/workflows/netpol_cyclonus.yml).
+**Antrea testing**: [Cyclonus runs network policy tests for Antrea on a daily basis](https://github.com/vmware-tanzu/antrea/actions/workflows/netpol_cyclonus.yml).
 
-Cilium testing: [Cyclonus runs network policy tests for Cilium on a daily basis](https://github.com/cilium/cilium/pull/14889).
+**Cilium testing**: [Cyclonus runs network policy tests for Cilium on a daily basis](https://github.com/cilium/cilium/pull/14889).
 
-Sonobuoy plugin: [run Cyclonus tests through Sonobuoy](./hack/sonobuoy)!
+**Sonobuoy plugin**: [run Cyclonus tests through Sonobuoy](./hack/sonobuoy).
 
 
 ## Motivation and History
