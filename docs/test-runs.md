@@ -434,7 +434,7 @@ spec:
 If Cyclonus detects a discrepancy between actual and expected connectivity, it will print out several additional
 pieces of information to help you pinpoint, debug and understand the failure.
 
-The first piece is the expected connectivity matrix from the point of view of *ingress* rules.
+The first piece is the expected connectivity matrix from the point of view of **ingress** rules.
 
 ```
 Discrepancy found:17 wrong, 0 ignored, 64 correct
@@ -469,7 +469,7 @@ Expected ingress:
 
 ### Piece 4: expected egress connectivity
 
-The second additional piece of data is the expected connectivity from the point of view of *egress* rules.
+The second additional piece of data is the expected connectivity from the point of view of **egress** rules.
 
 ```
 Expected egress:
@@ -503,11 +503,11 @@ Expected egress:
 
 ### Piece 5: expect combined connectivity
 
-The third additional piece of data is the expected *combined* connectivity -- taking into account both ingress and egress
+The third additional piece of data is the expected **combined** connectivity -- taking into account both ingress and egress
 expected connectivity.
 
 Remember that network policies only allow traffic if both ingress and egress are allowed.  Therefore, this table is a
-combination of the two separate *ingress*-only and *egress*-only tables from the previous two pieces.
+combination of the two separate **ingress**-only and **egress**-only tables from the previous two pieces.
 
 ```
 Expected combined:
@@ -635,7 +635,7 @@ Recall that we have 9 pods in our test.  Therefore, we have 9 x 9 = 81 combinati
 Additionally, for each pod/pod combination we test multiple ports and protocols.  In this example, we have 2 ports and
 3 protocols, so overall we have 81 x 2 x 3 = 486 data points, each represented by a `.` or `X`.
 
-The leftmost column is the *source* pod.  The topmost row is the *destination* pod.
+The leftmost column is the **source** pod.  The topmost row is the **destination** pod.
 
 The top/left cell shows the table schema -- the order of protocol/port in this cell corresponds to the protocol/port
 used for each pod->pod request, in the same order for the appropriate cell.
