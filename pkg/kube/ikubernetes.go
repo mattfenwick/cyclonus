@@ -2,6 +2,7 @@ package kube
 
 import (
 	"fmt"
+	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -112,7 +113,6 @@ func (m *MockKubernetes) getNamespaceObject(namespace string) (*MockNamespace, e
 
 func (m *MockKubernetes) GetNamespace(namespace string) (*v1.Namespace, error) {
 	if ns, ok := m.Namespaces[namespace]; ok {
-		//return ns.NamespaceObject, nil
 		labels := map[string]string{}
 		for k, v := range ns.NamespaceObject.Labels {
 			labels[k] = v
@@ -147,8 +147,10 @@ func (m *MockKubernetes) DeleteNamespace(ns string) error {
 
 func (m *MockKubernetes) GetAllNamespaces() (*v1.NamespaceList, error) {
 	var namespaces []v1.Namespace
-	for _, ns := range m.Namespaces {
-		namespaces = append(namespaces, *ns.NamespaceObject)
+	for name := range m.Namespaces {
+		ns, err := m.GetNamespace(name)
+		utils.DoOrDie(err)
+		namespaces = append(namespaces, *ns)
 	}
 	return &v1.NamespaceList{
 		Items: namespaces,
