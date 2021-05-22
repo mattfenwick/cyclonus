@@ -2,9 +2,11 @@ package kube
 
 import (
 	"fmt"
+	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"math/rand"
 )
 
@@ -13,6 +15,7 @@ type IKubernetes interface {
 	GetNamespace(namespace string) (*v1.Namespace, error)
 	SetNamespaceLabels(namespace string, labels map[string]string) (*v1.Namespace, error)
 	DeleteNamespace(namespace string) error
+	GetAllNamespaces() (*v1.NamespaceList, error)
 
 	CreateNetworkPolicy(kubePolicy *networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error)
 	GetNetworkPoliciesInNamespace(namespace string) ([]networkingv1.NetworkPolicy, error)
@@ -110,7 +113,17 @@ func (m *MockKubernetes) getNamespaceObject(namespace string) (*MockNamespace, e
 
 func (m *MockKubernetes) GetNamespace(namespace string) (*v1.Namespace, error) {
 	if ns, ok := m.Namespaces[namespace]; ok {
-		return ns.NamespaceObject, nil
+		labels := map[string]string{}
+		for k, v := range ns.NamespaceObject.Labels {
+			labels[k] = v
+		}
+		labels["kubernetes.io/metadata.name"] = namespace
+		return &v1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   ns.NamespaceObject.Name,
+				Labels: labels,
+			},
+		}, nil
 	}
 	return nil, errors.Errorf("namespace %s not found", namespace)
 }
@@ -130,6 +143,18 @@ func (m *MockKubernetes) DeleteNamespace(ns string) error {
 	}
 	delete(m.Namespaces, ns)
 	return nil
+}
+
+func (m *MockKubernetes) GetAllNamespaces() (*v1.NamespaceList, error) {
+	var namespaces []v1.Namespace
+	for name := range m.Namespaces {
+		ns, err := m.GetNamespace(name)
+		utils.DoOrDie(err)
+		namespaces = append(namespaces, *ns)
+	}
+	return &v1.NamespaceList{
+		Items: namespaces,
+	}, nil
 }
 
 func (m *MockKubernetes) CreateNamespace(ns *v1.Namespace) (*v1.Namespace, error) {

@@ -63,25 +63,25 @@ func (p *Pod) Host(probeMode generator.ProbeMode) string {
 	}
 }
 
-func (p *Pod) IsEqualToKubePod(kubePod v1.Pod) bool {
+func (p *Pod) IsEqualToKubePod(kubePod v1.Pod) (string, bool) {
 	kubeConts := kubePod.Spec.Containers
 	if len(kubeConts) != len(p.Containers) {
-		return false
+		return fmt.Sprintf("have %d containers, expected %d", len(p.Containers), len(kubeConts)), false
 	}
 	for i, kubeCont := range kubeConts {
 		cont := p.Containers[i]
 		if len(kubeCont.Ports) != 1 {
-			return false
+			return fmt.Sprintf("container %d: expected 1 port, found %d", i, len(kubeCont.Ports)), false
 		}
 		if int(kubeCont.Ports[0].ContainerPort) != cont.Port {
-			return false
+			return fmt.Sprintf("container %d: expected port %d, found %d", i, cont.Port, kubeCont.Ports[0].ContainerPort), false
 		}
 		if kubeCont.Ports[0].Protocol != cont.Protocol {
-			return false
+			return fmt.Sprintf("container %d: expected protocol %s, found %s", i, cont.Protocol, kubeCont.Ports[0].Protocol), false
 		}
 	}
 
-	return true
+	return "", true
 }
 
 func (p *Pod) ServiceName() string {
