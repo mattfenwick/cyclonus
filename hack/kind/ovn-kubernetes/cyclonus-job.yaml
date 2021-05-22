@@ -12,6 +12,7 @@ spec:
             - generate
             - --ignore-loopback=true
             - --exclude=named-port,multi-peer,upstream-e2e,example
+            - --job-timeout-seconds=2
           name: cyclonus
           imagePullPolicy: IfNotPresent
           image: mfenwick100/cyclonus:latest

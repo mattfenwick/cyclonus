@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set -xv
-set -eou pipefail
+set -euo pipefail
 
 
 IMAGE=mfenwick100/sonobuoy-cyclonus:latest

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set -xv
-set -eou pipefail
+set -euo pipefail
 
 CLUSTER=${CLUSTER:-"ovn"}
 OVN_DIR="ovn-kubernetes-repo"
