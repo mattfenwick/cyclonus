@@ -200,8 +200,8 @@ func (t *TestCaseState) verifyClusterStateHelper() error {
 			if actualPod.Status.PodIP != expectedPod.IP {
 				return errors.Errorf("for pod %s, expected ip %s (found %s)", expectedPod.PodString().String(), expectedPod.IP, actualPod.Status.PodIP)
 			}
-			if !expectedPod.IsEqualToKubePod(actualPod) {
-				return errors.Errorf("for pod %s, expected containers %+v (found %+v)", expectedPod.PodString().String(), expectedPod.Containers, actualPod.Spec.Containers)
+			if diff, ok := expectedPod.IsEqualToKubePod(actualPod); !ok {
+				return errors.Errorf("for pod %s, %s", expectedPod.PodString().String(), diff)
 			}
 		} else {
 			return errors.Errorf("missing expected pod %s", expectedPod.PodString().String())

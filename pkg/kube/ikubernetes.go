@@ -120,8 +120,8 @@ func (m *MockKubernetes) GetNamespace(namespace string) (*v1.Namespace, error) {
 		labels["kubernetes.io/metadata.name"] = namespace
 		return &v1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: ns.NamespaceObject.Name,
-				Labels:labels,
+				Name:   ns.NamespaceObject.Name,
+				Labels: labels,
 			},
 		}, nil
 	}
