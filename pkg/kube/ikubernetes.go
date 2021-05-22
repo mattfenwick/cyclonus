@@ -14,6 +14,7 @@ type IKubernetes interface {
 	GetNamespace(namespace string) (*v1.Namespace, error)
 	SetNamespaceLabels(namespace string, labels map[string]string) (*v1.Namespace, error)
 	DeleteNamespace(namespace string) error
+	GetAllNamespaces() (*v1.NamespaceList, error)
 
 	CreateNetworkPolicy(kubePolicy *networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error)
 	GetNetworkPoliciesInNamespace(namespace string) ([]networkingv1.NetworkPolicy, error)
@@ -142,6 +143,16 @@ func (m *MockKubernetes) DeleteNamespace(ns string) error {
 	}
 	delete(m.Namespaces, ns)
 	return nil
+}
+
+func (m *MockKubernetes) GetAllNamespaces() (*v1.NamespaceList, error) {
+	var namespaces []v1.Namespace
+	for _, ns := range m.Namespaces {
+		namespaces = append(namespaces, *ns.NamespaceObject)
+	}
+	return &v1.NamespaceList{
+		Items: namespaces,
+	}, nil
 }
 
 func (m *MockKubernetes) CreateNamespace(ns *v1.Namespace) (*v1.Namespace, error) {

@@ -39,6 +39,9 @@ func NewDefaultResources(kubernetes kube.IKubernetes, namespaces []string, podNa
 	if err := r.getPodIPsFromKube(kubernetes); err != nil {
 		return nil, err
 	}
+	if err := r.getNamespaceLabelsFromKube(kubernetes); err != nil {
+		return nil, err
+	}
 
 	return r, nil
 }
@@ -90,6 +93,23 @@ func (r *Resources) getPodIPsFromKube(kubernetes kube.IKubernetes) error {
 		pod.ServiceIP = kubeService.Spec.ClusterIP
 
 		logrus.Debugf("ip for pod %s/%s: %s", pod.Namespace, pod.Name, pod.IP)
+	}
+
+	return nil
+}
+
+func (r *Resources) getNamespaceLabelsFromKube(kubernetes kube.IKubernetes) error {
+	nsList, err := kubernetes.GetAllNamespaces()
+	if err != nil {
+		return err
+	}
+
+	for _, kubeNs := range nsList.Items {
+		for label, value := range kubeNs.Labels {
+			if ns, ok := r.Namespaces[kubeNs.Name]; ok {
+				ns[label] = value
+			}
+		}
 	}
 
 	return nil
