@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 
 set -xv
-set -eou pipefail
+set -euo pipefail
 
 CYCLONUS_ARGS=$@
 RESULTS_DIR="${RESULTS_DIR:-/tmp/results}"

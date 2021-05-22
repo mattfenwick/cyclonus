@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -eou pipefail
+set -euo pipefail
 set -xv
 
 CLUSTER=${CLUSTER:-netpol-calico}

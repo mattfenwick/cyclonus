@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set -xv
-set -eou pipefail
+set -euo pipefail
 
 KIND_VERSION=${KIND_VERSION:-v0.11.0}
 CNI=${CNI:-calico}
