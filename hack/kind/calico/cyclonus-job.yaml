@@ -10,6 +10,7 @@ spec:
         - command:
             - ./cyclonus
             - generate
+            - --job-timeout-seconds=2
           name: cyclonus
           imagePullPolicy: IfNotPresent
           image: mfenwick100/cyclonus:latest

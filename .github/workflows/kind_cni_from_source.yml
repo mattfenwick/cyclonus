@@ -6,7 +6,7 @@ on:
         required: true
       cyclonus_args:
         required: false
-        default: "generate include --conflict"
+        default: "generate include --conflict --job-timeout-seconds 2"
 
 jobs:
   test-kind-calico:

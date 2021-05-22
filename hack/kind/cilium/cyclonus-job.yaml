@@ -12,6 +12,7 @@ spec:
             - generate
             - --ignore-loopback=true
             - --server-protocol=tcp,udp
+            - --job-timeout-seconds=2
           name: cyclonus
           imagePullPolicy: IfNotPresent
           image: mfenwick100/cyclonus:latest
