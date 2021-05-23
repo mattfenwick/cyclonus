@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"github.com/mattfenwick/cyclonus/pkg/kube"
 	v1 "k8s.io/api/core/v1"
 	. "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -118,4 +119,5 @@ var (
 			},
 		},
 	}
+	nsZMatchDefaultLabelsSelector = &metav1.LabelSelector{MatchLabels: map[string]string{kube.DefaultNamespaceLabel: "z"}}
 )

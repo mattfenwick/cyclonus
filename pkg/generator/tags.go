@@ -51,11 +51,12 @@ const (
 )
 
 const (
-	TagAllPods           = "all-pods"
-	TagPodsByLabel       = "pods-by-label"
-	TagAllNamespaces     = "all-namespaces"
-	TagNamespacesByLabel = "namespaces-by-label"
-	TagPolicyNamespace   = "policy-namespace"
+	TagAllPods                  = "all-pods"
+	TagPodsByLabel              = "pods-by-label"
+	TagAllNamespaces            = "all-namespaces"
+	TagNamespacesByLabel        = "namespaces-by-label"
+	TagPolicyNamespace          = "policy-namespace"
+	TagNamespacesByDefaultLabel = "namespaces-by-default-label"
 )
 
 const (
@@ -118,6 +119,7 @@ var AllTags = map[string][]string{
 		TagAllNamespaces,
 		TagNamespacesByLabel,
 		TagPolicyNamespace,
+		TagNamespacesByDefaultLabel,
 	},
 	TagPeerIPBlock: {
 		TagIPBlockNoExcept,

@@ -13,6 +13,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	DefaultExcludeTags = []string{
+		generator.TagMultiPeer,
+		generator.TagUpstreamE2E,
+		generator.TagExample,
+		generator.TagEndPort,
+		generator.TagNamespacesByDefaultLabel}
+)
+
 type GenerateArgs struct {
 	AllowDNS                  bool
 	Noisy                     bool
@@ -67,7 +76,7 @@ func SetupGenerateCommand() *cobra.Command {
 	command.Flags().IntVar(&args.JobTimeoutSeconds, "job-timeout-seconds", 10, "number of seconds to pass on to 'agnhost connect --timeout=%ds' flag")
 
 	command.Flags().StringSliceVar(&args.Include, "include", []string{}, "include tests with any of these tags; if empty, all tests will be included.  Valid tags:\n"+strings.Join(generator.TagSlice, "\n"))
-	command.Flags().StringSliceVar(&args.Exclude, "exclude", []string{generator.TagMultiPeer, generator.TagUpstreamE2E, generator.TagExample, generator.TagEndPort}, "exclude tests with any of these tags.  See 'include' field for valid tags")
+	command.Flags().StringSliceVar(&args.Exclude, "exclude", DefaultExcludeTags, "exclude tests with any of these tags.  See 'include' field for valid tags")
 
 	command.Flags().BoolVar(&args.Mock, "mock", false, "if true, use a mock kube runner (i.e. don't actually run tests against kubernetes; instead, product fake results")
 	command.Flags().BoolVar(&args.DryRun, "dry-run", false, "if true, don't actually do anything: just print out what would be done")
