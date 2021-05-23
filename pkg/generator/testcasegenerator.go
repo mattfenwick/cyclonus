@@ -70,6 +70,7 @@ func (t *TestCaseGenerator) GenerateAllTestCases() []*TestCase {
 		t.ExampleTestCases(),
 		t.ActionTestCases(),
 		t.ConflictTestCases(),
+		t.NamespaceTestCases(),
 		t.UpstreamE2ETestCases())
 }
 

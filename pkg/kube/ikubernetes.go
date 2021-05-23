@@ -117,7 +117,7 @@ func (m *MockKubernetes) GetNamespace(namespace string) (*v1.Namespace, error) {
 		for k, v := range ns.NamespaceObject.Labels {
 			labels[k] = v
 		}
-		labels["kubernetes.io/metadata.name"] = namespace
+		labels[DefaultNamespaceLabel] = namespace
 		return &v1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:   ns.NamespaceObject.Name,
