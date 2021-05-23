@@ -18,7 +18,7 @@ then
 fi
 
 kind version
-realpath kind
+which -a kind
 
 # create kind cluster
 pushd "$CNI"
