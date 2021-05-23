@@ -17,6 +17,9 @@ then
   sudo mv kind /usr/local/bin
 fi
 
+kind version
+realpath kind
+
 # create kind cluster
 pushd "$CNI"
   CLUSTER=$CLUSTER_NAME ./setup-kind.sh
