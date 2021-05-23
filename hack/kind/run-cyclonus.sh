@@ -8,10 +8,9 @@ CNI=${CNI:-calico}
 CLUSTER_NAME="netpol-$CNI"
 RUN_FROM_SOURCE=${RUN_FROM_SOURCE:-true}
 FROM_SOURCE_ARGS=${FROM_SOURCE_ARGS:-"generate --include conflict --job-timeout-seconds 2"}
+INSTALL_KIND=${INSTALL_KIND:-true}
 
-# install kind if not found
-if ! command -v kind &> /dev/null
-then
+if [[ $INSTALL_KIND == true ]]; then
   curl -Lo ./kind https://github.com/kubernetes-sigs/kind/releases/download/"${KIND_VERSION}"/kind-$(uname)-amd64
   chmod +x ./kind
   sudo mv kind /usr/local/bin
