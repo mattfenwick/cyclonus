@@ -1,18 +1,14 @@
 package matcher
 
 import (
-	"fmt"
-	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Target represents a NetworkPolicySpec.PodSelector, which is in a namespace
+// Target represents rules applied to a group of pods defined by a selector
 type Target struct {
-	Namespace   string
-	PodSelector metav1.LabelSelector
+	Selector    *Selector
 	Peers       []PeerMatcher
 	SourceRules []*networkingv1.NetworkPolicy
 	primaryKey  string
@@ -22,8 +18,8 @@ func (t *Target) String() string {
 	return t.GetPrimaryKey()
 }
 
-func (t *Target) IsMatch(namespace string, podLabels map[string]string) bool {
-	return t.Namespace == namespace && kube.IsLabelsMatchLabelSelector(podLabels, t.PodSelector)
+func (t *Target) AppliesToNamesAndLabels(podNamesAndLabels *SelectorTargetPod) bool {
+	return t.Selector.Matches(podNamesAndLabels)
 }
 
 func (t *Target) Allows(peer *TrafficPeer, portInt int, portName string, protocol v1.Protocol) bool {
@@ -35,7 +31,7 @@ func (t *Target) Allows(peer *TrafficPeer, portInt int, portName string, protoco
 	return false
 }
 
-// CombinePeerMatchers creates a new Target combining the egress and ingress rules
+// Combine creates a new Target combining the egress and ingress rules
 // of the two original targets.  Neither input is modified.
 // The Primary Keys of the two targets must match.
 func (t *Target) Combine(other *Target) *Target {
@@ -46,30 +42,25 @@ func (t *Target) Combine(other *Target) *Target {
 	}
 
 	return &Target{
-		Namespace:   t.Namespace,
-		PodSelector: t.PodSelector,
+		Selector:    t.Selector,
 		Peers:       append(t.Peers, other.Peers...),
 		SourceRules: append(t.SourceRules, other.SourceRules...),
 	}
 }
 
-// The primary key is a deterministic combination of PodSelector and namespace
+// GetPrimaryKey returns a deterministic combination of namespace and pod selectors
 func (t *Target) GetPrimaryKey() string {
-	if t.primaryKey == "" {
-		t.primaryKey = fmt.Sprintf(`{"Namespace": "%s", "PodSelector": %s}`, t.Namespace, kube.SerializeLabelSelector(t.PodSelector))
-	}
-	return t.primaryKey
+	return t.Selector.GetPrimaryKey()
 }
 
 // CombineTargetsIgnoringPrimaryKey creates a new target from the given namespace and pod selector,
 // and combines all the edges and source rules from the original targets into the new target.
-func CombineTargetsIgnoringPrimaryKey(namespace string, podSelector metav1.LabelSelector, targets []*Target) *Target {
+func CombineTargetsIgnoringPrimaryKey(selector *Selector, targets []*Target) *Target {
 	if len(targets) == 0 {
 		return nil
 	}
 	target := &Target{
-		Namespace:   namespace,
-		PodSelector: podSelector,
+		Selector:    selector,
 		Peers:       targets[0].Peers,
 		SourceRules: targets[0].SourceRules,
 	}

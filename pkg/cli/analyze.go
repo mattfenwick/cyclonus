@@ -92,10 +92,11 @@ func RunAnalyzeCommand(args *AnalyzeArgs) {
 	var kubePolicies []*networkingv1.NetworkPolicy
 	var kubePods []v1.Pod
 	var kubeNamespaces []v1.Namespace
-	if args.AllNamespaces || len(args.Namespaces) > 0 {
-		kubeClient, err := kube.NewKubernetesForContext(args.Context)
-		utils.DoOrDie(err)
 
+	kubeClient, err := kube.NewKubernetesForContext(args.Context)
+	utils.DoOrDie(err)
+
+	if args.AllNamespaces || len(args.Namespaces) > 0 {
 		namespaces := args.Namespaces
 		if args.AllNamespaces {
 			nsList, err := kubeClient.GetAllNamespaces()
@@ -129,14 +130,9 @@ func RunAnalyzeCommand(args *AnalyzeArgs) {
 		case LintMode:
 			Lint(kubePolicies)
 		case QueryTargetMode:
-			pods := make([]*QueryTargetPod, len(kubePods))
-			for i, p := range kubePods {
-				pods[i] = &QueryTargetPod{
-					Namespace: p.Namespace,
-					Labels:    p.Labels,
-				}
-			}
-			QueryTargets(policies, args.TargetPodPath, pods)
+			nsList, err := kubeClient.GetAllNamespaces()
+			utils.DoOrDie(err)
+			QueryTargets(policies, args.TargetPodPath, kubePods, nsList.Items)
 		case QueryTrafficMode:
 			QueryTraffic(policies, args.TrafficPath)
 		case ProbeMode:
@@ -160,16 +156,28 @@ func Lint(kubePolicies []*networkingv1.NetworkPolicy) {
 	fmt.Println(linter.WarningsTable(warnings))
 }
 
-// QueryTargetPod matches targets; targets exist in only a single namespace and can't be matched by namespace
-//   label, therefore we match by exact namespace and by pod labels.
-type QueryTargetPod struct {
-	Namespace string
-	Labels    map[string]string
-}
+func QueryTargets(explainedPolicies *matcher.Policy, podPath string, kubePods []v1.Pod, kubeNamespaces []v1.Namespace) {
+	namespaceMap := map[string]v1.Namespace{}
+	for _, ns := range kubeNamespaces {
+		namespaceMap[ns.Name] = ns
+	}
 
-func QueryTargets(explainedPolicies *matcher.Policy, podPath string, pods []*QueryTargetPod) {
+	pods := make([]*matcher.SelectorTargetPod, len(kubePods))
+	for i, kubePod := range kubePods {
+		ns, ok := namespaceMap[kubePod.Namespace]
+		if !ok {
+			utils.DoOrDie(errors.Errorf("unable to find kube namespace object for %s", kubePod.Namespace))
+		}
+		pods[i] = &matcher.SelectorTargetPod{
+			Namespace:       kubePod.Namespace,
+			NamespaceLabels: ns.Labels,
+			Name:            kubePod.Name,
+			Labels:          kubePod.Labels,
+		}
+	}
+
 	if podPath != "" {
-		var podsFromFile []*QueryTargetPod
+		var podsFromFile []*matcher.SelectorTargetPod
 		bs, err := ioutil.ReadFile(podPath)
 		utils.DoOrDie(err)
 		err = json.Unmarshal(bs, &podsFromFile)
@@ -187,12 +195,17 @@ func QueryTargets(explainedPolicies *matcher.Policy, podPath string, pods []*Que
 	}
 }
 
-func QueryTargetHelper(policies *matcher.Policy, pod *QueryTargetPod) (*matcher.Policy, *matcher.Policy) {
-	ingressTargets := policies.TargetsApplyingToPod(true, pod.Namespace, pod.Labels)
-	combinedIngressTarget := matcher.CombineTargetsIgnoringPrimaryKey(pod.Namespace, metav1.LabelSelector{MatchLabels: pod.Labels}, ingressTargets)
+func QueryTargetHelper(policies *matcher.Policy, pod *matcher.SelectorTargetPod) (*matcher.Policy, *matcher.Policy) {
+	selector := &matcher.Selector{
+		Namespaces: matcher.NewNameAndLabelsSelector(pod.Namespace, metav1.LabelSelector{MatchLabels: pod.NamespaceLabels}),
+		Pods:       matcher.NewNameAndLabelsSelector(pod.Name, metav1.LabelSelector{MatchLabels: pod.Labels}),
+	}
 
-	egressTargets := policies.TargetsApplyingToPod(false, pod.Namespace, pod.Labels)
-	combinedEgressTarget := matcher.CombineTargetsIgnoringPrimaryKey(pod.Namespace, metav1.LabelSelector{MatchLabels: pod.Labels}, egressTargets)
+	ingressTargets := policies.TargetsApplyingToPod(true, pod)
+	combinedIngressTarget := matcher.CombineTargetsIgnoringPrimaryKey(selector, ingressTargets)
+
+	egressTargets := policies.TargetsApplyingToPod(false, pod)
+	combinedEgressTarget := matcher.CombineTargetsIgnoringPrimaryKey(selector, egressTargets)
 
 	var combinedIngresses []*matcher.Target
 	if combinedIngressTarget != nil {

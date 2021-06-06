@@ -2,13 +2,13 @@ package matcher
 
 import (
 	"fmt"
-	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/olekukonko/tablewriter"
 	"sort"
 	"strings"
 )
 
-// This is the root type
+// Policy is the root type, and is roughly analogous to a combination of all
+// k8s NetworkPolicy objects.
 type Policy struct {
 	Ingress map[string]*Target
 	Egress  map[string]*Target
@@ -65,7 +65,7 @@ func (p *Policy) AddTarget(isIngress bool, target *Target) *Target {
 	return dict[pk]
 }
 
-func (p *Policy) TargetsApplyingToPod(isIngress bool, namespace string, podLabels map[string]string) []*Target {
+func (p *Policy) TargetsApplyingToPod(isIngress bool, podNamesAndLabels *SelectorTargetPod) []*Target {
 	var targets []*Target
 	var dict map[string]*Target
 	if isIngress {
@@ -74,7 +74,7 @@ func (p *Policy) TargetsApplyingToPod(isIngress bool, namespace string, podLabel
 		dict = p.Egress
 	}
 	for _, target := range dict {
-		if target.IsMatch(namespace, podLabels) {
+		if target.AppliesToNamesAndLabels(podNamesAndLabels) {
 			targets = append(targets, target)
 		}
 	}
@@ -115,7 +115,7 @@ func (ar *AllowedResult) Table() string {
 
 func addTargetsToTable(table *tablewriter.Table, ruleType string, action string, targets []*Target) {
 	for _, t := range targets {
-		targetString := fmt.Sprintf("namespace: %s\n%s", t.Namespace, kube.LabelSelectorTableLines(t.PodSelector))
+		targetString := t.GetPrimaryKey() // TODO can we do something nicer?
 		table.Append([]string{ruleType, action, targetString})
 	}
 }
@@ -152,7 +152,13 @@ func (p *Policy) IsIngressOrEgressAllowed(traffic *Traffic, isIngress bool) *Dir
 		return &DirectionResult{AllowingTargets: nil, DenyingTargets: nil}
 	}
 
-	matchingTargets := p.TargetsApplyingToPod(isIngress, target.Internal.Namespace, target.Internal.PodLabels)
+	selectorPod := &SelectorTargetPod{
+		Namespace:       target.Internal.Namespace,
+		NamespaceLabels: target.Internal.NamespaceLabels,
+		//Name:            target., // TODO
+		Labels: target.Internal.PodLabels,
+	}
+	matchingTargets := p.TargetsApplyingToPod(isIngress, selectorPod)
 
 	// 2. No targets match => automatic allow
 	if len(matchingTargets) == 0 {
