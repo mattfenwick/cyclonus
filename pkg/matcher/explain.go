@@ -57,31 +57,35 @@ func (s *SliceBuilder) TargetsTableLines(targets []*Target, isIngress bool) {
 			s.Append("no pods, no ips", "no ports, no protocols")
 		} else {
 			for _, peer := range target.Peers {
-				switch a := peer.(type) {
-				case *AllPeersMatcher:
-					s.Append("all pods, all ips", "all ports, all protocols")
-				case *PortsForAllPeersMatcher:
-					pps := PortMatcherTableLines(a.Port)
-					s.Append("all pods, all ips", strings.Join(pps, "\n"))
-				case *IPPeerMatcher:
-					s.IPPeerMatcherTableLines(a)
-				case *PodPeerMatcher:
-					s.PodPeerMatcherTableLines(a)
-				default:
-					panic(errors.Errorf("invalid PeerMatcher type %T", a))
-				}
+				s.Append(PeerMatcherTableLines(peer)...)
 			}
 		}
 	}
 }
 
-func (s *SliceBuilder) IPPeerMatcherTableLines(ip *IPPeerMatcher) {
-	peer := ip.IPBlock.CIDR + "\n" + fmt.Sprintf("except %+v", ip.IPBlock.Except)
-	pps := PortMatcherTableLines(ip.Port)
-	s.Append(peer, strings.Join(pps, "\n"))
+func PeerMatcherTableLines(peer PeerMatcher) []string {
+	switch a := peer.(type) {
+	case *AllPeersMatcher:
+		return []string{"all pods, all ips", "all ports, all protocols"}
+	case *PortsForAllPeersMatcher:
+		pps := PortMatcherTableLines(a.Port)
+		return []string{"all pods, all ips", strings.Join(pps, "\n")}
+	case *IPPeerMatcher:
+		return IPPeerMatcherTableLines(a)
+	case *PodPeerMatcher:
+		return PodPeerMatcherTableLines(a)
+	default:
+		panic(errors.Errorf("invalid PeerMatcher type %T", a))
+	}
 }
 
-func (s *SliceBuilder) PodPeerMatcherTableLines(nsPodMatcher *PodPeerMatcher) {
+func IPPeerMatcherTableLines(ip *IPPeerMatcher) []string {
+	peer := ip.IPBlock.CIDR + "\n" + fmt.Sprintf("except %+v", ip.IPBlock.Except)
+	pps := PortMatcherTableLines(ip.Port)
+	return []string{peer, strings.Join(pps, "\n")}
+}
+
+func PodPeerMatcherTableLines(nsPodMatcher *PodPeerMatcher) []string {
 	var namespaces string
 	switch ns := nsPodMatcher.Namespace.(type) {
 	case *AllNamespaceMatcher:
@@ -102,7 +106,7 @@ func (s *SliceBuilder) PodPeerMatcherTableLines(nsPodMatcher *PodPeerMatcher) {
 	default:
 		panic(errors.Errorf("invalid PodMatcher type %T", p))
 	}
-	s.Append("namespace: "+namespaces+"\n"+"pods: "+pods, strings.Join(PortMatcherTableLines(nsPodMatcher.Port), "\n"))
+	return []string{"namespace: " + namespaces + "\n" + "pods: " + pods, strings.Join(PortMatcherTableLines(nsPodMatcher.Port), "\n")}
 }
 
 func PortMatcherTableLines(pm PortMatcher) []string {

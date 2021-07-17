@@ -28,6 +28,7 @@ const (
 	QueryTrafficMode = "query-traffic"
 	QueryTargetMode  = "query-target"
 	ProbeMode        = "probe"
+	GraphMode        = "graph"
 )
 
 var AllModes = []string{
@@ -37,6 +38,7 @@ var AllModes = []string{
 	QueryTrafficMode,
 	QueryTargetMode,
 	ProbeMode,
+	GraphMode,
 }
 
 type AnalyzeArgs struct {
@@ -141,6 +143,10 @@ func RunAnalyzeCommand(args *AnalyzeArgs) {
 			QueryTraffic(policies, args.TrafficPath)
 		case ProbeMode:
 			ProbeSyntheticConnectivity(policies, args.ProbePath, kubePods, kubeNamespaces)
+		case GraphMode:
+			graph := matcher.BuildGraph(policies)
+			logrus.Debugf("graph:\n%s", graph)
+			fmt.Println(graph)
 		default:
 			panic(errors.Errorf("unrecognized mode %s", mode))
 		}
