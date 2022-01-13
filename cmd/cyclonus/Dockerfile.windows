@@ -1,0 +1,8 @@
+FROM golang:windowsservercore-ltsc2022 AS builder
+WORKDIR /go/src/github.com/cyclonus/
+COPY . .
+RUN $Env:CGO_ENABLED=0; go build -v -o /cyclonus.exe ./cmd/cyclonus/
+
+FROM mcr.microsoft.com/windows/nanoserver:ltsc2022
+COPY --from=builder /cyclonus.exe cyclonus.exe
+CMD [ "cyclonus.exe" ] 
