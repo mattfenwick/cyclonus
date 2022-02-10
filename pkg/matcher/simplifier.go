@@ -130,7 +130,7 @@ func GenerateSimplifiedMatchers(matchesAll bool, portsForAllPeersMatcher *PortsF
 	return matchers
 }
 
-func CombinePortMatchers(a PortMatcher, b PortMatcher) PortMatcher {
+func CombinePortMatchers(a *PortMatcher, b *PortMatcher) *PortMatcher {
 	switch l := a.(type) {
 	case *AllPortMatcher:
 		return a

@@ -14,7 +14,7 @@ import (
 // PodSelector and NamespaceSelector are nil
 type IPPeerMatcher struct {
 	IPBlock *networkingv1.IPBlock
-	Port    PortMatcher
+	Port    *PortMatcher
 }
 
 // PrimaryKey returns a content-based, deterministic key based on the IPBlock's

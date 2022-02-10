@@ -1,9 +1,7 @@
 package linter
 
 import (
-	"fmt"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
-	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/olekukonko/tablewriter"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -67,7 +65,7 @@ func WarningsTable(warnings []*Warning) string {
 			for _, policy := range t.SourceRules {
 				source = append(source, policy.Namespace+"/"+policy.Name)
 			}
-			target := fmt.Sprintf("namespace: %s\n\npod selector:\n%s", t.Namespace, utils.YamlString(t.PodSelector))
+			target := t.GetPrimaryKey() // TODO can we do something nicer?
 			table.Append([]string{"Resolved", string(warning.Check), target, strings.Join(source, "\n")})
 		}
 	}

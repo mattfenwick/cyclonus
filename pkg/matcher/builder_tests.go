@@ -63,8 +63,8 @@ func RunBuilderTests() {
 					PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress},
 				}})
 
-			Expect(ingress.Namespace).To(Equal("default"))
-			Expect(egress.Namespace).To(Equal("default"))
+			Expect(*ingress.Selector.Namespaces.Name).To(Equal("default"))
+			Expect(*egress.Selector.Namespaces.Name).To(Equal("default"))
 		})
 	})
 

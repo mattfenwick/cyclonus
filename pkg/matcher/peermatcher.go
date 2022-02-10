@@ -26,7 +26,7 @@ func (a *AllPeersMatcher) MarshalJSON() (b []byte, e error) {
 }
 
 type PortsForAllPeersMatcher struct {
-	Port PortMatcher
+	Port *PortMatcher
 }
 
 func (a *PortsForAllPeersMatcher) Allows(peer *TrafficPeer, portInt int, portName string, protocol v1.Protocol) bool {

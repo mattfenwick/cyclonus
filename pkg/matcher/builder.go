@@ -39,19 +39,21 @@ func BuildTarget(netpol *networkingv1.NetworkPolicy) (*Target, *Target) {
 		panic(errors.Errorf("invalid network policy: need at least 1 type"))
 	}
 	policyNamespace := getPolicyNamespace(netpol)
+	selector := &Selector{
+		Namespaces: NewNameSelector(policyNamespace),
+		Pods:       NewLabelsSelector(netpol.Spec.PodSelector),
+	}
 	for _, pType := range netpol.Spec.PolicyTypes {
 		switch pType {
 		case networkingv1.PolicyTypeIngress:
 			ingress = &Target{
-				Namespace:   policyNamespace,
-				PodSelector: netpol.Spec.PodSelector,
+				Selector:    selector,
 				SourceRules: []*networkingv1.NetworkPolicy{netpol},
 				Peers:       BuildIngressMatcher(policyNamespace, netpol.Spec.Ingress),
 			}
 		case networkingv1.PolicyTypeEgress:
 			egress = &Target{
-				Namespace:   policyNamespace,
-				PodSelector: netpol.Spec.PodSelector,
+				Selector:    selector,
 				SourceRules: []*networkingv1.NetworkPolicy{netpol},
 				Peers:       BuildEgressMatcher(policyNamespace, netpol.Spec.Egress),
 			}
@@ -141,11 +143,11 @@ func BuildIPBlockNamespacePodMatcher(policyNamespace string, peer networkingv1.N
 	return nil, nsMatcher, podMatcher
 }
 
-func BuildPortMatcher(npPorts []networkingv1.NetworkPolicyPort) PortMatcher {
+func BuildPortMatcher(npPorts []networkingv1.NetworkPolicyPort) *PortMatcher {
 	if len(npPorts) == 0 {
-		return &AllPortMatcher{}
+		return NewAllPortMatcher()
 	} else {
-		matcher := &SpecificPortMatcher{}
+		matcher := &PortMatcher{}
 		for _, p := range npPorts {
 			singlePort, portRange := BuildSinglePortMatcher(p)
 			if singlePort != nil {

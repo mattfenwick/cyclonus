@@ -15,8 +15,8 @@ type SelectorTargetPod struct {
 }
 
 type Selector struct {
-	Namespaces *NameOrLabelsSelector
-	Pods       *NameOrLabelsSelector
+	Namespaces *NameLabelsSelector
+	Pods       *NameLabelsSelector
 }
 
 // GetPrimaryKey returns a deterministic combination of namespace and pod selectors
@@ -28,34 +28,33 @@ func (s *Selector) Matches(pod *SelectorTargetPod) bool {
 	return s.Namespaces.Matches(pod.Namespace, pod.NamespaceLabels) && s.Pods.Matches(pod.Name, pod.Labels)
 }
 
-// TODO fix this horrible name?
-type NameOrLabelsSelector struct {
+type NameLabelsSelector struct {
 	Name   *string
 	Labels *metav1.LabelSelector
 }
 
-func NewNameSelector(name string) *NameOrLabelsSelector {
-	return &NameOrLabelsSelector{
+func NewNameSelector(name string) *NameLabelsSelector {
+	return &NameLabelsSelector{
 		Name:   &name,
 		Labels: nil,
 	}
 }
 
-func NewLabelsSelector(labels metav1.LabelSelector) *NameOrLabelsSelector {
-	return &NameOrLabelsSelector{
+func NewLabelsSelector(labels metav1.LabelSelector) *NameLabelsSelector {
+	return &NameLabelsSelector{
 		Name:   nil,
 		Labels: &labels,
 	}
 }
 
-func NewNameAndLabelsSelector(name string, labels metav1.LabelSelector) *NameOrLabelsSelector {
-	return &NameOrLabelsSelector{
+func NewNameAndLabelsSelector(name string, labels metav1.LabelSelector) *NameLabelsSelector {
+	return &NameLabelsSelector{
 		Name:   &name,
 		Labels: &labels,
 	}
 }
 
-func (s *NameOrLabelsSelector) GetPrimaryKey() string {
+func (s *NameLabelsSelector) GetPrimaryKey() string {
 	var name, labels string
 	if s.Name != nil {
 		name = *s.Name
@@ -66,7 +65,7 @@ func (s *NameOrLabelsSelector) GetPrimaryKey() string {
 	return fmt.Sprintf(`{"Name": "%s", "Labels": %s}`, name, labels)
 }
 
-func (s *NameOrLabelsSelector) Matches(name string, labels map[string]string) bool {
+func (s *NameLabelsSelector) Matches(name string, labels map[string]string) bool {
 	if s.Name != nil && *s.Name != name {
 		return false
 	}

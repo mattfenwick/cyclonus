@@ -49,7 +49,7 @@ func (s *SliceBuilder) TargetsTableLines(targets []*Target, isIngress bool) {
 		for _, sr := range target.SourceRules {
 			sourceRules = append(sourceRules, fmt.Sprintf("%s/%s", sr.Namespace, sr.Name))
 		}
-		targetString := fmt.Sprintf("namespace: %s\n%s", target.Namespace, kube.LabelSelectorTableLines(target.PodSelector))
+		targetString := target.GetPrimaryKey() // TODO can we get something nicer here?
 		rules := strings.Join(sourceRules, "\n")
 		s.Prefix = []string{ruleType, targetString, rules}
 

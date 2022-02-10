@@ -112,6 +112,7 @@ func SerializeLabelSelector(ls metav1.LabelSelector) string {
 }
 
 func LabelSelectorTableLines(selector metav1.LabelSelector) string {
+	// TODO doesn't this return the wrong thing when the selector is for a namespace?
 	if IsLabelSelectorEmpty(selector) {
 		return "all pods"
 	}

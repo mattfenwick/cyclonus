@@ -7,20 +7,17 @@ import (
 	"sort"
 )
 
-type PortMatcher interface {
-	Allows(portInt int, portName string, protocol v1.Protocol) bool
+type PortMatcher struct {
+	Ports      []*PortProtocolMatcher
+	PortRanges []*PortRangeMatcher
 }
 
-type AllPortMatcher struct{}
-
-func (ap *AllPortMatcher) Allows(portInt int, portName string, protocol v1.Protocol) bool {
-	return true
+func NewAllPortMatcher() *PortMatcher {
+	return &PortMatcher{}
 }
 
-func (ap *AllPortMatcher) MarshalJSON() (b []byte, e error) {
-	return json.Marshal(map[string]interface{}{
-		"Type": "all ports",
-	})
+func (s *PortMatcher) IsAllPortMatcher() bool {
+	return len(s.Ports) == 0 && len(s.PortRanges) == 0
 }
 
 // PortProtocolMatcher models a specific combination of port+protocol.  If port is nil,
@@ -30,7 +27,6 @@ type PortProtocolMatcher struct {
 	Protocol v1.Protocol
 }
 
-// AllowsPortProtocol does not implement the PortMatcher interface, purposely!
 func (p *PortProtocolMatcher) AllowsPortProtocol(portInt int, portName string, protocol v1.Protocol) bool {
 	if p.Port != nil {
 		return isPortMatch(*p.Port, portInt, portName) && p.Protocol == protocol
@@ -71,13 +67,7 @@ func (prm *PortRangeMatcher) MarshalJSON() (b []byte, e error) {
 	})
 }
 
-// SpecificPortMatcher models the case where traffic must match a named or numbered port
-type SpecificPortMatcher struct {
-	Ports      []*PortProtocolMatcher
-	PortRanges []*PortRangeMatcher
-}
-
-func (s *SpecificPortMatcher) Allows(portInt int, portName string, protocol v1.Protocol) bool {
+func (s *PortMatcher) Allows(portInt int, portName string, protocol v1.Protocol) bool {
 	for _, matcher := range s.Ports {
 		if matcher.AllowsPortProtocol(portInt, portName, protocol) {
 			return true
@@ -91,15 +81,15 @@ func (s *SpecificPortMatcher) Allows(portInt int, portName string, protocol v1.P
 	return false
 }
 
-func (s *SpecificPortMatcher) MarshalJSON() (b []byte, e error) {
+func (s *PortMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
-		"Type":       "specific ports",
+		"MatchesAllPorts": s.IsAllPortMatcher(),
 		"Ports":      s.Ports,
 		"PortRanges": s.PortRanges,
 	})
 }
 
-func (s *SpecificPortMatcher) Combine(other *SpecificPortMatcher) *SpecificPortMatcher {
+func (s *PortMatcher) Combine(other *PortMatcher) *PortMatcher {
 	pps := append([]*PortProtocolMatcher{}, s.Ports...)
 	for _, otherPP := range other.Ports {
 		for _, pp := range pps {
@@ -126,10 +116,11 @@ func (s *SpecificPortMatcher) Combine(other *SpecificPortMatcher) *SpecificPortM
 	ranges := append(s.PortRanges, other.PortRanges...)
 	// TODO sort port ranges
 
-	return &SpecificPortMatcher{Ports: pps, PortRanges: ranges}
+	return &PortMatcher{Ports: pps, PortRanges: ranges}
 }
 
-func (s *SpecificPortMatcher) Subtract(other *SpecificPortMatcher) (bool, *SpecificPortMatcher) {
+// TODO this is only called from the simplifier; make this work right
+func (s *PortMatcher) Subtract(other *PortMatcher) (bool, *PortMatcher) {
 	// TODO actually subtract ranges
 	remainingRanges := s.PortRanges
 
@@ -149,7 +140,7 @@ func (s *SpecificPortMatcher) Subtract(other *SpecificPortMatcher) (bool, *Speci
 	if len(remainingRanges) == 0 && len(remaining) == 0 {
 		return true, nil
 	}
-	return false, &SpecificPortMatcher{Ports: remaining, PortRanges: remainingRanges}
+	return false, &PortMatcher{Ports: remaining, PortRanges: remainingRanges}
 }
 
 // isPortLessThan orders from low to high:
