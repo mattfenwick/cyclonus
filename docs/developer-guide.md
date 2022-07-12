@@ -11,7 +11,7 @@
  - set up a KinD cluster with a CNI that supports network policies
 
         pushd hack/kind/calico
-          ./setup.sh
+          ./setup-kind.sh
         popd
 
  - run cyclonus

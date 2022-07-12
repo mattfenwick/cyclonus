@@ -4,7 +4,7 @@ set -xv
 set -e
 
 CLUSTER=${CLUSTER:-netpol-antrea}
-VERSION=${VERSION:-v0.13.1}
+VERSION=${VERSION:-v1.7.0}
 ANTREA_DIR=antrea-repo
 IMG_NAME="projects.registry.vmware.com/antrea/antrea-ubuntu"
 
