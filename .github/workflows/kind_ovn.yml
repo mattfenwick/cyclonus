@@ -1,6 +1,11 @@
 name: Kind Ovn Cyclonus
 on:
   workflow_dispatch:
+    inputs:
+      cyclonus_args:
+        description: "args to pass on to Cyclonus"
+        required: false
+        default: "generate --include conflict --job-timeout-seconds 2 --exclude=named-port,multi-peer,upstream-e2e,example --ignore-loopback=true"
 #  schedule:
     # See https://crontab.guru/#0_2_*_*_0:
     #   At 02:00 on Sunday.
@@ -15,4 +20,4 @@ jobs:
       - uses: actions/checkout@v2
       - name: Run Cyclonus
         working-directory: hack/kind
-        run: CNI=ovn-kubernetes RUN_FROM_SOURCE=true ./run-cyclonus.sh
+        run: CNI=ovn-kubernetes RUN_FROM_SOURCE=true FROM_SOURCE_ARGS="${{ github.event.inputs.cyclonus_args }}" ./run-cyclonus.sh

@@ -3,6 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       cni:
+        description: "name of CNI to use"
         required: true
 
 jobs:

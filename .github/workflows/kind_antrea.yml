@@ -3,6 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       cyclonus_args:
+        description: "args to pass on to Cyclonus"
         required: false
         default: "generate --include conflict --job-timeout-seconds 2 --server-protocol=tcp,udp"
 #  schedule:

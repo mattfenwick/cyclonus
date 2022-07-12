@@ -3,8 +3,10 @@ on:
   workflow_dispatch:
     inputs:
       cni:
+        description: "name of CNI to use"
         required: true
       cyclonus_args:
+        description: "args to pass on to Cyclonus"
         required: false
         default: "generate include --conflict --job-timeout-seconds 2"
 
