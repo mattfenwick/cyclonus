@@ -24,6 +24,13 @@
         make vet
         make test
 
+## How to upgrade k8s library version
+
+1. go to [a kubernetes repo](https://github.com/kubernetes/apimachinery/tags)
+2. look at the tag versions
+3. choose the latest release version
+4. update the k8s.io library versions in [go.mod](../go.mod)
+
 ## How to Release Binaries
 
 See `goreleaser`'s requirements [here](https://goreleaser.com/environment/).
