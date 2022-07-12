@@ -2,7 +2,7 @@
 
 ## Setup
 
- - [Get set up with golang 1.16](https://golang.org/dl/)
+ - [Get set up with golang 1.18](https://golang.org/dl/)
  - clone this repo
 
         git clone git@github.com:mattfenwick/cyclonus.git
@@ -23,6 +23,13 @@
         make fmt
         make vet
         make test
+
+## How to upgrade k8s library version
+
+1. go to [a kubernetes repo](https://github.com/kubernetes/apimachinery/tags)
+2. look at the tag versions
+3. choose the latest release version
+4. update the k8s.io library versions in [go.mod](../go.mod)
 
 ## How to Release Binaries
 
