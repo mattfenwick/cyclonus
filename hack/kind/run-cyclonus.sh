@@ -3,7 +3,7 @@
 set -xv
 set -euo pipefail
 
-KIND_VERSION=${KIND_VERSION:-v0.11.0}
+KIND_VERSION=${KIND_VERSION:-v0.14.0}
 CNI=${CNI:-calico}
 CLUSTER_NAME="netpol-$CNI"
 RUN_FROM_SOURCE=${RUN_FROM_SOURCE:-true}
@@ -27,8 +27,8 @@ pushd "$CNI"
 popd
 
 # preload agnhost image
-docker pull k8s.gcr.io/e2e-test-images/agnhost:2.28
-kind load docker-image k8s.gcr.io/e2e-test-images/agnhost:2.28 --name "$CLUSTER_NAME"
+docker pull k8s.gcr.io/e2e-test-images/agnhost:2.36
+kind load docker-image k8s.gcr.io/e2e-test-images/agnhost:2.36 --name "$CLUSTER_NAME"
 
 # make sure that the new kind cluster is the current kubectl context
 kind get clusters
