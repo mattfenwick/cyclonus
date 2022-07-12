@@ -4,7 +4,7 @@ on:
     inputs:
       cyclonus_args:
         required: false
-        default: "generate include --conflict --job-timeout-seconds 2 --server-protocol=tcp,udp"
+        default: "generate --include conflict --job-timeout-seconds 2 --server-protocol=tcp,udp"
 #  schedule:
     # See https://crontab.guru/#0_0_*_*_0:
     #   At 00:00 on Sunday.
