@@ -2,6 +2,7 @@ package linter
 
 import (
 	"fmt"
+	collections "github.com/mattfenwick/collections/pkg"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/olekukonko/tablewriter"
@@ -43,6 +44,11 @@ const (
 	// TODO add check that rule is unnecessary b/c another rule exactly supercedes it
 )
 
+func (a Check) Equal(b Check) bool {
+	// TODO why is this necessary?  why can't we use existing String implementation?
+	return a == b
+}
+
 type Warning struct {
 	Check        Check
 	Target       *matcher.Target
@@ -76,7 +82,7 @@ func WarningsTable(warnings []*Warning) string {
 	return str.String()
 }
 
-func Lint(kubePolicies []*networkingv1.NetworkPolicy, skip map[Check]bool) []*Warning {
+func Lint(kubePolicies []*networkingv1.NetworkPolicy, skip *collections.Set[Check]) []*Warning {
 	policies := matcher.BuildNetworkPolicies(false, kubePolicies)
 	warnings := append(LintSourcePolicies(kubePolicies), LintResolvedPolicies(policies)...)
 
@@ -84,7 +90,7 @@ func Lint(kubePolicies []*networkingv1.NetworkPolicy, skip map[Check]bool) []*Wa
 
 	var filtered []*Warning
 	for _, warning := range warnings {
-		if _, ok := skip[warning.Check]; !ok {
+		if !skip.Contains(warning.Check) {
 			filtered = append(filtered, warning)
 		}
 	}
