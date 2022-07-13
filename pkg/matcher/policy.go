@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// This is the root type
+// Policy is the root type
 type Policy struct {
 	Ingress map[string]*Target
 	Egress  map[string]*Target

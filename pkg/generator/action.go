@@ -2,7 +2,7 @@ package generator
 
 import networkingv1 "k8s.io/api/networking/v1"
 
-// Action: exactly one field must be non-null.  This models a discriminated union (sum type).
+// Action models a sum type (discriminated union): exactly one field must be non-null.
 type Action struct {
 	CreatePolicy *CreatePolicyAction
 	UpdatePolicy *UpdatePolicyAction

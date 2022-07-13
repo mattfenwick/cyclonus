@@ -123,10 +123,13 @@ func RunAnalyzeCommand(args *AnalyzeArgs) {
 	for _, mode := range args.Modes {
 		switch mode {
 		case ParseMode:
+			fmt.Println("parsed policies:")
 			ParsePolicies(kubePolicies)
 		case ExplainMode:
+			fmt.Println("explained policies:")
 			ExplainPolicies(policies)
 		case LintMode:
+			fmt.Println("policy lint:")
 			Lint(kubePolicies)
 		case QueryTargetMode:
 			pods := make([]*QueryTargetPod, len(kubePods))
@@ -136,10 +139,13 @@ func RunAnalyzeCommand(args *AnalyzeArgs) {
 					Labels:    p.Labels,
 				}
 			}
+			fmt.Println("query target:")
 			QueryTargets(policies, args.TargetPodPath, pods)
 		case QueryTrafficMode:
+			fmt.Println("query traffic:")
 			QueryTraffic(policies, args.TrafficPath)
 		case ProbeMode:
+			fmt.Println("probe:")
 			ProbeSyntheticConnectivity(policies, args.ProbePath, kubePods, kubeNamespaces)
 		default:
 			panic(errors.Errorf("unrecognized mode %s", mode))
