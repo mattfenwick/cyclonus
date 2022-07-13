@@ -2,9 +2,12 @@ package matcher
 
 import (
 	"fmt"
+	collections "github.com/mattfenwick/collections/pkg"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
+	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
+	networkingv1 "k8s.io/api/networking/v1"
 	"strings"
 )
 
@@ -45,10 +48,11 @@ func (s *SliceBuilder) TargetsTableLines(targets []*Target, isIngress bool) {
 		ruleType = "Egress"
 	}
 	for _, target := range targets {
-		var sourceRules []string
-		for _, sr := range target.SourceRules {
-			sourceRules = append(sourceRules, fmt.Sprintf("%s/%s", sr.Namespace, sr.Name))
-		}
+		sourceRules := collections.SortBy(collections.MapSlice(
+			func(sr *networkingv1.NetworkPolicy) string {
+				return fmt.Sprintf("%s/%s", sr.Namespace, sr.Name)
+			}, target.SourceRules),
+			collections.OrderedCompare[string])
 		targetString := fmt.Sprintf("namespace: %s\n%s", target.Namespace, kube.LabelSelectorTableLines(target.PodSelector))
 		rules := strings.Join(sourceRules, "\n")
 		s.Prefix = []string{ruleType, targetString, rules}
@@ -56,7 +60,10 @@ func (s *SliceBuilder) TargetsTableLines(targets []*Target, isIngress bool) {
 		if len(target.Peers) == 0 {
 			s.Append("no pods, no ips", "no ports, no protocols")
 		} else {
-			for _, peer := range target.Peers {
+			comparator := func(a PeerMatcher, b PeerMatcher) collections.Ordering {
+				return collections.String(utils.DumpJSON(a)).Compare(collections.String(utils.DumpJSON(b)))
+			}
+			for _, peer := range collections.SortBy(target.Peers, comparator) {
 				switch a := peer.(type) {
 				case *AllPeersMatcher:
 					s.Append("all pods, all ips", "all ports, all protocols")
