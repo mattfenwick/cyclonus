@@ -2,8 +2,10 @@ package probe
 
 import (
 	"fmt"
+	"github.com/mattfenwick/collections/pkg/builtins"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
+	"golang.org/x/exp/maps"
 	"sort"
 	"strings"
 )
@@ -56,11 +58,7 @@ func (r *Resources) RenderTable() string {
 }
 
 func labelsToLines(labels map[string]string) string {
-	var keys []string
-	for key := range labels {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
+	keys := builtins.Sort(maps.Keys(labels))
 	var lines []string
 	for _, key := range keys {
 		lines = append(lines, fmt.Sprintf("%s: %s", key, labels[key]))

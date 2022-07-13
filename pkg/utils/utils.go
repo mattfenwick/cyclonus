@@ -17,6 +17,12 @@ func DoOrDie(err error) {
 	}
 }
 
+func JsonStringNoIndent(obj interface{}) string {
+	bytes, err := json.Marshal(obj)
+	DoOrDie(errors.Wrapf(err, "unable to marshal json"))
+	return string(bytes)
+}
+
 func JsonString(obj interface{}) string {
 	bytes, err := json.MarshalIndent(obj, "", "  ")
 	DoOrDie(errors.Wrapf(err, "unable to marshal json"))

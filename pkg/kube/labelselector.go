@@ -1,11 +1,12 @@
 package kube
 
 import (
-	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
+	collections "github.com/mattfenwick/collections/pkg"
+	"github.com/mattfenwick/collections/pkg/builtins"
+	"github.com/mattfenwick/cyclonus/pkg/utils"
+	"golang.org/x/exp/maps"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sort"
 	"strings"
 )
 
@@ -92,23 +93,12 @@ func IsLabelSelectorEmpty(l metav1.LabelSelector) bool {
 // SerializeLabelSelector deterministically converts a metav1.LabelSelector
 // into a string
 func SerializeLabelSelector(ls metav1.LabelSelector) string {
-	var labelKeys []string
-	for key := range ls.MatchLabels {
-		labelKeys = append(labelKeys, key)
-	}
-	sort.Slice(labelKeys, func(i, j int) bool {
-		return labelKeys[i] < labelKeys[j]
-	})
-	var keyVals []string
-	for _, key := range labelKeys {
-		keyVals = append(keyVals, fmt.Sprintf("%s: %s", key, ls.MatchLabels[key]))
-	}
-	// this is weird, but use an array to make the order deterministic
-	bytes, err := json.Marshal([]interface{}{"MatchLabels", keyVals, "MatchExpression", ls.MatchExpressions})
-	if err != nil {
-		panic(errors.Wrapf(err, "unable to marshal json"))
-	}
-	return string(bytes)
+	labelKeys := builtins.Sort(maps.Keys(ls.MatchLabels))
+	keyVals := collections.MapSlice(func(key string) string {
+		return fmt.Sprintf("%s: %s", key, ls.MatchLabels[key])
+	}, labelKeys)
+	// this looks weird -- we're using an array to make the order deterministic
+	return utils.JsonStringNoIndent([]interface{}{"MatchLabels", keyVals, "MatchExpression", ls.MatchExpressions})
 }
 
 func LabelSelectorTableLines(selector metav1.LabelSelector) string {
@@ -118,14 +108,16 @@ func LabelSelectorTableLines(selector metav1.LabelSelector) string {
 	var lines []string
 	if len(selector.MatchLabels) > 0 {
 		lines = append(lines, "Match labels:")
-		for key, val := range selector.MatchLabels {
+		for _, key := range builtins.Sort(maps.Keys(selector.MatchLabels)) {
+			val := selector.MatchLabels[key]
 			lines = append(lines, fmt.Sprintf("  %s: %s", key, val))
 		}
 	}
 	if len(selector.MatchExpressions) > 0 {
 		lines = append(lines, "Match expressions:")
-		for _, exp := range selector.MatchExpressions {
-			lines = append(lines, fmt.Sprintf("  %s %s %+v", exp.Key, exp.Operator, exp.Values))
+		sortedMatchExpressions := builtins.SortOn(selector.MatchExpressions, func(l metav1.LabelSelectorRequirement) string { return l.Key })
+		for _, exp := range sortedMatchExpressions {
+			lines = append(lines, fmt.Sprintf("  %s %s %+v", exp.Key, exp.Operator, builtins.Sort(exp.Values)))
 		}
 	}
 	return strings.Join(lines, "\n")

@@ -1,9 +1,12 @@
 package probe
 
 import (
+	collections "github.com/mattfenwick/collections/pkg"
+	"github.com/mattfenwick/collections/pkg/builtins"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/exp/maps"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sort"
@@ -195,7 +198,7 @@ func (r *Resources) CreatePod(ns string, podName string, labels map[string]strin
 	}, nil
 }
 
-// UpdatePodLabel returns a new object with an updated pod.  It should not affect the original Resources object.
+// SetPodLabels returns a new object with an updated pod.  It should not affect the original Resources object.
 func (r *Resources) SetPodLabels(ns string, podName string, labels map[string]string) (*Resources, error) {
 	var pods []*Pod
 	found := false
@@ -239,20 +242,13 @@ func (r *Resources) DeletePod(ns string, podName string) (*Resources, error) {
 }
 
 func (r *Resources) SortedPodNames() []string {
-	var podNames []string
-	for _, pod := range r.Pods {
-		podNames = append(podNames, pod.PodString().String())
-	}
-	sort.Strings(podNames)
-	return podNames
+	return builtins.Sort(collections.MapSlice(
+		func(p *Pod) string { return p.PodString().String() },
+		r.Pods))
 }
 
 func (r *Resources) NamespacesSlice() []string {
-	var nss []string
-	for ns := range r.Namespaces {
-		nss = append(nss, ns)
-	}
-	return nss
+	return maps.Keys(r.Namespaces)
 }
 
 func (r *Resources) CreateResourcesInKube(kubernetes kube.IKubernetes) error {
