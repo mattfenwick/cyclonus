@@ -9,7 +9,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"sigs.k8s.io/yaml"
 )
 
 type Recipe struct {
@@ -22,10 +21,9 @@ type Recipe struct {
 func (r *Recipe) Policies() []*networkingv1.NetworkPolicy {
 	var policies []*networkingv1.NetworkPolicy
 	for _, yamlString := range r.PolicyYamls {
-		netpol := networkingv1.NetworkPolicy{}
-		err := yaml.Unmarshal([]byte(yamlString), &netpol)
+		netpol, err := utils.ParseYaml[networkingv1.NetworkPolicy]([]byte(yamlString))
 		utils.DoOrDie(err)
-		policies = append(policies, &netpol)
+		policies = append(policies, netpol)
 	}
 	return policies
 }

@@ -1,12 +1,11 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
+	collections "github.com/mattfenwick/collections/pkg"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/linter"
-	"io/ioutil"
 	"strings"
 
 	"github.com/mattfenwick/cyclonus/pkg/kube"
@@ -175,12 +174,9 @@ type QueryTargetPod struct {
 
 func QueryTargets(explainedPolicies *matcher.Policy, podPath string, pods []*QueryTargetPod) {
 	if podPath != "" {
-		var podsFromFile []*QueryTargetPod
-		bs, err := ioutil.ReadFile(podPath)
+		podsFromFile, err := utils.ParseJsonFromFile[[]*QueryTargetPod](podPath)
 		utils.DoOrDie(err)
-		err = json.Unmarshal(bs, &podsFromFile)
-		utils.DoOrDie(err)
-		pods = append(pods, podsFromFile...)
+		pods = append(pods, *podsFromFile...)
 	}
 
 	for _, pod := range pods {
@@ -213,16 +209,13 @@ func QueryTargetHelper(policies *matcher.Policy, pod *QueryTargetPod) (*matcher.
 }
 
 func QueryTraffic(explainedPolicies *matcher.Policy, trafficPath string) {
-	var allTraffics []*matcher.Traffic
 	if trafficPath == "" {
 		logrus.Fatalf("%+v", errors.Errorf("path to traffic file required for QueryTraffic command"))
 	}
-	allTrafficBytes, err := ioutil.ReadFile(trafficPath)
-	utils.DoOrDie(err)
-	err = json.Unmarshal(allTrafficBytes, &allTraffics)
+	allTraffics, err := utils.ParseJsonFromFile[[]*matcher.Traffic](trafficPath)
 	utils.DoOrDie(err)
 
-	for _, traffic := range allTraffics {
+	for _, traffic := range *allTraffics {
 		fmt.Printf("Traffic:\n%s\n", traffic.Table())
 
 		result := explainedPolicies.IsTrafficAllowed(traffic)
@@ -237,11 +230,8 @@ type SyntheticProbeConnectivityConfig struct {
 
 func ProbeSyntheticConnectivity(explainedPolicies *matcher.Policy, modelPath string, kubePods []v1.Pod, kubeNamespaces []v1.Namespace) {
 	if modelPath != "" {
-		bs, err := ioutil.ReadFile(modelPath)
-		utils.DoOrDie(errors.Wrapf(err, "unable to read file %s", modelPath))
-		config := &SyntheticProbeConnectivityConfig{}
-		err = json.Unmarshal(bs, &config)
-		utils.DoOrDie(errors.Wrapf(err, "unable to unmarshal json"))
+		config, err := utils.ParseJsonFromFile[SyntheticProbeConnectivityConfig](modelPath)
+		utils.DoOrDie(err)
 
 		jobBuilder := &probe.JobBuilder{TimeoutSeconds: 10}
 

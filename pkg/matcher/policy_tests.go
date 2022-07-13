@@ -6,11 +6,10 @@ import (
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	"sigs.k8s.io/yaml"
 )
 
 func RunPolicyTests() {
-	allowAllOnSCTPSerialized := `
+	allowAllOnSCTPSerializedYaml := `
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -23,10 +22,9 @@ spec:
   podSelector: {}
   policyTypes:
   - Ingress`
-	var kubePolicy *networkingv1.NetworkPolicy
-	err := yaml.Unmarshal([]byte(allowAllOnSCTPSerialized), &kubePolicy)
+	allowAllOnSCTPSerializedPolicy, err := utils.ParseYaml[networkingv1.NetworkPolicy]([]byte(allowAllOnSCTPSerializedYaml))
 	utils.DoOrDie(err)
-	allowAllOnSCTP := BuildNetworkPolicies(true, []*networkingv1.NetworkPolicy{kubePolicy})
+	allowAllOnSCTP := BuildNetworkPolicies(true, []*networkingv1.NetworkPolicy{allowAllOnSCTPSerializedPolicy})
 
 	Describe("Allowing a protocol should implicitly deny other protocols from pods", func() {
 		It("should not allow TCP", func() {
@@ -125,7 +123,7 @@ spec:
 	})
 
 	Describe("Policy allowing egress to ips", func() {
-		allowAllOnSCTPSerialized := `
+		policyYaml := `
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -149,8 +147,7 @@ spec:
       pod: a
   policyTypes:
   - Egress`
-		var kubePolicy *networkingv1.NetworkPolicy
-		err := yaml.Unmarshal([]byte(allowAllOnSCTPSerialized), &kubePolicy)
+		kubePolicy, err := utils.ParseYaml[networkingv1.NetworkPolicy]([]byte(policyYaml))
 		utils.DoOrDie(err)
 		policy := BuildNetworkPolicies(true, []*networkingv1.NetworkPolicy{kubePolicy})
 
@@ -196,8 +193,7 @@ spec:
       pod: a
   policyTypes:
   - Ingress`
-		var kubePolicy *networkingv1.NetworkPolicy
-		err := yaml.Unmarshal([]byte(policyYaml), &kubePolicy)
+		kubePolicy, err := utils.ParseYaml[networkingv1.NetworkPolicy]([]byte(policyYaml))
 		utils.DoOrDie(err)
 		policy := BuildNetworkPolicies(true, []*networkingv1.NetworkPolicy{kubePolicy})
 
