@@ -3,6 +3,7 @@ package linter
 import (
 	"fmt"
 	collections "github.com/mattfenwick/collections/pkg"
+	"github.com/mattfenwick/collections/pkg/builtins"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/olekukonko/tablewriter"
@@ -41,7 +42,7 @@ const (
 	CheckTargetAllIngressAllowed Check = "CheckTargetAllIngressAllowed"
 	CheckTargetAllEgressAllowed  Check = "CheckTargetAllEgressAllowed"
 
-	// TODO add check that rule is unnecessary b/c another rule exactly supercedes it
+	// TODO add check that rule is unnecessary b/c another rule exactly supersedes it
 )
 
 func (a Check) Equal(b Check) bool {
@@ -49,13 +50,72 @@ func (a Check) Equal(b Check) bool {
 	return a == b
 }
 
-type Warning struct {
+type Warning interface {
+	OriginIsSource() bool
+	GetCheck() Check
+	GetTarget() string
+	GetSourcePolicies() string
+}
+
+type sourceWarning struct {
 	Check        Check
-	Target       *matcher.Target
 	SourcePolicy *networkingv1.NetworkPolicy
 }
 
-func WarningsTable(warnings []*Warning) string {
+func (s *sourceWarning) OriginIsSource() bool {
+	return true
+}
+
+func (s *sourceWarning) GetCheck() Check {
+	return s.Check
+}
+
+func (s *sourceWarning) GetTarget() string {
+	return ""
+}
+
+func (s *sourceWarning) GetSourcePolicies() string {
+	return NetpolKey(s.SourcePolicy)
+}
+
+func NetpolKey(netpol *networkingv1.NetworkPolicy) string {
+	return fmt.Sprintf("%s/%s", netpol.Namespace, netpol.Name)
+}
+
+func sortBy(w Warning) collections.SliceOrd[collections.String] {
+	origin := "1"
+	if w.OriginIsSource() {
+		origin = "0"
+	}
+	return collections.MapSlice(
+		collections.WrapString,
+		[]string{origin, string(w.GetCheck()), w.GetTarget(), w.GetSourcePolicies()})
+}
+
+type resolvedWarning struct {
+	Check          Check
+	Target         *matcher.Target
+	originPolicies string
+}
+
+func (r *resolvedWarning) OriginIsSource() bool {
+	return false
+}
+
+func (r *resolvedWarning) GetCheck() Check {
+	return r.Check
+}
+
+func (r *resolvedWarning) GetTarget() string {
+	return fmt.Sprintf("namespace: %s\n\npod selector:\n%s", r.Target.Namespace, utils.YamlString(r.Target.PodSelector))
+}
+
+func (r *resolvedWarning) GetSourcePolicies() string {
+	target := builtins.Sort(collections.MapSlice(NetpolKey, r.Target.SourceRules))
+	return strings.Join(target, "\n")
+}
+
+func WarningsTable(warnings []Warning) string {
 	str := &strings.Builder{}
 	table := tablewriter.NewWriter(str)
 	table.SetHeader([]string{"Source/Resolved", "Type", "Target", "Source Policies"})
@@ -63,42 +123,36 @@ func WarningsTable(warnings []*Warning) string {
 	table.SetReflowDuringAutoWrap(false)
 	table.SetAutoWrapText(false)
 
-	for _, warning := range warnings {
-		if warning.SourcePolicy != nil {
-			p := warning.SourcePolicy
-			table.Append([]string{"Source", string(warning.Check), "", p.Namespace + "/" + p.Name})
-		} else {
-			t := warning.Target
-			var source []string
-			for _, policy := range t.SourceRules {
-				source = append(source, policy.Namespace+"/"+policy.Name)
-			}
-			target := fmt.Sprintf("namespace: %s\n\npod selector:\n%s", t.Namespace, utils.YamlString(t.PodSelector))
-			table.Append([]string{"Resolved", string(warning.Check), target, strings.Join(source, "\n")})
+	sortedWarnings := collections.SortOn[Warning, collections.SliceOrd[collections.String]](warnings, sortBy)
+	for _, w := range sortedWarnings {
+		origin := "Source"
+		if !w.OriginIsSource() {
+			origin = "Resolved"
 		}
+		table.Append([]string{origin, string(w.GetCheck()), w.GetTarget(), w.GetSourcePolicies()})
 	}
 
 	table.Render()
 	return str.String()
 }
 
-func Lint(kubePolicies []*networkingv1.NetworkPolicy, skip *collections.Set[Check]) []*Warning {
+func Lint(kubePolicies []*networkingv1.NetworkPolicy, skip *collections.Set[Check]) []Warning {
 	policies := matcher.BuildNetworkPolicies(false, kubePolicies)
 	warnings := append(LintSourcePolicies(kubePolicies), LintResolvedPolicies(policies)...)
 
 	// TODO do some stuff with comparing simplified to non-simplified policies
 
-	var filtered []*Warning
+	var filtered []Warning
 	for _, warning := range warnings {
-		if !skip.Contains(warning.Check) {
+		if !skip.Contains(warning.GetCheck()) {
 			filtered = append(filtered, warning)
 		}
 	}
 	return filtered
 }
 
-func LintSourcePolicies(kubePolicies []*networkingv1.NetworkPolicy) []*Warning {
-	var ws []*Warning
+func LintSourcePolicies(kubePolicies []*networkingv1.NetworkPolicy) []Warning {
+	var ws []Warning
 	names := map[string]map[string]bool{}
 	for _, policy := range kubePolicies {
 		ns, name := policy.Namespace, policy.Name
@@ -106,16 +160,16 @@ func LintSourcePolicies(kubePolicies []*networkingv1.NetworkPolicy) []*Warning {
 			names[ns] = map[string]bool{}
 		}
 		if names[ns][name] {
-			ws = append(ws, &Warning{Check: CheckSourceDuplicatePolicyName, SourcePolicy: policy})
+			ws = append(ws, &sourceWarning{Check: CheckSourceDuplicatePolicyName, SourcePolicy: policy})
 		}
 		names[ns][name] = true
 
 		if ns == "" {
-			ws = append(ws, &Warning{Check: CheckSourceMissingNamespace, SourcePolicy: policy})
+			ws = append(ws, &sourceWarning{Check: CheckSourceMissingNamespace, SourcePolicy: policy})
 		}
 
 		if len(policy.Spec.PolicyTypes) == 0 {
-			ws = append(ws, &Warning{Check: CheckSourceMissingPolicyTypes, SourcePolicy: policy})
+			ws = append(ws, &sourceWarning{Check: CheckSourceMissingPolicyTypes, SourcePolicy: policy})
 		}
 
 		ingress, egress := false, false
@@ -128,10 +182,10 @@ func LintSourcePolicies(kubePolicies []*networkingv1.NetworkPolicy) []*Warning {
 			}
 		}
 		if len(policy.Spec.Ingress) > 0 && !ingress {
-			ws = append(ws, &Warning{Check: CheckSourceMissingPolicyTypeIngress, SourcePolicy: policy})
+			ws = append(ws, &sourceWarning{Check: CheckSourceMissingPolicyTypeIngress, SourcePolicy: policy})
 		}
 		if len(policy.Spec.Egress) > 0 && !egress {
-			ws = append(ws, &Warning{Check: CheckSourceMissingPolicyTypeEgress, SourcePolicy: policy})
+			ws = append(ws, &sourceWarning{Check: CheckSourceMissingPolicyTypeEgress, SourcePolicy: policy})
 		}
 
 		for _, ingressRule := range policy.Spec.Ingress {
@@ -144,43 +198,43 @@ func LintSourcePolicies(kubePolicies []*networkingv1.NetworkPolicy) []*Warning {
 	return ws
 }
 
-func LintNetworkPolicyPorts(policy *networkingv1.NetworkPolicy, ports []networkingv1.NetworkPolicyPort) []*Warning {
-	var ws []*Warning
+func LintNetworkPolicyPorts(policy *networkingv1.NetworkPolicy, ports []networkingv1.NetworkPolicyPort) []Warning {
+	var ws []Warning
 	for _, port := range ports {
 		if port.Protocol == nil {
-			ws = append(ws, &Warning{Check: CheckSourcePortMissingProtocol, SourcePolicy: policy})
+			ws = append(ws, &sourceWarning{Check: CheckSourcePortMissingProtocol, SourcePolicy: policy})
 		}
 	}
 	return ws
 }
 
-func LintResolvedPolicies(policies *matcher.Policy) []*Warning {
-	var ws []*Warning
+func LintResolvedPolicies(policies *matcher.Policy) []Warning {
+	var ws []Warning
 	for _, egress := range policies.Egress {
 		if !egress.Allows(&matcher.TrafficPeer{Internal: nil, IP: "8.8.8.8"}, 53, "", v1.ProtocolTCP) {
-			ws = append(ws, &Warning{Check: CheckDNSBlockedOnTCP, Target: egress})
+			ws = append(ws, &resolvedWarning{Check: CheckDNSBlockedOnTCP, Target: egress})
 		}
 		if !egress.Allows(&matcher.TrafficPeer{Internal: nil, IP: "8.8.8.8"}, 53, "", v1.ProtocolUDP) {
-			ws = append(ws, &Warning{Check: CheckDNSBlockedOnUDP, Target: egress})
+			ws = append(ws, &resolvedWarning{Check: CheckDNSBlockedOnUDP, Target: egress})
 		}
 
 		if len(egress.Peers) == 0 {
-			ws = append(ws, &Warning{Check: CheckTargetAllEgressBlocked, Target: egress})
+			ws = append(ws, &resolvedWarning{Check: CheckTargetAllEgressBlocked, Target: egress})
 		}
 		for _, peer := range egress.Peers {
 			if _, ok := peer.(*matcher.PortsForAllPeersMatcher); ok {
-				ws = append(ws, &Warning{Check: CheckTargetAllEgressAllowed, Target: egress})
+				ws = append(ws, &resolvedWarning{Check: CheckTargetAllEgressAllowed, Target: egress})
 			}
 		}
 	}
 
 	for _, ingress := range policies.Ingress {
 		if len(ingress.Peers) == 0 {
-			ws = append(ws, &Warning{Check: CheckTargetAllIngressBlocked, Target: ingress})
+			ws = append(ws, &resolvedWarning{Check: CheckTargetAllIngressBlocked, Target: ingress})
 		}
 		for _, peer := range ingress.Peers {
 			if _, ok := peer.(*matcher.PortsForAllPeersMatcher); ok {
-				ws = append(ws, &Warning{Check: CheckTargetAllIngressAllowed, Target: ingress})
+				ws = append(ws, &resolvedWarning{Check: CheckTargetAllIngressAllowed, Target: ingress})
 			}
 		}
 
