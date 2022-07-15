@@ -2,13 +2,12 @@ package cli
 
 import (
 	"github.com/mattfenwick/cyclonus/pkg/kube"
+	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"io/ioutil"
 	networkingv1 "k8s.io/api/networking/v1"
 	"os"
 	"path/filepath"
-	"sigs.k8s.io/yaml"
 )
 
 func readPoliciesFromPath(policyPath string) ([]*networkingv1.NetworkPolicy, error) {
@@ -22,25 +21,23 @@ func readPoliciesFromPath(policyPath string) ([]*networkingv1.NetworkPolicy, err
 			return nil
 		}
 		log.Debugf("walking path %s", path)
-		bytes, err := ioutil.ReadFile(path)
+		bytes, err := utils.ReadFileBytes(path)
 		if err != nil {
-			return errors.Wrapf(err, "unable to read file %s", path)
+			return err
 		}
 
 		// try parsing a list first
-		var policies []*networkingv1.NetworkPolicy
-		err = yaml.Unmarshal(bytes, &policies)
+		policies, err := utils.ParseYaml[[]*networkingv1.NetworkPolicy](bytes)
 		if err == nil {
-			log.Debugf("parsed %d policies from %s", len(policies), path)
-			allPolicies = append(allPolicies, policies...)
+			log.Debugf("parsed %d policies from %s", len(*policies), path)
+			allPolicies = append(allPolicies, *policies...)
 			return nil
 		}
 
 		log.Debugf("failed to parse list from %s, falling back to parsing single policy", path)
-		var policy *networkingv1.NetworkPolicy
-		err = yaml.UnmarshalStrict(bytes, &policy)
+		policy, err := utils.ParseYamlStrict[networkingv1.NetworkPolicy](bytes)
 		if err != nil {
-			return errors.Wrapf(err, "unable to unmarshal single policy from yaml at %s", path)
+			return errors.WithMessagef(err, "unable to parse single policy from yaml at %s", path)
 		}
 
 		log.Debugf("parsed single policy from %s: %+v", path, policy)

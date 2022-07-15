@@ -2,6 +2,7 @@ package probe
 
 import (
 	"fmt"
+	collections "github.com/mattfenwick/collections/pkg"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
@@ -104,29 +105,20 @@ func (p *Pod) KubePod() *v1.Pod {
 }
 
 func (p *Pod) KubeService() *v1.Service {
-	service := &v1.Service{
+	return &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      p.ServiceName(),
 			Namespace: p.Namespace,
 		},
 		Spec: v1.ServiceSpec{
+			Ports:    collections.MapSlice(func(cont *Container) v1.ServicePort { return cont.KubeServicePort() }, p.Containers),
 			Selector: p.Labels,
 		},
 	}
-
-	for _, cont := range p.Containers {
-		service.Spec.Ports = append(service.Spec.Ports, cont.KubeServicePort())
-	}
-
-	return service
 }
 
 func (p *Pod) KubeContainers() []v1.Container {
-	var containers []v1.Container
-	for _, cont := range p.Containers {
-		containers = append(containers, cont.KubeContainer())
-	}
-	return containers
+	return collections.MapSlice(func(cont *Container) v1.Container { return cont.KubeContainer() }, p.Containers)
 }
 
 func (p *Pod) ResolveNamedPort(port string) (int, error) {

@@ -2,7 +2,7 @@ package connectivity
 
 import (
 	junit "github.com/jstemmer/go-junit-report/formatter"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

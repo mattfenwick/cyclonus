@@ -8,11 +8,9 @@ import (
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"io/ioutil"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"sigs.k8s.io/yaml"
 	"strings"
 )
 
@@ -101,14 +99,9 @@ func RunProbeCommand(args *ProbeArgs) {
 	actions := []*generator.Action{generator.ReadNetworkPolicies(args.ServerNamespaces)}
 
 	if args.PolicyPath != "" {
-		policyBytes, err := ioutil.ReadFile(args.PolicyPath)
+		kubePolicy, err := utils.ParseYamlFromFile[networkingv1.NetworkPolicy](args.PolicyPath)
 		utils.DoOrDie(err)
-
-		var kubePolicy networkingv1.NetworkPolicy
-		err = yaml.Unmarshal(policyBytes, &kubePolicy)
-		utils.DoOrDie(err)
-
-		actions = append(actions, generator.CreatePolicy(&kubePolicy))
+		actions = append(actions, generator.CreatePolicy(kubePolicy))
 	}
 
 	printer := connectivity.Printer{

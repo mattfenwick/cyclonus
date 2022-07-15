@@ -35,7 +35,7 @@ func (t *Target) Allows(peer *TrafficPeer, portInt int, portName string, protoco
 	return false
 }
 
-// CombinePeerMatchers creates a new Target combining the egress and ingress rules
+// Combine creates a new Target combining the egress and ingress rules
 // of the two original targets.  Neither input is modified.
 // The Primary Keys of the two targets must match.
 func (t *Target) Combine(other *Target) *Target {
@@ -53,7 +53,7 @@ func (t *Target) Combine(other *Target) *Target {
 	}
 }
 
-// The primary key is a deterministic combination of PodSelector and namespace
+// GetPrimaryKey returns a deterministic combination of PodSelector and namespace
 func (t *Target) GetPrimaryKey() string {
 	if t.primaryKey == "" {
 		t.primaryKey = fmt.Sprintf(`{"Namespace": "%s", "PodSelector": %s}`, t.Namespace, kube.SerializeLabelSelector(t.PodSelector))
