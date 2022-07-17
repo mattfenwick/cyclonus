@@ -3,6 +3,7 @@ package connectivity
 import (
 	"fmt"
 	"github.com/mattfenwick/collections/pkg/builtins"
+	"github.com/mattfenwick/collections/pkg/slices"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/exp/maps"
 	"math"
@@ -74,11 +75,11 @@ func (m *markdownRow) GetResult() string {
 }
 
 func (t *Printer) printMarkdownFeatureTable(primaryCounts map[string]map[bool]int, tagCounts map[string]map[string]map[bool]int) string {
-	primaries := builtins.Sort(maps.Keys(tagCounts))
+	primaries := slices.SortBy(builtins.CompareOrdered[string], maps.Keys(tagCounts))
 
 	var rows []*markdownRow
 	for _, primary := range primaries {
-		subs := builtins.Sort(maps.Keys(tagCounts[primary]))
+		subs := slices.SortBy(builtins.CompareOrdered[string], maps.Keys(tagCounts[primary]))
 		rows = append(rows, &markdownRow{Name: primary, IsPrimary: true, Pass: primaryCounts[primary][true], Fail: primaryCounts[primary][false]})
 		for _, sub := range subs {
 			counts := tagCounts[primary][sub]

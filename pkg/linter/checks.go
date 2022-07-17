@@ -4,6 +4,7 @@ import (
 	"fmt"
 	collections "github.com/mattfenwick/collections/pkg"
 	"github.com/mattfenwick/collections/pkg/builtins"
+	"github.com/mattfenwick/collections/pkg/slices"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/olekukonko/tablewriter"
@@ -82,14 +83,12 @@ func NetpolKey(netpol *networkingv1.NetworkPolicy) string {
 	return fmt.Sprintf("%s/%s", netpol.Namespace, netpol.Name)
 }
 
-func sortBy(w Warning) collections.SliceOrd[collections.String] {
+func sortOn(w Warning) []string {
 	origin := "1"
 	if w.OriginIsSource() {
 		origin = "0"
 	}
-	return collections.MapSlice(
-		collections.WrapString,
-		[]string{origin, string(w.GetCheck()), w.GetTarget(), w.GetSourcePolicies()})
+	return []string{origin, string(w.GetCheck()), w.GetTarget(), w.GetSourcePolicies()}
 }
 
 type resolvedWarning struct {
@@ -111,7 +110,7 @@ func (r *resolvedWarning) GetTarget() string {
 }
 
 func (r *resolvedWarning) GetSourcePolicies() string {
-	target := builtins.Sort(collections.MapSlice(NetpolKey, r.Target.SourceRules))
+	target := slices.SortBy(builtins.CompareOrdered[string], slices.Map(NetpolKey, r.Target.SourceRules))
 	return strings.Join(target, "\n")
 }
 
@@ -123,7 +122,7 @@ func WarningsTable(warnings []Warning) string {
 	table.SetReflowDuringAutoWrap(false)
 	table.SetAutoWrapText(false)
 
-	sortedWarnings := collections.SortOn[Warning, collections.SliceOrd[collections.String]](warnings, sortBy)
+	sortedWarnings := slices.SortOnBy(sortOn, slices.CompareSlice[string](builtins.CompareOrdered[string]), warnings)
 	for _, w := range sortedWarnings {
 		origin := "Source"
 		if !w.OriginIsSource() {

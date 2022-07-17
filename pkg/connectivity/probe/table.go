@@ -2,6 +2,7 @@ package probe
 
 import (
 	"github.com/mattfenwick/collections/pkg/builtins"
+	"github.com/mattfenwick/collections/pkg/slices"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	"golang.org/x/exp/maps"
@@ -78,7 +79,7 @@ func (t *Table) renderTableHelper(render func(*JobResult) string) string {
 			isSingleElement = false
 			break
 		}
-		keys := builtins.Sort(maps.Keys(dict))
+		keys := slices.SortBy(builtins.CompareOrdered[string], maps.Keys(dict))
 		schema[strings.Join(keys, "_")] = true
 		if len(schema) > 1 {
 			isSchemaUniform = false
@@ -120,7 +121,7 @@ func (t *Table) renderSimpleTable(render func(*JobResult) string) string {
 func (t *Table) renderUniformMultiTable(render func(*JobResult) string) string {
 	key := t.Wrapped.Keys()[0]
 	first := t.Get(key.From, key.To)
-	keys := builtins.Sort(maps.Keys(first.JobResults))
+	keys := slices.SortBy(builtins.CompareOrdered[string], maps.Keys(first.JobResults))
 	schema := strings.Join(keys, "\n")
 	return t.Wrapped.Table(schema, true, func(fr, to string, i interface{}) string {
 		dict := t.Get(fr, to).JobResults
@@ -135,7 +136,7 @@ func (t *Table) renderUniformMultiTable(render func(*JobResult) string) string {
 func (t *Table) renderNonuniformTable(render func(*JobResult) string) string {
 	return t.Wrapped.Table("", true, func(fr, to string, i interface{}) string {
 		dict := t.Get(fr, to).JobResults
-		keys := builtins.Sort(maps.Keys(dict))
+		keys := slices.SortBy(builtins.CompareOrdered[string], maps.Keys(dict))
 		var lines []string
 		for _, k := range keys {
 			lines = append(lines, k+": "+render(dict[k]))

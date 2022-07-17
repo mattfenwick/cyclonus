@@ -1,8 +1,8 @@
 package probe
 
 import (
-	collections "github.com/mattfenwick/collections/pkg"
 	"github.com/mattfenwick/collections/pkg/builtins"
+	"github.com/mattfenwick/collections/pkg/slices"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -242,7 +242,7 @@ func (r *Resources) DeletePod(ns string, podName string) (*Resources, error) {
 }
 
 func (r *Resources) SortedPodNames() []string {
-	return builtins.Sort(collections.MapSlice(
+	return slices.SortBy(builtins.CompareOrdered[string], slices.Map(
 		func(p *Pod) string { return p.PodString().String() },
 		r.Pods))
 }
