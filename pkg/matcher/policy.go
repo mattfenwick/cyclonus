@@ -2,9 +2,11 @@ package matcher
 
 import (
 	"fmt"
+	"github.com/mattfenwick/collections/pkg/builtins"
+	"github.com/mattfenwick/collections/pkg/slices"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/olekukonko/tablewriter"
-	"sort"
+	"golang.org/x/exp/maps"
 	"strings"
 )
 
@@ -26,19 +28,9 @@ func NewPolicyWithTargets(ingress []*Target, egress []*Target) *Policy {
 }
 
 func (p *Policy) SortedTargets() ([]*Target, []*Target) {
-	var ingress, egress []*Target
-	for _, rule := range p.Ingress {
-		ingress = append(ingress, rule)
-	}
-	sort.Slice(ingress, func(i, j int) bool {
-		return ingress[i].GetPrimaryKey() < ingress[j].GetPrimaryKey()
-	})
-	for _, rule := range p.Egress {
-		egress = append(egress, rule)
-	}
-	sort.Slice(egress, func(i, j int) bool {
-		return egress[i].GetPrimaryKey() < egress[j].GetPrimaryKey()
-	})
+	key := func(t *Target) string { return t.GetPrimaryKey() }
+	ingress := slices.SortOnBy(key, builtins.CompareOrdered[string], maps.Values(p.Ingress))
+	egress := slices.SortOnBy(key, builtins.CompareOrdered[string], maps.Values(p.Egress))
 	return ingress, egress
 }
 
@@ -114,7 +106,8 @@ func (ar *AllowedResult) Table() string {
 }
 
 func addTargetsToTable(table *tablewriter.Table, ruleType string, action string, targets []*Target) {
-	for _, t := range targets {
+	sortedTargets := slices.SortOnBy(func(t *Target) string { return t.GetPrimaryKey() }, builtins.CompareOrdered[string], targets)
+	for _, t := range sortedTargets {
 		targetString := fmt.Sprintf("namespace: %s\n%s", t.Namespace, kube.LabelSelectorTableLines(t.PodSelector))
 		table.Append([]string{ruleType, action, targetString})
 	}
@@ -160,15 +153,10 @@ func (p *Policy) IsIngressOrEgressAllowed(traffic *Traffic, isIngress bool) *Dir
 	}
 
 	// 3. Check if any matching targets allow this traffic
-	var allowers []*Target
-	var deniers []*Target
-	for _, target := range matchingTargets {
-		if target.Allows(peer, traffic.ResolvedPort, traffic.ResolvedPortName, traffic.Protocol) {
-			allowers = append(allowers, target)
-		} else {
-			deniers = append(deniers, target)
-		}
-	}
+	pair := slices.Partition(func(t *Target) bool {
+		return t.Allows(peer, traffic.ResolvedPort, traffic.ResolvedPortName, traffic.Protocol)
+	}, matchingTargets)
+	allowers, deniers := pair.Fst, pair.Snd
 
 	return &DirectionResult{AllowingTargets: allowers, DenyingTargets: deniers}
 }
