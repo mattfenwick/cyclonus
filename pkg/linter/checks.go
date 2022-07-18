@@ -3,7 +3,6 @@ package linter
 import (
 	"fmt"
 	collections "github.com/mattfenwick/collections/pkg"
-	"github.com/mattfenwick/collections/pkg/builtins"
 	"github.com/mattfenwick/collections/pkg/slices"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
@@ -24,16 +23,17 @@ warnings:
 type Check string
 
 const (
-	// omitting the namespace will create the policy in the default namespace
+	// CheckSourceMissingNamespace omitting the namespace will create the policy in the default namespace
 	CheckSourceMissingNamespace Check = "CheckSourceMissingNamespace"
-	// omitting the protocol from a NetworkPolicyPort will default to TCP
+	// CheckSourcePortMissingProtocol omitting the protocol from a NetworkPolicyPort will default to TCP
 	CheckSourcePortMissingProtocol Check = "CheckSourcePortMissingProtocol"
-	// omitting the types can sometimes be automatically handled; but it's better to explicitly list them
+	// CheckSourceMissingPolicyTypes omitting the types can sometimes be automatically handled; but it's better to explicitly list them
 	CheckSourceMissingPolicyTypes Check = "CheckSourceMissingPolicyTypes"
-	// if the policy has ingress/egress rules, then the corresponding type should be present
+	// CheckSourceMissingPolicyTypeIngress if the policy has ingress rules, then that type should be present
 	CheckSourceMissingPolicyTypeIngress Check = "CheckSourceMissingPolicyTypeIngress"
-	CheckSourceMissingPolicyTypeEgress  Check = "CheckSourceMissingPolicyTypeEgress"
-	// duplicate names
+	// CheckSourceMissingPolicyTypeEgress if the policy has egress rules, then that type should be present
+	CheckSourceMissingPolicyTypeEgress Check = "CheckSourceMissingPolicyTypeEgress"
+	// CheckSourceDuplicatePolicyName duplicate names of source network policies
 	CheckSourceDuplicatePolicyName Check = "CheckSourceDuplicatePolicyName"
 
 	CheckDNSBlockedOnTCP         Check = "CheckDNSBlockedOnTCP"
@@ -45,11 +45,6 @@ const (
 
 	// TODO add check that rule is unnecessary b/c another rule exactly supersedes it
 )
-
-func (a Check) Equal(b Check) bool {
-	// TODO why is this necessary?  why can't we use existing String implementation?
-	return a == b
-}
 
 type Warning interface {
 	OriginIsSource() bool
@@ -83,7 +78,7 @@ func NetpolKey(netpol *networkingv1.NetworkPolicy) string {
 	return fmt.Sprintf("%s/%s", netpol.Namespace, netpol.Name)
 }
 
-func sortOn(w Warning) []string {
+func sortKey(w Warning) []string {
 	origin := "1"
 	if w.OriginIsSource() {
 		origin = "0"
@@ -110,7 +105,7 @@ func (r *resolvedWarning) GetTarget() string {
 }
 
 func (r *resolvedWarning) GetSourcePolicies() string {
-	target := slices.SortBy(builtins.CompareOrdered[string], slices.Map(NetpolKey, r.Target.SourceRules))
+	target := slices.Sort(slices.Map(NetpolKey, r.Target.SourceRules))
 	return strings.Join(target, "\n")
 }
 
@@ -122,7 +117,7 @@ func WarningsTable(warnings []Warning) string {
 	table.SetReflowDuringAutoWrap(false)
 	table.SetAutoWrapText(false)
 
-	sortedWarnings := slices.SortOnBy(sortOn, slices.CompareSlice[string](builtins.CompareOrdered[string]), warnings)
+	sortedWarnings := slices.SortOnBy(sortKey, slices.CompareSlicePairwise[string](), warnings)
 	for _, w := range sortedWarnings {
 		origin := "Source"
 		if !w.OriginIsSource() {
@@ -135,7 +130,7 @@ func WarningsTable(warnings []Warning) string {
 	return str.String()
 }
 
-func Lint(kubePolicies []*networkingv1.NetworkPolicy, skip *collections.Set[Check]) []Warning {
+func Lint(kubePolicies []*networkingv1.NetworkPolicy, skip *collections.Set[Check, Check]) []Warning {
 	policies := matcher.BuildNetworkPolicies(false, kubePolicies)
 	warnings := append(LintSourcePolicies(kubePolicies), LintResolvedPolicies(policies)...)
 

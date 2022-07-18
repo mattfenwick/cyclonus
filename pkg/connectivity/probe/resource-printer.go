@@ -2,12 +2,10 @@ package probe
 
 import (
 	"fmt"
-	"github.com/mattfenwick/collections/pkg/builtins"
 	"github.com/mattfenwick/collections/pkg/slices"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	"golang.org/x/exp/maps"
-	"sort"
 	"strings"
 )
 
@@ -19,13 +17,11 @@ func (r *Resources) RenderTable() string {
 	table.SetAutoMergeCells(true)
 	table.SetRowLine(true)
 
-	var nsSlice []string
 	nsToPod := map[string][]*Pod{}
 	for _, pod := range r.Pods {
 		ns := pod.Namespace
 		if _, ok := nsToPod[ns]; !ok {
 			nsToPod[ns] = []*Pod{}
-			nsSlice = append(nsSlice, ns)
 		}
 		if _, ok := r.Namespaces[ns]; !ok {
 			panic(errors.Errorf("cannot handle pod %s/%s: namespace not found", ns, pod.Name))
@@ -33,10 +29,8 @@ func (r *Resources) RenderTable() string {
 		nsToPod[ns] = append(nsToPod[ns], pod)
 	}
 
-	sort.Slice(nsSlice, func(i, j int) bool {
-		return nsSlice[i] < nsSlice[j]
-	})
-	for _, ns := range nsSlice {
+	namespaces := slices.Sort(maps.Keys(nsToPod))
+	for _, ns := range namespaces {
 		labels := r.Namespaces[ns]
 		nsLabelLines := labelsToLines(labels)
 		for _, pod := range nsToPod[ns] {
@@ -59,7 +53,7 @@ func (r *Resources) RenderTable() string {
 }
 
 func labelsToLines(labels map[string]string) string {
-	keys := slices.SortBy(builtins.CompareOrdered[string], maps.Keys(labels))
+	keys := slices.Sort(maps.Keys(labels))
 	var lines []string
 	for _, key := range keys {
 		lines = append(lines, fmt.Sprintf("%s: %s", key, labels[key]))

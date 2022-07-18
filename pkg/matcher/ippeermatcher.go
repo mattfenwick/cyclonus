@@ -3,10 +3,10 @@ package matcher
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/mattfenwick/collections/pkg/slices"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	"sort"
 	"strings"
 )
 
@@ -21,13 +21,7 @@ type IPPeerMatcher struct {
 // CIDR and excepts.
 func (i *IPPeerMatcher) PrimaryKey() string {
 	block := i.IPBlock
-	var except []string
-	for _, e := range block.Except {
-		except = append(except, e)
-	}
-	sort.Slice(except, func(i, j int) bool {
-		return except[i] < except[j]
-	})
+	except := slices.Sort(i.IPBlock.Except)
 	return fmt.Sprintf("%s: [%s]", block.CIDR, strings.Join(except, ", "))
 }
 

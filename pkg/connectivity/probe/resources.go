@@ -1,7 +1,6 @@
 package probe
 
 import (
-	"github.com/mattfenwick/collections/pkg/builtins"
 	"github.com/mattfenwick/collections/pkg/slices"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
@@ -9,7 +8,6 @@ import (
 	"golang.org/x/exp/maps"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sort"
 	"time"
 )
 
@@ -20,7 +18,8 @@ type Resources struct {
 }
 
 func NewDefaultResources(kubernetes kube.IKubernetes, namespaces []string, podNames []string, ports []int, protocols []v1.Protocol, externalIPs []string, podCreationTimeoutSeconds int, batchJobs bool) (*Resources, error) {
-	sort.Strings(externalIPs)
+	//sort.Strings(externalIPs) // TODO why is this here?
+
 	r := &Resources{
 		Namespaces: map[string]map[string]string{},
 		//ExternalIPs: externalIPs,
@@ -242,7 +241,7 @@ func (r *Resources) DeletePod(ns string, podName string) (*Resources, error) {
 }
 
 func (r *Resources) SortedPodNames() []string {
-	return slices.SortBy(builtins.CompareOrdered[string], slices.Map(
+	return slices.Sort(slices.Map(
 		func(p *Pod) string { return p.PodString().String() },
 		r.Pods))
 }

@@ -1,8 +1,9 @@
 package matcher
 
 import (
+	"github.com/mattfenwick/collections/pkg/slices"
 	"github.com/pkg/errors"
-	"sort"
+	"golang.org/x/exp/maps"
 )
 
 func Simplify(matchers []PeerMatcher) []PeerMatcher {
@@ -45,23 +46,19 @@ func simplifyPortsForAllPeers(matchers []*PortsForAllPeersMatcher) *PortsForAllP
 }
 
 func simplifyPodMatchers(pms []*PodPeerMatcher) []*PodPeerMatcher {
-	grouped := map[string]*PodPeerMatcher{}
-	for _, pm := range pms {
-		key := pm.PrimaryKey()
-		if _, ok := grouped[key]; !ok {
-			grouped[key] = pm
-		} else {
-			grouped[key] = CombinePodPeerMatchers(grouped[key], pm)
-		}
-	}
-	var simplified []*PodPeerMatcher
-	for _, pm := range grouped {
-		simplified = append(simplified, pm)
-	}
-	sort.Slice(simplified, func(i, j int) bool {
-		return simplified[i].PrimaryKey() < simplified[j].PrimaryKey()
-	})
-	return simplified
+	key := func(ppm *PodPeerMatcher) string { return ppm.PrimaryKey() }
+	combine := func(ppms []*PodPeerMatcher) *PodPeerMatcher { return slices.Foldl(CombinePodPeerMatchers, nil, ppms) }
+	groupedSimplified := slices.Map(combine, maps.Values(slices.GroupOn(key, pms)))
+	//grouped := map[string]*PodPeerMatcher{}
+	//for _, pm := range pms {
+	//	key := pm.PrimaryKey()
+	//	if _, ok := grouped[key]; !ok {
+	//		grouped[key] = pm
+	//	} else {
+	//		grouped[key] = CombinePodPeerMatchers(grouped[key], pm)
+	//	}
+	//}
+	return slices.SortOn(key, groupedSimplified)
 }
 
 func simplifyIPMatchers(ims []*IPPeerMatcher) []*IPPeerMatcher {
@@ -74,14 +71,7 @@ func simplifyIPMatchers(ims []*IPPeerMatcher) []*IPPeerMatcher {
 			grouped[key] = CombineIPPeerMatchers(grouped[key], im)
 		}
 	}
-	var simplified []*IPPeerMatcher
-	for _, pm := range grouped {
-		simplified = append(simplified, pm)
-	}
-	sort.Slice(simplified, func(i, j int) bool {
-		return simplified[i].PrimaryKey() < simplified[j].PrimaryKey()
-	})
-	return simplified
+	return slices.SortOn(func(i *IPPeerMatcher) string { return i.PrimaryKey() }, maps.Values(grouped))
 }
 
 func simplifyIPsAndPodsIntoAlls(all *PortsForAllPeersMatcher, ips []*IPPeerMatcher, pods []*PodPeerMatcher) ([]*IPPeerMatcher, []*PodPeerMatcher) {
@@ -177,6 +167,9 @@ func SubtractPortMatchers(a PortMatcher, b PortMatcher) (bool, PortMatcher) {
 }
 
 func CombinePodPeerMatchers(a *PodPeerMatcher, b *PodPeerMatcher) *PodPeerMatcher {
+	if a == nil {
+		return b
+	}
 	if a.PrimaryKey() != b.PrimaryKey() {
 		panic(errors.Errorf("cannot combine PodPeerMatchers of different pks: %s vs. %s", a.PrimaryKey(), b.PrimaryKey()))
 	}

@@ -2,7 +2,6 @@ package matcher
 
 import (
 	"fmt"
-	"github.com/mattfenwick/collections/pkg/builtins"
 	"github.com/mattfenwick/collections/pkg/slices"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/olekukonko/tablewriter"
@@ -29,8 +28,8 @@ func NewPolicyWithTargets(ingress []*Target, egress []*Target) *Policy {
 
 func (p *Policy) SortedTargets() ([]*Target, []*Target) {
 	key := func(t *Target) string { return t.GetPrimaryKey() }
-	ingress := slices.SortOnBy(key, builtins.CompareOrdered[string], maps.Values(p.Ingress))
-	egress := slices.SortOnBy(key, builtins.CompareOrdered[string], maps.Values(p.Egress))
+	ingress := slices.SortOn(key, maps.Values(p.Ingress))
+	egress := slices.SortOn(key, maps.Values(p.Egress))
 	return ingress, egress
 }
 
@@ -106,7 +105,7 @@ func (ar *AllowedResult) Table() string {
 }
 
 func addTargetsToTable(table *tablewriter.Table, ruleType string, action string, targets []*Target) {
-	sortedTargets := slices.SortOnBy(func(t *Target) string { return t.GetPrimaryKey() }, builtins.CompareOrdered[string], targets)
+	sortedTargets := slices.SortOn(func(t *Target) string { return t.GetPrimaryKey() }, targets)
 	for _, t := range sortedTargets {
 		targetString := fmt.Sprintf("namespace: %s\n%s", t.Namespace, kube.LabelSelectorTableLines(t.PodSelector))
 		table.Append([]string{ruleType, action, targetString})

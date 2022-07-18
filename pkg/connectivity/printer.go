@@ -2,12 +2,10 @@ package connectivity
 
 import (
 	"fmt"
-	"github.com/mattfenwick/collections/pkg/builtins"
 	"github.com/mattfenwick/collections/pkg/slices"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/exp/maps"
 	"math"
-	"sort"
 	"strings"
 
 	"github.com/mattfenwick/cyclonus/pkg/generator"
@@ -75,11 +73,11 @@ func (m *markdownRow) GetResult() string {
 }
 
 func (t *Printer) printMarkdownFeatureTable(primaryCounts map[string]map[bool]int, tagCounts map[string]map[string]map[bool]int) string {
-	primaries := slices.SortBy(builtins.CompareOrdered[string], maps.Keys(tagCounts))
+	primaries := slices.Sort(maps.Keys(tagCounts))
 
 	var rows []*markdownRow
 	for _, primary := range primaries {
-		subs := slices.SortBy(builtins.CompareOrdered[string], maps.Keys(tagCounts[primary]))
+		subs := slices.Sort(maps.Keys(tagCounts[primary]))
 		rows = append(rows, &markdownRow{Name: primary, IsPrimary: true, Pass: primaryCounts[primary][true], Fail: primaryCounts[primary][false]})
 		for _, sub := range subs {
 			counts := tagCounts[primary][sub]
@@ -120,7 +118,7 @@ type passFailRow struct {
 	Failed  int
 }
 
-func (p *passFailRow) PassedPercentage() float64 {
+func PassedPercentage(p *passFailRow) float64 {
 	return percentage(p.Passed, p.Passed+p.Failed)
 }
 
@@ -140,16 +138,14 @@ func passFailTable(caption string, passFailCounts map[string]map[bool]int, passe
 			Failed:  passFailCounts[feature][false],
 		})
 	}
+	rows = slices.SortOn(PassedPercentage, rows)
 
-	sort.Slice(rows, func(i, j int) bool {
-		return rows[i].PassedPercentage() < rows[j].PassedPercentage()
-	})
 	if passedTotal != nil || failedTotal != nil {
 		rows = append(rows, &passFailRow{Feature: "Total", Passed: *passedTotal, Failed: *failedTotal})
 	}
 
 	for _, row := range rows {
-		table.Append([]string{row.Feature, intToString(row.Passed), intToString(row.Failed), fmt.Sprintf("%.0f", row.PassedPercentage())})
+		table.Append([]string{row.Feature, intToString(row.Passed), intToString(row.Failed), fmt.Sprintf("%.0f", PassedPercentage(row))})
 	}
 
 	table.Render()
@@ -174,7 +170,7 @@ func protocolPassFailTable(protocolCounts map[v1.Protocol]map[Comparison]int) st
 	}
 
 	for _, row := range rows {
-		table.Append([]string{row.Feature, intToString(row.Passed), intToString(row.Failed), fmt.Sprintf("%.0f", row.PassedPercentage())})
+		table.Append([]string{row.Feature, intToString(row.Passed), intToString(row.Failed), fmt.Sprintf("%.0f", PassedPercentage(row))})
 	}
 
 	table.Render()

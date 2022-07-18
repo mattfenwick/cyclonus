@@ -2,7 +2,6 @@ package matcher
 
 import (
 	"fmt"
-	"github.com/mattfenwick/collections/pkg/builtins"
 	"github.com/mattfenwick/collections/pkg/slices"
 	"github.com/olekukonko/tablewriter"
 	"golang.org/x/exp/maps"
@@ -52,7 +51,7 @@ func (t *Traffic) Table() string {
 
 func labelsToString(labels map[string]string) string {
 	format := func(k string) string { return fmt.Sprintf("%s: %s", k, labels[k]) }
-	return strings.Join(slices.Map(format, slices.SortBy(builtins.CompareOrdered[string], maps.Keys(labels))), "\n")
+	return strings.Join(slices.Map(format, slices.Sort(maps.Keys(labels))), "\n")
 }
 
 type TrafficPeer struct {
