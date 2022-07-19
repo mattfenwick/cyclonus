@@ -2,7 +2,7 @@ package probe
 
 import (
 	"fmt"
-	"github.com/mattfenwick/collections/pkg/slices"
+	"github.com/mattfenwick/collections/pkg/slice"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
@@ -111,14 +111,14 @@ func (p *Pod) KubeService() *v1.Service {
 			Namespace: p.Namespace,
 		},
 		Spec: v1.ServiceSpec{
-			Ports:    slices.Map(func(cont *Container) v1.ServicePort { return cont.KubeServicePort() }, p.Containers),
+			Ports:    slice.Map(func(cont *Container) v1.ServicePort { return cont.KubeServicePort() }, p.Containers),
 			Selector: p.Labels,
 		},
 	}
 }
 
 func (p *Pod) KubeContainers() []v1.Container {
-	return slices.Map(func(cont *Container) v1.Container { return cont.KubeContainer() }, p.Containers)
+	return slice.Map(func(cont *Container) v1.Container { return cont.KubeContainer() }, p.Containers)
 }
 
 func (p *Pod) ResolveNamedPort(port string) (int, error) {

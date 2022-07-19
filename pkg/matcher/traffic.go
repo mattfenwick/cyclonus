@@ -2,7 +2,7 @@ package matcher
 
 import (
 	"fmt"
-	"github.com/mattfenwick/collections/pkg/slices"
+	"github.com/mattfenwick/collections/pkg/slice"
 	"github.com/olekukonko/tablewriter"
 	"golang.org/x/exp/maps"
 	v1 "k8s.io/api/core/v1"
@@ -51,7 +51,7 @@ func (t *Traffic) Table() string {
 
 func labelsToString(labels map[string]string) string {
 	format := func(k string) string { return fmt.Sprintf("%s: %s", k, labels[k]) }
-	return strings.Join(slices.Map(format, slices.Sort(maps.Keys(labels))), "\n")
+	return strings.Join(slice.Map(format, slice.Sort(maps.Keys(labels))), "\n")
 }
 
 type TrafficPeer struct {

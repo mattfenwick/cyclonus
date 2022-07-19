@@ -2,7 +2,7 @@ package kube
 
 import (
 	"fmt"
-	"github.com/mattfenwick/collections/pkg/slices"
+	"github.com/mattfenwick/collections/pkg/slice"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"golang.org/x/exp/maps"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -92,9 +92,9 @@ func IsLabelSelectorEmpty(l metav1.LabelSelector) bool {
 // SerializeLabelSelector deterministically converts a metav1.LabelSelector
 // into a string
 func SerializeLabelSelector(ls metav1.LabelSelector) string {
-	keyVals := slices.Map(func(key string) string {
+	keyVals := slice.Map(func(key string) string {
 		return fmt.Sprintf("%s: %s", key, ls.MatchLabels[key])
-	}, slices.Sort(maps.Keys(ls.MatchLabels)))
+	}, slice.Sort(maps.Keys(ls.MatchLabels)))
 	// this looks weird -- we're using an array to make the order deterministic
 	return utils.JsonStringNoIndent([]interface{}{"MatchLabels", keyVals, "MatchExpression", ls.MatchExpressions})
 }
@@ -106,18 +106,18 @@ func LabelSelectorTableLines(selector metav1.LabelSelector) string {
 	var lines []string
 	if len(selector.MatchLabels) > 0 {
 		lines = append(lines, "Match labels:")
-		for _, key := range slices.Sort(maps.Keys(selector.MatchLabels)) {
+		for _, key := range slice.Sort(maps.Keys(selector.MatchLabels)) {
 			val := selector.MatchLabels[key]
 			lines = append(lines, fmt.Sprintf("  %s: %s", key, val))
 		}
 	}
 	if len(selector.MatchExpressions) > 0 {
 		lines = append(lines, "Match expressions:")
-		sortedMatchExpressions := slices.SortOn(
+		sortedMatchExpressions := slice.SortOn(
 			func(l metav1.LabelSelectorRequirement) string { return l.Key },
 			selector.MatchExpressions)
 		for _, exp := range sortedMatchExpressions {
-			lines = append(lines, fmt.Sprintf("  %s %s %+v", exp.Key, exp.Operator, slices.Sort(exp.Values)))
+			lines = append(lines, fmt.Sprintf("  %s %s %+v", exp.Key, exp.Operator, slice.Sort(exp.Values)))
 		}
 	}
 	return strings.Join(lines, "\n")

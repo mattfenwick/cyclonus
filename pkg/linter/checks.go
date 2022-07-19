@@ -3,7 +3,7 @@ package linter
 import (
 	"fmt"
 	collections "github.com/mattfenwick/collections/pkg"
-	"github.com/mattfenwick/collections/pkg/slices"
+	"github.com/mattfenwick/collections/pkg/slice"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/olekukonko/tablewriter"
@@ -105,7 +105,7 @@ func (r *resolvedWarning) GetTarget() string {
 }
 
 func (r *resolvedWarning) GetSourcePolicies() string {
-	target := slices.Sort(slices.Map(NetpolKey, r.Target.SourceRules))
+	target := slice.Sort(slice.Map(NetpolKey, r.Target.SourceRules))
 	return strings.Join(target, "\n")
 }
 
@@ -117,7 +117,7 @@ func WarningsTable(warnings []Warning) string {
 	table.SetReflowDuringAutoWrap(false)
 	table.SetAutoWrapText(false)
 
-	sortedWarnings := slices.SortOnBy(sortKey, slices.CompareSlicePairwise[string](), warnings)
+	sortedWarnings := slice.SortOnBy(sortKey, slice.CompareSlicePairwise[string](), warnings)
 	for _, w := range sortedWarnings {
 		origin := "Source"
 		if !w.OriginIsSource() {

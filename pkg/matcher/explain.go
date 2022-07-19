@@ -2,7 +2,7 @@ package matcher
 
 import (
 	"fmt"
-	"github.com/mattfenwick/collections/pkg/slices"
+	"github.com/mattfenwick/collections/pkg/slice"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/olekukonko/tablewriter"
@@ -48,8 +48,8 @@ func (s *SliceBuilder) TargetsTableLines(targets []*Target, isIngress bool) {
 		ruleType = "Egress"
 	}
 	for _, target := range targets {
-		sourceRules := slices.Sort(
-			slices.Map(func(sr *networkingv1.NetworkPolicy) string {
+		sourceRules := slice.Sort(
+			slice.Map(func(sr *networkingv1.NetworkPolicy) string {
 				return fmt.Sprintf("%s/%s", sr.Namespace, sr.Name)
 			}, target.SourceRules))
 		targetString := fmt.Sprintf("namespace: %s\n%s", target.Namespace, kube.LabelSelectorTableLines(target.PodSelector))
@@ -59,7 +59,7 @@ func (s *SliceBuilder) TargetsTableLines(targets []*Target, isIngress bool) {
 		if len(target.Peers) == 0 {
 			s.Append("no pods, no ips", "no ports, no protocols")
 		} else {
-			for _, peer := range slices.SortOn(func(p PeerMatcher) string { return utils.DumpJSON(p) }, target.Peers) {
+			for _, peer := range slice.SortOn(func(p PeerMatcher) string { return utils.DumpJSON(p) }, target.Peers) {
 				switch a := peer.(type) {
 				case *AllPeersMatcher:
 					s.Append("all pods, all ips", "all ports, all protocols")

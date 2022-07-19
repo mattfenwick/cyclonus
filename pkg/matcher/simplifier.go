@@ -1,7 +1,7 @@
 package matcher
 
 import (
-	"github.com/mattfenwick/collections/pkg/slices"
+	"github.com/mattfenwick/collections/pkg/slice"
 	"github.com/pkg/errors"
 	"golang.org/x/exp/maps"
 )
@@ -47,8 +47,8 @@ func simplifyPortsForAllPeers(matchers []*PortsForAllPeersMatcher) *PortsForAllP
 
 func simplifyPodMatchers(pms []*PodPeerMatcher) []*PodPeerMatcher {
 	key := func(ppm *PodPeerMatcher) string { return ppm.PrimaryKey() }
-	combine := func(ppms []*PodPeerMatcher) *PodPeerMatcher { return slices.Foldl(CombinePodPeerMatchers, nil, ppms) }
-	groupedSimplified := slices.Map(combine, maps.Values(slices.GroupOn(key, pms)))
+	combine := func(ppms []*PodPeerMatcher) *PodPeerMatcher { return slice.Foldl(CombinePodPeerMatchers, nil, ppms) }
+	groupedSimplified := slice.Map(combine, maps.Values(slice.GroupOn(key, pms)))
 	//grouped := map[string]*PodPeerMatcher{}
 	//for _, pm := range pms {
 	//	key := pm.PrimaryKey()
@@ -58,7 +58,7 @@ func simplifyPodMatchers(pms []*PodPeerMatcher) []*PodPeerMatcher {
 	//		grouped[key] = CombinePodPeerMatchers(grouped[key], pm)
 	//	}
 	//}
-	return slices.SortOn(key, groupedSimplified)
+	return slice.SortOn(key, groupedSimplified)
 }
 
 func simplifyIPMatchers(ims []*IPPeerMatcher) []*IPPeerMatcher {
@@ -71,7 +71,7 @@ func simplifyIPMatchers(ims []*IPPeerMatcher) []*IPPeerMatcher {
 			grouped[key] = CombineIPPeerMatchers(grouped[key], im)
 		}
 	}
-	return slices.SortOn(func(i *IPPeerMatcher) string { return i.PrimaryKey() }, maps.Values(grouped))
+	return slice.SortOn(func(i *IPPeerMatcher) string { return i.PrimaryKey() }, maps.Values(grouped))
 }
 
 func simplifyIPsAndPodsIntoAlls(all *PortsForAllPeersMatcher, ips []*IPPeerMatcher, pods []*PodPeerMatcher) ([]*IPPeerMatcher, []*PodPeerMatcher) {

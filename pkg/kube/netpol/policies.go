@@ -2,7 +2,7 @@ package netpol
 
 import (
 	"fmt"
-	"github.com/mattfenwick/collections/pkg/slices"
+	"github.com/mattfenwick/collections/pkg/slice"
 	"golang.org/x/exp/maps"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -17,7 +17,7 @@ func label(key, val string) map[string]string {
 
 func LabelString(labels map[string]string) string {
 	// 1. first, sort the keys so we get a deterministic answer
-	keys := slices.Sort(maps.Keys(labels))
+	keys := slice.Sort(maps.Keys(labels))
 	// 2. now use the sorted keys to generate chunks
 	var chunks []string
 	for _, key := range keys {

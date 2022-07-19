@@ -2,7 +2,7 @@ package matcher
 
 import (
 	"fmt"
-	"github.com/mattfenwick/collections/pkg/slices"
+	"github.com/mattfenwick/collections/pkg/slice"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/olekukonko/tablewriter"
 	"golang.org/x/exp/maps"
@@ -28,8 +28,8 @@ func NewPolicyWithTargets(ingress []*Target, egress []*Target) *Policy {
 
 func (p *Policy) SortedTargets() ([]*Target, []*Target) {
 	key := func(t *Target) string { return t.GetPrimaryKey() }
-	ingress := slices.SortOn(key, maps.Values(p.Ingress))
-	egress := slices.SortOn(key, maps.Values(p.Egress))
+	ingress := slice.SortOn(key, maps.Values(p.Ingress))
+	egress := slice.SortOn(key, maps.Values(p.Egress))
 	return ingress, egress
 }
 
@@ -105,7 +105,7 @@ func (ar *AllowedResult) Table() string {
 }
 
 func addTargetsToTable(table *tablewriter.Table, ruleType string, action string, targets []*Target) {
-	sortedTargets := slices.SortOn(func(t *Target) string { return t.GetPrimaryKey() }, targets)
+	sortedTargets := slice.SortOn(func(t *Target) string { return t.GetPrimaryKey() }, targets)
 	for _, t := range sortedTargets {
 		targetString := fmt.Sprintf("namespace: %s\n%s", t.Namespace, kube.LabelSelectorTableLines(t.PodSelector))
 		table.Append([]string{ruleType, action, targetString})
@@ -152,7 +152,7 @@ func (p *Policy) IsIngressOrEgressAllowed(traffic *Traffic, isIngress bool) *Dir
 	}
 
 	// 3. Check if any matching targets allow this traffic
-	pair := slices.Partition(func(t *Target) bool {
+	pair := slice.Partition(func(t *Target) bool {
 		return t.Allows(peer, traffic.ResolvedPort, traffic.ResolvedPortName, traffic.Protocol)
 	}, matchingTargets)
 	allowers, deniers := pair.Fst, pair.Snd
