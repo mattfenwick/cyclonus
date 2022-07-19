@@ -1,0 +1,29 @@
+policy lint:
++-----------------+------------------------------+---------------+-------------------+
+| SOURCE/RESOLVED |             TYPE             |    TARGET     |  SOURCE POLICIES  |
++-----------------+------------------------------+---------------+-------------------+
+| Resolved        | CheckDNSBlockedOnTCP         | namespace: y  | y/deny-all-egress |
+|                 |                              |               |                   |
+|                 |                              | pod selector: |                   |
+|                 |                              | {}            |                   |
+|                 |                              |               |                   |
++-----------------+------------------------------+---------------+-------------------+
+| Resolved        | CheckDNSBlockedOnUDP         | namespace: y  | y/deny-all-egress |
+|                 |                              |               |                   |
+|                 |                              | pod selector: |                   |
+|                 |                              | {}            |                   |
+|                 |                              |               |                   |
++-----------------+------------------------------+---------------+-------------------+
+| Resolved        | CheckTargetAllEgressBlocked  | namespace: y  | y/deny-all-egress |
+|                 |                              |               |                   |
+|                 |                              | pod selector: |                   |
+|                 |                              | {}            |                   |
+|                 |                              |               |                   |
++-----------------+------------------------------+---------------+-------------------+
+| Resolved        | CheckTargetAllIngressBlocked | namespace: y  | y/deny-all        |
+|                 |                              |               |                   |
+|                 |                              | pod selector: |                   |
+|                 |                              | {}            |                   |
+|                 |                              |               |                   |
++-----------------+------------------------------+---------------+-------------------+
+

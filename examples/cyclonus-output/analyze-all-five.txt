@@ -1,0 +1,458 @@
+explained policies:
++---------+--------------------+---------------------------------------------------------------------+--------------------------+---------------------------+
+|  TYPE   |       TARGET       |                            SOURCE RULES                             |           PEER           |       PORT/PROTOCOL       |
++---------+--------------------+---------------------------------------------------------------------+--------------------------+---------------------------+
+| Ingress | namespace: default | default/accidental-and                                              | namespace: default       | all ports, all protocols  |
+|         | Match labels:      | default/accidental-or                                               | pods: Match labels:      |                           |
+|         |   a: b             |                                                                     |   role: client           |                           |
++         +                    +                                                                     +--------------------------+                           +
+|         |                    |                                                                     | namespace: Match labels: |                           |
+|         |                    |                                                                     |   user: alice            |                           |
+|         |                    |                                                                     | pods: Match labels:      |                           |
+|         |                    |                                                                     |   role: client           |                           |
++         +                    +                                                                     +--------------------------+                           +
+|         |                    |                                                                     | namespace: Match labels: |                           |
+|         |                    |                                                                     |   user: alice            |                           |
+|         |                    |                                                                     | pods: all                |                           |
++         +--------------------+---------------------------------------------------------------------+--------------------------+---------------------------+
+|         | namespace: default | default/allow-nothing-to-v2-all-web                                 | no pods, no ips          | no ports, no protocols    |
+|         | Match labels:      |                                                                     |                          |                           |
+|         |   all: web         |                                                                     |                          |                           |
++         +--------------------+---------------------------------------------------------------------+--------------------------+---------------------------+
+|         | namespace: default | default/allow-specific-port-from-role-monitoring-to-app-apiserver   | namespace: default       | port 5000 on protocol TCP |
+|         | Match labels:      |                                                                     | pods: Match labels:      |                           |
+|         |   app: apiserver   |                                                                     |   role: monitoring       |                           |
++         +--------------------+---------------------------------------------------------------------+--------------------------+---------------------------+
+|         | namespace: default | default/allow-from-app-bookstore-to-app-bookstore-role-api          | namespace: default       | all ports, all protocols  |
+|         | Match labels:      |                                                                     | pods: Match labels:      |                           |
+|         |   app: bookstore   |                                                                     |   app: bookstore         |                           |
+|         |   role: api        |                                                                     |                          |                           |
++         +--------------------+---------------------------------------------------------------------+--------------------------+                           +
+|         | namespace: default | default/allow-from-multiple-to-app-bookstore-role-db                | namespace: default       |                           |
+|         | Match labels:      |                                                                     | pods: Match labels:      |                           |
+|         |   app: bookstore   |                                                                     |   app: bookstore         |                           |
+|         |   role: db         |                                                                     |   role: api              |                           |
++         +                    +                                                                     +--------------------------+                           +
+|         |                    |                                                                     | namespace: default       |                           |
+|         |                    |                                                                     | pods: Match labels:      |                           |
+|         |                    |                                                                     |   app: bookstore         |                           |
+|         |                    |                                                                     |   role: search           |                           |
++         +                    +                                                                     +--------------------------+                           +
+|         |                    |                                                                     | namespace: default       |                           |
+|         |                    |                                                                     | pods: Match labels:      |                           |
+|         |                    |                                                                     |   app: inventory         |                           |
+|         |                    |                                                                     |   role: web              |                           |
++         +--------------------+---------------------------------------------------------------------+--------------------------+---------------------------+
+|         | namespace: default | default/allow-nothing                                               | no pods, no ips          | no ports, no protocols    |
+|         | Match labels:      |                                                                     |                          |                           |
+|         |   app: foo         |                                                                     |                          |                           |
++         +--------------------+---------------------------------------------------------------------+--------------------------+---------------------------+
+|         | namespace: default | default/allow-all-to-app-web                                        | all pods, all ips        | all ports, all protocols  |
+|         | Match labels:      | default/allow-all-to-version2-app-web                               |                          |                           |
+|         |   app: web         | default/allow-all-to-version3-app-web                               |                          |                           |
+|         |                    | default/allow-all-to-version4-app-web                               |                          |                           |
+|         |                    | default/allow-from-anywhere-to-app-web                              |                          |                           |
+|         |                    | default/allow-from-namespace-to-app-web                             |                          |                           |
+|         |                    | default/allow-from-namespace-with-labels-type-monitoring-to-app-web |                          |                           |
+|         |                    | default/allow-nothing-to-app-web                                    |                          |                           |
++         +--------------------+---------------------------------------------------------------------+--------------------------+                           +
+|         | namespace: default | default/allow-all-within-namespace                                  | namespace: default       |                           |
+|         | all pods           | default/allow-nothing-to-anything                                   | pods: all                |                           |
++---------+--------------------+---------------------------------------------------------------------+--------------------------+---------------------------+
+|         |                    |                                                                     |                          |                           |
++---------+--------------------+---------------------------------------------------------------------+--------------------------+---------------------------+
+| Egress  | namespace: default | default/allow-egress-on-port-app-foo                                | all pods, all ips        | port 53 on protocol TCP   |
+|         | Match labels:      | default/allow-egress-to-all-namespace-from-app-foo-on-port-53       |                          | port 53 on protocol UDP   |
+|         |   app: foo         | default/allow-no-egress-from-labels-app-foo                         |                          |                           |
+|         |                    | default/allow-nothing                                               |                          |                           |
++         +--------------------+---------------------------------------------------------------------+--------------------------+---------------------------+
+|         | namespace: default | default/allow-no-egress-from-namespace                              | no pods, no ips          | no ports, no protocols    |
+|         | all pods           |                                                                     |                          |                           |
++---------+--------------------+---------------------------------------------------------------------+--------------------------+---------------------------+
+
+policy lint:
++-----------------+--------------------------------+--------------------+-------------------------------------------------------------------+
+| SOURCE/RESOLVED |              TYPE              |       TARGET       |                          SOURCE POLICIES                          |
++-----------------+--------------------------------+--------------------+-------------------------------------------------------------------+
+| Source          | CheckSourcePortMissingProtocol |                    | default/allow-specific-port-from-role-monitoring-to-app-apiserver |
++-----------------+--------------------------------+--------------------+-------------------------------------------------------------------+
+| Resolved        | CheckDNSBlockedOnTCP           | namespace: default | default/allow-no-egress-from-namespace                            |
+|                 |                                |                    |                                                                   |
+|                 |                                | pod selector:      |                                                                   |
+|                 |                                | {}                 |                                                                   |
+|                 |                                |                    |                                                                   |
++-----------------+--------------------------------+--------------------+-------------------------------------------------------------------+
+| Resolved        | CheckDNSBlockedOnUDP           | namespace: default | default/allow-no-egress-from-namespace                            |
+|                 |                                |                    |                                                                   |
+|                 |                                | pod selector:      |                                                                   |
+|                 |                                | {}                 |                                                                   |
+|                 |                                |                    |                                                                   |
++-----------------+--------------------------------+--------------------+-------------------------------------------------------------------+
+| Resolved        | CheckTargetAllEgressAllowed    | namespace: default | default/allow-egress-on-port-app-foo                              |
+|                 |                                |                    | default/allow-egress-to-all-namespace-from-app-foo-on-port-53     |
+|                 |                                | pod selector:      | default/allow-no-egress-from-labels-app-foo                       |
+|                 |                                | matchLabels:       | default/allow-nothing                                             |
+|                 |                                |   app: foo         |                                                                   |
+|                 |                                |                    |                                                                   |
++-----------------+--------------------------------+--------------------+-------------------------------------------------------------------+
+| Resolved        | CheckTargetAllEgressBlocked    | namespace: default | default/allow-no-egress-from-namespace                            |
+|                 |                                |                    |                                                                   |
+|                 |                                | pod selector:      |                                                                   |
+|                 |                                | {}                 |                                                                   |
+|                 |                                |                    |                                                                   |
++-----------------+--------------------------------+--------------------+-------------------------------------------------------------------+
+| Resolved        | CheckTargetAllIngressBlocked   | namespace: default | default/allow-nothing-to-v2-all-web                               |
+|                 |                                |                    |                                                                   |
+|                 |                                | pod selector:      |                                                                   |
+|                 |                                | matchLabels:       |                                                                   |
+|                 |                                |   all: web         |                                                                   |
+|                 |                                |                    |                                                                   |
++-----------------+--------------------------------+--------------------+-------------------------------------------------------------------+
+| Resolved        | CheckTargetAllIngressBlocked   | namespace: default | default/allow-nothing                                             |
+|                 |                                |                    |                                                                   |
+|                 |                                | pod selector:      |                                                                   |
+|                 |                                | matchLabels:       |                                                                   |
+|                 |                                |   app: foo         |                                                                   |
+|                 |                                |                    |                                                                   |
++-----------------+--------------------------------+--------------------+-------------------------------------------------------------------+
+
+query target:
+pod in ns x with labels map[pod:a]:
+
+Matching targets:
++------+--------+--------------+------+---------------+
+| TYPE | TARGET | SOURCE RULES | PEER | PORT/PROTOCOL |
++------+--------+--------------+------+---------------+
+|      |        |              |      |               |
++------+--------+--------------+------+---------------+
+
+Combined rules:
++------+--------+--------------+------+---------------+
+| TYPE | TARGET | SOURCE RULES | PEER | PORT/PROTOCOL |
++------+--------+--------------+------+---------------+
+|      |        |              |      |               |
++------+--------+--------------+------+---------------+
+
+
+
+pod in ns y with labels map[pod:b]:
+
+Matching targets:
++------+--------+--------------+------+---------------+
+| TYPE | TARGET | SOURCE RULES | PEER | PORT/PROTOCOL |
++------+--------+--------------+------+---------------+
+|      |        |              |      |               |
++------+--------+--------------+------+---------------+
+
+Combined rules:
++------+--------+--------------+------+---------------+
+| TYPE | TARGET | SOURCE RULES | PEER | PORT/PROTOCOL |
++------+--------+--------------+------+---------------+
+|      |        |              |      |               |
++------+--------+--------------+------+---------------+
+
+
+
+pod in ns default with labels map[app:web pod:q]:
+
+Matching targets:
++---------+--------------------+---------------------------------------------------------------------+--------------------+--------------------------+
+|  TYPE   |       TARGET       |                            SOURCE RULES                             |        PEER        |      PORT/PROTOCOL       |
++---------+--------------------+---------------------------------------------------------------------+--------------------+--------------------------+
+| Ingress | namespace: default | default/allow-all-to-app-web                                        | all pods, all ips  | all ports, all protocols |
+|         | Match labels:      | default/allow-all-to-version2-app-web                               |                    |                          |
+|         |   app: web         | default/allow-all-to-version3-app-web                               |                    |                          |
+|         |                    | default/allow-all-to-version4-app-web                               |                    |                          |
+|         |                    | default/allow-from-anywhere-to-app-web                              |                    |                          |
+|         |                    | default/allow-from-namespace-to-app-web                             |                    |                          |
+|         |                    | default/allow-from-namespace-with-labels-type-monitoring-to-app-web |                    |                          |
+|         |                    | default/allow-nothing-to-app-web                                    |                    |                          |
++         +--------------------+---------------------------------------------------------------------+--------------------+                          +
+|         | namespace: default | default/allow-all-within-namespace                                  | namespace: default |                          |
+|         | all pods           | default/allow-nothing-to-anything                                   | pods: all          |                          |
++---------+--------------------+---------------------------------------------------------------------+--------------------+--------------------------+
+|         |                    |                                                                     |                    |                          |
++---------+--------------------+---------------------------------------------------------------------+--------------------+--------------------------+
+| Egress  | namespace: default | default/allow-no-egress-from-namespace                              | no pods, no ips    | no ports, no protocols   |
+|         | all pods           |                                                                     |                    |                          |
++---------+--------------------+---------------------------------------------------------------------+--------------------+--------------------------+
+
+Combined rules:
++---------+--------------------+---------------------------------------------------------------------+--------------------+--------------------------+
+|  TYPE   |       TARGET       |                            SOURCE RULES                             |        PEER        |      PORT/PROTOCOL       |
++---------+--------------------+---------------------------------------------------------------------+--------------------+--------------------------+
+| Ingress | namespace: default | default/allow-all-to-app-web                                        | namespace: default | all ports, all protocols |
+|         | Match labels:      | default/allow-all-to-version2-app-web                               | pods: all          |                          |
+|         |   app: web         | default/allow-all-to-version3-app-web                               |                    |                          |
+|         |   pod: q           | default/allow-all-to-version4-app-web                               |                    |                          |
+|         |                    | default/allow-all-within-namespace                                  |                    |                          |
+|         |                    | default/allow-from-anywhere-to-app-web                              |                    |                          |
+|         |                    | default/allow-from-namespace-to-app-web                             |                    |                          |
+|         |                    | default/allow-from-namespace-with-labels-type-monitoring-to-app-web |                    |                          |
+|         |                    | default/allow-nothing-to-anything                                   |                    |                          |
+|         |                    | default/allow-nothing-to-app-web                                    |                    |                          |
++         +                    +                                                                     +--------------------+                          +
+|         |                    |                                                                     | all pods, all ips  |                          |
+|         |                    |                                                                     |                    |                          |
+|         |                    |                                                                     |                    |                          |
+|         |                    |                                                                     |                    |                          |
+|         |                    |                                                                     |                    |                          |
+|         |                    |                                                                     |                    |                          |
+|         |                    |                                                                     |                    |                          |
+|         |                    |                                                                     |                    |                          |
+|         |                    |                                                                     |                    |                          |
+|         |                    |                                                                     |                    |                          |
++---------+--------------------+---------------------------------------------------------------------+--------------------+--------------------------+
+|         |                    |                                                                     |                    |                          |
++---------+--------------------+---------------------------------------------------------------------+--------------------+--------------------------+
+| Egress  | namespace: default | default/allow-no-egress-from-namespace                              | no pods, no ips    | no ports, no protocols   |
+|         | Match labels:      |                                                                     |                    |                          |
+|         |   app: web         |                                                                     |                    |                          |
+|         |   pod: q           |                                                                     |                    |                          |
++---------+--------------------+---------------------------------------------------------------------+--------------------+--------------------------+
+
+
+
+query traffic:
+Traffic:
++--------------------------+-------------+--------------+-----------+-----------+------------+
+|      PORT/PROTOCOL       | SOURCE/DEST |    POD IP    | NAMESPACE | NS LABELS | POD LABELS |
++--------------------------+-------------+--------------+-----------+-----------+------------+
+| 80 (serve-80-tcp) on TCP | source      | 192.168.1.10 | default   |           |            |
++                          +-------------+              +           +-----------+------------+
+|                          | destination |              |           |           |            |
++--------------------------+-------------+--------------+-----------+-----------+------------+
+
+Is traffic allowed?
++-------------+--------+--------------------+
+|    TYPE     | ACTION |       TARGET       |
++-------------+--------+--------------------+
+| Ingress     | Allow  | namespace: default |
+|             |        | all pods           |
++-------------+--------+--------------------+
+|             |        |                    |
++-------------+--------+--------------------+
+| Egress      | Deny   | namespace: default |
+|             |        | all pods           |
++-------------+--------+--------------------+
+| IS ALLOWED? | FALSE  |                     
++-------------+--------+--------------------+
+
+
+
+Traffic:
++--------------------------+-------------+--------------+-----------+-----------+------------+
+|      PORT/PROTOCOL       | SOURCE/DEST |    POD IP    | NAMESPACE | NS LABELS | POD LABELS |
++--------------------------+-------------+--------------+-----------+-----------+------------+
+| 80 (serve-80-tcp) on TCP | source      | 192.168.1.13 | z         | ns: z     | pod: a     |
++                          +-------------+--------------+-----------+-----------+------------+
+|                          | destination | 192.168.1.14 | x         | ns: x     | pod: b     |
++--------------------------+-------------+--------------+-----------+-----------+------------+
+
+Is traffic allowed?
++-------------+--------+--------+
+|    TYPE     | ACTION | TARGET |
++-------------+--------+--------+
+|             |        |        |
++-------------+--------+--------+
+| IS ALLOWED? |  TRUE  |         
++-------------+--------+--------+
+
+
+
+Traffic:
++--------------------------+-------------+---------------+-----------+-------------+------------+
+|      PORT/PROTOCOL       | SOURCE/DEST |    POD IP     | NAMESPACE |  NS LABELS  | POD LABELS |
++--------------------------+-------------+---------------+-----------+-------------+------------+
+| 80 (serve-80-tcp) on TCP | source      | 192.168.1.99  | default   | ns: default | app: foo   |
++                          +-------------+---------------+           +             +------------+
+|                          | destination | 192.168.1.100 |           |             | app: web   |
++--------------------------+-------------+---------------+-----------+-------------+------------+
+
+Is traffic allowed?
++-------------+--------+--------------------+
+|    TYPE     | ACTION |       TARGET       |
++-------------+--------+--------------------+
+| Ingress     | Allow  | namespace: default |
+|             |        | Match labels:      |
+|             |        | app: web           |
++             +        +--------------------+
+|             |        | namespace: default |
+|             |        | all pods           |
++-------------+--------+--------------------+
+|             |        |                    |
++-------------+--------+--------------------+
+| Egress      | Deny   | namespace: default |
+|             |        | Match labels:      |
+|             |        | app: foo           |
++             +        +--------------------+
+|             |        | namespace: default |
+|             |        | all pods           |
++-------------+--------+--------------------+
+| IS ALLOWED? | FALSE  |                     
++-------------+--------+--------------------+
+
+
+
+probe:
+Ingress:
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+|           | DEFAULT/A | DEFAULT/B | DEFAULT/C | X/A | X/B | X/C | Y/A | Y/B | Y/C |
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+| default/a | .         | .         | .         | .   | .   | .   | .   | .   | .   |
+| default/b | .         | .         | .         | .   | .   | .   | .   | .   | .   |
+| default/c | .         | .         | .         | .   | .   | .   | .   | .   | .   |
+| x/a       | X         | X         | X         | .   | .   | .   | .   | .   | .   |
+| x/b       | X         | X         | X         | .   | .   | .   | .   | .   | .   |
+| x/c       | X         | X         | X         | .   | .   | .   | .   | .   | .   |
+| y/a       | X         | X         | X         | .   | .   | .   | .   | .   | .   |
+| y/b       | X         | X         | X         | .   | .   | .   | .   | .   | .   |
+| y/c       | X         | X         | X         | .   | .   | .   | .   | .   | .   |
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+
+Egress:
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+|           | DEFAULT/A | DEFAULT/B | DEFAULT/C | X/A | X/B | X/C | Y/A | Y/B | Y/C |
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+| default/a | X         | X         | X         | X   | X   | X   | X   | X   | X   |
+| default/b | X         | X         | X         | X   | X   | X   | X   | X   | X   |
+| default/c | X         | X         | X         | X   | X   | X   | X   | X   | X   |
+| x/a       | .         | .         | .         | .   | .   | .   | .   | .   | .   |
+| x/b       | .         | .         | .         | .   | .   | .   | .   | .   | .   |
+| x/c       | .         | .         | .         | .   | .   | .   | .   | .   | .   |
+| y/a       | .         | .         | .         | .   | .   | .   | .   | .   | .   |
+| y/b       | .         | .         | .         | .   | .   | .   | .   | .   | .   |
+| y/c       | .         | .         | .         | .   | .   | .   | .   | .   | .   |
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+
+Combined:
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+|           | DEFAULT/A | DEFAULT/B | DEFAULT/C | X/A | X/B | X/C | Y/A | Y/B | Y/C |
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+| default/a | X         | X         | X         | X   | X   | X   | X   | X   | X   |
+| default/b | X         | X         | X         | X   | X   | X   | X   | X   | X   |
+| default/c | X         | X         | X         | X   | X   | X   | X   | X   | X   |
+| x/a       | X         | X         | X         | .   | .   | .   | .   | .   | .   |
+| x/b       | X         | X         | X         | .   | .   | .   | .   | .   | .   |
+| x/c       | X         | X         | X         | .   | .   | .   | .   | .   | .   |
+| y/a       | X         | X         | X         | .   | .   | .   | .   | .   | .   |
+| y/b       | X         | X         | X         | .   | .   | .   | .   | .   | .   |
+| y/c       | X         | X         | X         | .   | .   | .   | .   | .   | .   |
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+
+
+
+Ingress:
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+|           | DEFAULT/A | DEFAULT/B | DEFAULT/C | X/A | X/B | X/C | Y/A | Y/B | Y/C |
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+| default/a | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| default/b | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| default/c | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| x/a       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| x/b       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| x/c       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| y/a       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| y/b       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| y/c       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+
+Egress:
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+|           | DEFAULT/A | DEFAULT/B | DEFAULT/C | X/A | X/B | X/C | Y/A | Y/B | Y/C |
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+| default/a | ?         | ?         | ?         | ?   | ?   | ?   | ?   | ?   | ?   |
+| default/b | ?         | ?         | ?         | ?   | ?   | ?   | ?   | ?   | ?   |
+| default/c | ?         | ?         | ?         | ?   | ?   | ?   | ?   | ?   | ?   |
+| x/a       | ?         | ?         | ?         | ?   | ?   | ?   | ?   | ?   | ?   |
+| x/b       | ?         | ?         | ?         | ?   | ?   | ?   | ?   | ?   | ?   |
+| x/c       | ?         | ?         | ?         | ?   | ?   | ?   | ?   | ?   | ?   |
+| y/a       | ?         | ?         | ?         | ?   | ?   | ?   | ?   | ?   | ?   |
+| y/b       | ?         | ?         | ?         | ?   | ?   | ?   | ?   | ?   | ?   |
+| y/c       | ?         | ?         | ?         | ?   | ?   | ?   | ?   | ?   | ?   |
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+
+Combined:
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+|           | DEFAULT/A | DEFAULT/B | DEFAULT/C | X/A | X/B | X/C | Y/A | Y/B | Y/C |
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+| default/a | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| default/b | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| default/c | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| x/a       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| x/b       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| x/c       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| y/a       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| y/b       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| y/c       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+
+
+
+Ingress:
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+|           | DEFAULT/A | DEFAULT/B | DEFAULT/C | X/A | X/B | X/C | Y/A | Y/B | Y/C |
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+| default/a | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| default/b | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| default/c | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| x/a       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| x/b       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| x/c       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| y/a       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| y/b       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| y/c       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+
+Egress:
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+|           | DEFAULT/A | DEFAULT/B | DEFAULT/C | X/A | X/B | X/C | Y/A | Y/B | Y/C |
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+| default/a | ?         | ?         | ?         | ?   | ?   | ?   | ?   | ?   | ?   |
+| default/b | ?         | ?         | ?         | ?   | ?   | ?   | ?   | ?   | ?   |
+| default/c | ?         | ?         | ?         | ?   | ?   | ?   | ?   | ?   | ?   |
+| x/a       | ?         | ?         | ?         | ?   | ?   | ?   | ?   | ?   | ?   |
+| x/b       | ?         | ?         | ?         | ?   | ?   | ?   | ?   | ?   | ?   |
+| x/c       | ?         | ?         | ?         | ?   | ?   | ?   | ?   | ?   | ?   |
+| y/a       | ?         | ?         | ?         | ?   | ?   | ?   | ?   | ?   | ?   |
+| y/b       | ?         | ?         | ?         | ?   | ?   | ?   | ?   | ?   | ?   |
+| y/c       | ?         | ?         | ?         | ?   | ?   | ?   | ?   | ?   | ?   |
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+
+Combined:
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+|           | DEFAULT/A | DEFAULT/B | DEFAULT/C | X/A | X/B | X/C | Y/A | Y/B | Y/C |
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+| default/a | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| default/b | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| default/c | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| x/a       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| x/b       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| x/c       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| y/a       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| y/b       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
+| y/c       | N         | N         | N         | N   | N   | N   | N   | N   | N   |
++-----------+-----------+-----------+-----------+-----+-----+-----+-----+-----+-----+
+
+
+
+Ingress:
++--+
+|  |
++--+
++--+
+
+Egress:
++--+
+|  |
++--+
++--+
+
+Combined:
++--+
+|  |
++--+
++--+
+
+
+
