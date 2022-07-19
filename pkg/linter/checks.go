@@ -2,7 +2,7 @@ package linter
 
 import (
 	"fmt"
-	collections "github.com/mattfenwick/collections/pkg"
+	"github.com/mattfenwick/collections/pkg/set"
 	"github.com/mattfenwick/collections/pkg/slice"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
@@ -130,7 +130,7 @@ func WarningsTable(warnings []Warning) string {
 	return str.String()
 }
 
-func Lint(kubePolicies []*networkingv1.NetworkPolicy, skip *collections.Set[Check, Check]) []Warning {
+func Lint(kubePolicies []*networkingv1.NetworkPolicy, skip *set.Set[Check]) []Warning {
 	policies := matcher.BuildNetworkPolicies(false, kubePolicies)
 	warnings := append(LintSourcePolicies(kubePolicies), LintResolvedPolicies(policies)...)
 

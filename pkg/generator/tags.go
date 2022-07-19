@@ -1,7 +1,9 @@
 package generator
 
 import (
+	"github.com/mattfenwick/collections/pkg/slice"
 	"github.com/pkg/errors"
+	"golang.org/x/exp/maps"
 	"sort"
 	"strings"
 )
@@ -234,12 +236,7 @@ func (s StringSet) GroupTags() map[string][]string {
 }
 
 func (s StringSet) Keys() []string {
-	var stringSlice []string
-	for k := range s {
-		stringSlice = append(stringSlice, k)
-	}
-	sort.Strings(stringSlice)
-	return stringSlice
+	return slice.Sort(maps.Keys(s))
 }
 
 func (s StringSet) ContainsAny(stringSlice []string) bool {

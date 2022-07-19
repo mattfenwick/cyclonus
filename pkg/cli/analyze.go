@@ -2,7 +2,7 @@ package cli
 
 import (
 	"fmt"
-	collections "github.com/mattfenwick/collections/pkg"
+	"github.com/mattfenwick/collections/pkg/set"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/linter"
@@ -161,7 +161,7 @@ func ExplainPolicies(explainedPolicies *matcher.Policy) {
 }
 
 func Lint(kubePolicies []*networkingv1.NetworkPolicy) {
-	warnings := linter.Lint(kubePolicies, collections.NewSet[linter.Check](nil))
+	warnings := linter.Lint(kubePolicies, set.NewSet[linter.Check](nil))
 	fmt.Println(linter.WarningsTable(warnings))
 }
 

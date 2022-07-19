@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/go-resty/resty/v2 v2.5.0
 	github.com/jstemmer/go-junit-report v0.9.1
-	github.com/mattfenwick/collections v0.1.6
+	github.com/mattfenwick/collections v0.1.7
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/onsi/ginkgo/v2 v2.1.4
 	github.com/onsi/gomega v1.19.0
