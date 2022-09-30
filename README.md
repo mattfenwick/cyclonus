@@ -21,7 +21,7 @@ Cyclonus functionality:
 
 ## Cyclonus disambiguation
 
-If you're looking for the official kubernetes network policy tool, check out: https://github.com/kubernetes-sigs/network-policy-api .  Actively development is continuing there.
+If you're looking for the official kubernetes network policy tool, check out: https://github.com/kubernetes-sigs/network-policy-api .  Active development of network policy verification is continuing there.
 
 https://github.com/mattfenwick/cyclonus will remain open and be used for research, experimentation, and hacking!
 
