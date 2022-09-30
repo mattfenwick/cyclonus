@@ -19,6 +19,12 @@ Cyclonus functionality:
  - [analyze network policies](./docs/analyze.md)
 
 
+## Cyclonus disambiguation
+
+If you're looking for the official kubernetes network policy tool, check out: https://github.com/kubernetes-sigs/network-policy-api .  Actively development is continuing there.
+
+https://github.com/mattfenwick/cyclonus will remain open and be used for research, experimentation, and hacking!
+
 ## Integrations
 
 Cyclonus is available as a [**krew/kubectl plugin**](https://github.com/mattfenwick/kubectl-cyclonus):
