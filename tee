@@ -1,0 +1,78 @@
+Error: accepts 0 arg(s), received 1
+Usage:
+  cyclonus generate [flags]
+
+Flags:
+      --allow-dns                          if using egress, allow tcp and udp over port 53 for DNS resolution (default true)
+      --cleanup-namespaces                 if true, clean up namespaces after completion
+      --context string                     kubernetes context to use; if empty, uses default context
+      --destination-type string            override to set what to direct requests at; if not specified, the tests will be left as-is; one of service-name, service-ip, pod-ip
+      --dry-run                            if true, don't actually do anything: just print out what would be done
+      --exclude strings                    exclude tests with any of these tags.  See 'include' field for valid tags (default [multi-peer,upstream-e2e,example,end-port,namespaces-by-default-label])
+  -h, --help                               help for generate
+      --ignore-loopback                    if true, ignore loopback for truthtable correctness verification
+      --include strings                    include tests with any of these tags; if empty, all tests will be included.  Valid tags:
+                                           action
+                                           all-namespaces
+                                           all-pods
+                                           allow-all
+                                           any-peer
+                                           any-port
+                                           any-port-protocol
+                                           conflict
+                                           create-namespace
+                                           create-pod
+                                           create-policy
+                                           delete-namespace
+                                           delete-pod
+                                           delete-policy
+                                           deny-all
+                                           direction
+                                           egress
+                                           end-port
+                                           example
+                                           ingress
+                                           ip-block-no-except
+                                           ip-block-with-except
+                                           miscellaneous
+                                           multi-peer
+                                           multi-port/protocol
+                                           named-port
+                                           namespaces-by-default-label
+                                           namespaces-by-label
+                                           numbered-port
+                                           pathological
+                                           peer-ipblock
+                                           peer-pods
+                                           pods-by-label
+                                           policy-namespace
+                                           policy-stack
+                                           port
+                                           protocol
+                                           rule
+                                           sctp
+                                           set-namespace-labels
+                                           set-pod-labels
+                                           target
+                                           target-namespace
+                                           target-pod-selector
+                                           tcp
+                                           udp
+                                           update-policy
+                                           upstream-e2e
+      --job-timeout-seconds int            number of seconds to pass on to 'agnhost connect --timeout=%ds' flag (default 10)
+      --junit-results-file string          output junit results to the specified file
+      --mock                               if true, use a mock kube runner (i.e. don't actually run tests against kubernetes; instead, product fake results
+      --namespace strings                  namespaces to create/use pods in (default [x,y,z])
+      --noisy                              if true, print all results
+      --perturbation-wait-seconds int      number of seconds to wait after perturbing the cluster (i.e. create a network policy, modify a ns/pod label) before running probes, to give the CNI time to update the cluster state (default 5)
+      --pod strings                        pods to create in namespaces (default [a,b,c])
+      --pod-creation-timeout-seconds int   number of seconds to wait for pods to create, be running and have IP addresses (default 60)
+      --retries int                        number of kube probe retries to allow, if probe fails (default 1)
+      --server-port ints                   ports to run server on (default [80,81])
+      --server-protocol strings            protocols to run server on (default [TCP,UDP,SCTP])
+
+Global Flags:
+  -v, --verbosity string   log level; one of [info, debug, trace, warn, error, fatal, panic] (default "info")
+
+time="2022-05-25T16:06:32-07:00" level=fatal msg="unable to run root command: accepts 0 arg(s), received 1\nrun root command\ngithub.com/mattfenwick/cyclonus/pkg/cli.RunRootCommand\n\t/home/matmerr/go/src/github.com/mattfenwick/cyclonus/pkg/cli/root.go:13\nmain.main\n\t/home/matmerr/go/src/github.com/mattfenwick/cyclonus/cmd/cyclonus/main.go:8\nruntime.main\n\t/usr/lib/go-1.18/src/runtime/proc.go:250\nruntime.goexit\n\t/usr/lib/go-1.18/src/runtime/asm_amd64.s:1571"

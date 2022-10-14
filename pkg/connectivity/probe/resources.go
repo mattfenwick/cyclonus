@@ -1,6 +1,8 @@
 package probe
 
 import (
+	"time"
+
 	"github.com/mattfenwick/collections/pkg/slice"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
@@ -8,12 +10,12 @@ import (
 	"golang.org/x/exp/maps"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"time"
 )
 
 type Resources struct {
 	Namespaces map[string]map[string]string
 	Pods       []*Pod
+	Services   map[string]*v1.Service
 	//ExternalIPs []string
 }
 
@@ -22,6 +24,7 @@ func NewDefaultResources(kubernetes kube.IKubernetes, namespaces []string, podNa
 
 	r := &Resources{
 		Namespaces: map[string]map[string]string{},
+		Services:   make(map[string]*v1.Service),
 		//ExternalIPs: externalIPs,
 	}
 
@@ -183,6 +186,40 @@ func (r *Resources) DeleteNamespace(ns string) (*Resources, error) {
 	}, nil
 }
 
+// CreateServce returns a new object with a new namespace.  It should not affect the original Resources object.
+func (r *Resources) CreateService(svc *v1.Service) (*Resources, error) {
+	if _, ok := r.Services[svc.Name]; ok {
+		return nil, errors.Errorf("service %s already found", svc.Name)
+	}
+	newServices := map[string]*v1.Service{}
+	for oldServiceName, oldService := range r.Services {
+		newServices[oldServiceName] = oldService // TODO: service type is pointer, duplicate resource type needs to be deep copied, just following paradigm for now
+	}
+	newServices[svc.Name] = svc
+	return &Resources{
+		Services:   newServices,
+		Pods:       r.Pods,
+		Namespaces: r.Namespaces,
+	}, nil
+}
+
+// DeleteNamespace returns a new object without the namespace.  It should not affect the original Resources object.
+func (r *Resources) DeleteService(svc *v1.Service) (*Resources, error) {
+	if _, ok := r.Services[svc.Name]; !ok {
+		return nil, errors.Errorf("service %s not found", svc.Name)
+	}
+	newServices := map[string]*v1.Service{}
+	for oldServiceName, oldService := range r.Services {
+		if oldServiceName != svc.Name {
+			newServices[oldServiceName] = oldService
+		}
+	}
+
+	return &Resources{
+		Services: newServices,
+	}, nil
+}
+
 // CreatePod returns a new object with a new pod.  It should not affect the original Resources object.
 func (r *Resources) CreatePod(ns string, podName string, labels map[string]string) (*Resources, error) {
 	// TODO this needs to be improved
@@ -269,9 +306,14 @@ func (r *Resources) CreateResourcesInKube(kubernetes kube.IKubernetes) error {
 			}
 		}
 		kubeService := pod.KubeService()
+		kubeServiceLoadBalancer := pod.KubeServiceLoadBalancer()
 		_, err = kubernetes.GetService(kubeService.Namespace, kubeService.Name)
 		if err != nil {
 			_, err = kubernetes.CreateService(kubeService)
+			if err != nil {
+				return err
+			}
+			_, err = kubernetes.CreateService(kubeServiceLoadBalancer)
 			if err != nil {
 				return err
 			}

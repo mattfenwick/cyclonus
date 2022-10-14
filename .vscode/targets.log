@@ -1,0 +1,307 @@
+make all --print-data-base --no-builtin-variables --no-builtin-rules --question
+make: *** No rule to make target 'all'.  Stop.
+
+# GNU Make 4.2.1
+# Built for x86_64-pc-linux-gnu
+# Copyright (C) 1988-2016 Free Software Foundation, Inc.
+# License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+# This is free software: you are free to change and redistribute it.
+# There is NO WARRANTY, to the extent permitted by law.
+
+# Make data base, printed on Fri Oct 14 13:48:14 2022
+
+# Variables
+
+# automatic
+<D = $(patsubst %/,%,$(dir $<))
+# automatic
+?F = $(notdir $?)
+# environment
+WSLENV = ELECTRON_RUN_AS_NODE/w:WT_SESSION::WT_PROFILE_ID
+# default
+.SHELLFLAGS := -c
+# environment
+_fzf_orig_completion_ln = complete -F %s ln #_longopt
+# automatic
+?D = $(patsubst %/,%,$(dir $?))
+# automatic
+@D = $(patsubst %/,%,$(dir $@))
+# automatic
+@F = $(notdir $@)
+# makefile
+CURDIR := /home/matmerr/go/src/github.com/mattfenwick/cyclonus
+# makefile
+SHELL = /bin/sh
+# environment
+VSCODE_NLS_CONFIG = {"locale":"en","availableLanguages":{}}
+# environment
+_ = /mnt/c/Users/matmerr.REDMOND/AppData/Local/Programs/Microsoft VS Code/bin/code
+# environment
+_fzf_orig_completion_less = complete -F %s less #_longopt
+# makefile (from 'Makefile', line 1)
+MAKEFILE_LIST :=  Makefile
+# 'override' directive
+GNUMAKEFLAGS := 
+# environment
+_fzf_orig_completion_telnet = complete -F %s telnet #_known_hosts
+# environment
+XDG_DATA_DIRS = /usr/local/share:/usr/share:/var/lib/snapd/desktop
+# environment
+VSCODE_AMD_ENTRYPOINT = vs/workbench/api/node/extensionHostProcess
+# environment
+_fzf_orig_completion_uniq = complete -F %s uniq #_longopt
+# environment
+LESSOPEN = | /usr/bin/lesspipe %s
+# environment
+VSCODE_CWD = /mnt/c/Users/matmerr.REDMOND/AppData/Local/Programs/Microsoft VS Code
+# environment
+GOPROXY = https://proxy.golang.org,direct
+# environment
+_fzf_orig_completion_tail = complete -F %s tail #_longopt
+# default
+MAKE_HOST := x86_64-pc-linux-gnu
+# environment
+PATH = /usr/lib/go-1.19/bin:/home/matmerr/.vscode-server/bin/64bbfbf67ada9953918d72e1df2f4d8e537d340e/bin/remote-cli:/home/matmerr/.local/bin:/home/matmerr/bin:/home/matmerr/google-cloud-sdk/bin:/home/matmerr/.krew/bin:/home/matmerr/.cargo/bin:/home/matmerr/go/bin:/home/matmerr/.kubectx:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/usr/lib/wsl/lib:/mnt/c/Program Files (x86)/Microsoft SDKs/Azure/CLI2/wbin:/mnt/c/Program Files (x86)/Intel/Intel(R) Management Engine Components/iCLS/:/mnt/c/Program Files/Intel/Intel(R) Management Engine Components/iCLS/:/mnt/c/WINDOWS/system32:/mnt/c/WINDOWS:/mnt/c/WINDOWS/System32/Wbem:/mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/:/mnt/c/WINDOWS/System32/OpenSSH/:/mnt/c/Program Files (x86)/Intel/Intel(R) Management Engine Components/DAL:/mnt/c/Program Files/Intel/Intel(R) Management Engine Components/DAL:/mnt/c/Program Files (x86)/HP/HP Performance Advisor:/mnt/c/Program Files/dotnet/:/mnt/c/Program Files/Microsoft SQL Server/130/Tools/Binn/:/mnt/c/ProgramData/chocolatey/bin:/mnt/c/Program Files/Microsoft/Web Platform Installer/:/mnt/c/Program Files/Microsoft SQL Server/120/Tools/Binn/:/mnt/c/Program Files/Microsoft Service Fabric/bin/Fabric/Fabric.Code:/mnt/c/Program Files/Microsoft SDKs/Service Fabric/Tools/ServiceFabricLocalClusterManager:/mnt/c/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/:/mnt/c/Program Files (x86)/WinMerge:/mnt/c/Program Files/nodejs/:/mnt/c/Program Files/Graphviz/bin:/mnt/c/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/:/mnt/c/Program Files (x86)/Windows Kits/10/Microsoft Application Virtualization/Sequencer/:/mnt/c/Program Files/Go/bin:/mnt/c/Program Files/PuTTY/:/mnt/c/TDM-GCC-64/bin:/mnt/c/Program Files/PowerShell/7/:/mnt/c/Program Files/Git/cmd:/mnt/c/WINDOWS/system32:/mnt/c/WINDOWS:/mnt/c/WINDOWS/System32/Wbem:/mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/:/mnt/c/WINDOWS/System32/OpenSSH/:/mnt/c/Program Files/Docker/Docker/resources/bin:/mnt/c/ProgramData/DockerDesktop/version-bin:/mnt/c/Users/matmerr.REDMOND/AppData/Local/CloudBuild:/mnt/c/Users/matmerr.REDMOND/.cargo/bin:/mnt/c/Users/matmerr.REDMOND/AppData/Local/CloudBuild:/mnt/c/Users/matmerr.REDMOND/AppData/Local/Microsoft/WindowsApps:/mnt/c/Users/matmerr.REDMOND/.dotnet/tools:/mnt/c/Users/matmerr.REDMOND/Documents/Path:/mnt/c/Users/matmerr.REDMOND/AppData/Roaming/npm:/mnt/c/Users/matmerr.REDMOND/AppData/Local/hyper/app-3.0.2/resources/bin:/mnt/c/Program Files/mingw-w64/x86_64-8.1.0-posix-seh-rt_v6-rev0/mingw64/bin:/mnt/c/Users/matmerr.REDMOND/AppData/Local/GitHubDesktop/bin:/mnt/c/Users/matmerr.REDMOND/AppData/Local/Microsoft/WindowsApps:/mnt/c/Users/matmerr.REDMOND/.dotnet/tools:/mnt/c/Users/matmerr.REDMOND/AppData/Local/Programs/Microsoft VS Code/bin:/mnt/c/Users/matmerr.REDMOND/go/bin:/snap/bin:/home/matmerr/.fzf/bin
+# environment
+XDG_RUNTIME_DIR = /mnt/wslg/runtime-dir
+# environment
+_fzf_orig_completion_tee = complete -F %s tee #_longopt
+# environment
+_fzf_orig_completion_cd = complete -o nospace -F %s cd #_cd
+# environment
+GOPATH = /home/matmerr/go/
+# environment
+KUBECTL_FZF_CACHE = /tmp/kubectl_fzf_cache
+# environment
+_fzf_orig_completion_awk = complete -F %s awk #_longopt
+# environment
+ELECTRON_RUN_AS_NODE = 1
+# environment
+VSCODE_IPC_HOOK_CLI = /mnt/wslg/runtime-dir/vscode-ipc-d870a850-5dc9-40d6-92b3-22d3610d497d.sock
+# default
+.FEATURES := target-specific order-only second-expansion else-if shortest-stem undefine oneshell archives jobserver output-sync check-symlink load
+# environment
+LS_COLORS = rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:
+# automatic
+%F = $(notdir $%)
+# environment
+DISPLAY = :0
+# environment
+_fzf_orig_completion_rm = complete -F %s rm #_longopt
+# environment
+FZF_CTRL_T_COMMAND = 
+# environment
+WSL2_GUI_APPS_ENABLED = 1
+# environment
+PWD = /home/matmerr/go/src/github.com/mattfenwick/cyclonus
+# default
+.LOADED := 
+# environment
+_fzf_orig_completion_diff = complete -F %s diff #_longopt
+# environment
+WSL_INTEROP = /run/WSL/1872_interop
+# environment
+PULSE_SERVER = /mnt/wslg/PulseServer
+# environment
+WT_SESSION = 696d75b1-e09c-453c-be71-32cdeae48eee
+# environment
+GOMODCACHE = /home/matmerr/go/pkg/mod
+# environment
+HOME = /home/matmerr
+# environment
+_fzf_orig_completion_cat = complete -F %s cat #_longopt
+# environment
+LESSCLOSE = /usr/bin/lesspipe %s %s
+# environment
+LOGNAME = matmerr
+# environment
+APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL = 1
+# environment
+_fzf_orig_completion_rmdir = complete -F %s rmdir #_longopt
+# environment
+VSCODE_HANDLES_UNCAUGHT_ERRORS = true
+# automatic
+^D = $(patsubst %/,%,$(dir $^))
+# environment
+MAKELEVEL := 0
+# default
+MAKE = $(MAKE_COMMAND)
+# default
+MAKECMDGOALS := all
+# environment
+SHLVL = 1
+# default
+MAKE_VERSION := 4.2.1
+# environment
+USER = matmerr
+# makefile
+.DEFAULT_GOAL := test
+# environment
+GOROOT = /usr/lib/go-1.19
+# environment
+NAME = Code
+# automatic
+%D = $(patsubst %/,%,$(dir $%))
+# environment
+_fzf_orig_completion_du = complete -F %s du #_longopt
+# environment
+VSCODE_WSL_EXT_LOCATION = /mnt/c/Users/matmerr.REDMOND/.vscode/extensions/ms-vscode-remote.remote-wsl-0.72.0
+# default
+MAKE_COMMAND := make
+# environment
+_fzf_orig_completion_ftp = complete -F %s ftp #_known_hosts
+# default
+.VARIABLES := 
+# automatic
+*F = $(notdir $*)
+# environment
+_fzf_orig_completion_ld = complete -F %s ld #_longopt
+# makefile
+MAKEFLAGS = pqrR
+# environment
+MFLAGS = -pqrR
+# automatic
+*D = $(patsubst %/,%,$(dir $*))
+# environment
+_fzf_orig_completion_head = complete -F %s head #_longopt
+# automatic
++D = $(patsubst %/,%,$(dir $+))
+# automatic
++F = $(notdir $+)
+# environment
+VSCODE_HANDLES_SIGPIPE = true
+# environment
+WT_PROFILE_ID = {07b52e3e-de2c-5db4-bd2d-ba144ed6c273}
+# default
+MAKEFILES := 
+# automatic
+<F = $(notdir $<)
+# environment
+_fzf_orig_completion_wc = complete -F %s wc #_longopt
+# environment
+PS1 = \n\[(B[m\]\[\033[38;5;10m\]\u\[[1m\]\[(B[m\]\[\033[38;5;15m\]@\[(B[m\]\[\033[38;5;6m\]\H\[(B[m\]\[(B[m\]\[\033[38;5;15m\]: \[[1m\]\[\033[38;5;31m\]\w\[(B[m\]\n\[(B[m\]\[\033[38;5;31m\]\[[1m\][\D{%r}]\[\033[38;5;10m\][$(kubectl config current-context)]\[(B[m\]\[\033[38;5;6m\]$(parse_git_branch)\[\033[38;5;15m\]\$\[(B[m\]\[\033[38;5;15m\] 
+# environment
+_fzf_orig_completion_mv = complete -F %s mv #_longopt
+# environment
+LC_ALL = C
+# environment
+_fzf_orig_completion_cp = complete -F %s cp #_longopt
+# environment
+_fzf_orig_completion_ls = complete -F %s ls #_longopt
+# environment
+HOSTTYPE = x86_64
+# automatic
+^F = $(notdir $^)
+# default
+SUFFIXES := 
+# environment
+_fzf_orig_completion_pushd = complete -o nospace -F %s pushd #_cd
+# environment
+WAYLAND_DISPLAY = wayland-0
+# default
+.INCLUDE_DIRS = /usr/include /usr/local/include /usr/include
+# environment
+_fzf_orig_completion_sed = complete -F %s sed #_longopt
+# default
+.RECIPEPREFIX := 
+# environment
+FZF_COMPLETION_OPTS = +c -x
+# environment
+FZF_DEFAULT_OPTS = --layout=reverse
+# environment
+LANG = C
+# environment
+TERM = xterm-256color
+# environment
+_fzf_orig_completion_grep = complete -F %s grep #_longopt
+# environment
+WSL_DISTRO_NAME = Ubuntu-20.04
+# environment
+_fzf_orig_completion_sort = complete -F %s sort #_longopt
+# variable set hash-table stats:
+# Load=103/1024=10%, Rehash=0, Collisions=5/128=4%
+
+# Pattern-specific Variable Values
+
+# No pattern-specific variable values.
+
+# Directories
+
+# . (device 2096, inode 57677): 21 files, no impossibilities.
+
+# 21 files, no impossibilities in 1 directories.
+
+# Implicit Rules
+
+# No implicit rules.
+
+# Files
+
+# Not a target:
+all:
+#  Command line target.
+#  Implicit rule search has been done.
+#  File does not exist.
+#  File has not been updated.
+
+# Not a target:
+Makefile:
+#  Implicit rule search has been done.
+#  Last modified 2022-05-05 10:14:11.098428
+#  File has been updated.
+#  Successfully updated.
+
+test:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  recipe to execute (from 'Makefile', line 2):
+	go test ./pkg/...
+
+vet:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  recipe to execute (from 'Makefile', line 8):
+	go vet ./cmd/... ./pkg/...
+
+# Not a target:
+.DEFAULT:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+fmt:
+#  Implicit rule search has not been done.
+ 
+#  Modification time never checked.
+#  File has not been updated.
+#  recipe to execute (from 'Makefile', line 5):
+	go fmt ./cmd/... ./pkg/...
+
+cyclonus:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  recipe to execute (from 'Makefile', line 11):
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ./cmd/cyclonus/cyclonus ./cmd/cyclonus
+	docker build -t docker.io/mfenwick100/cyclonus:latest ./cmd/cyclonus
+
+# files hash-table stats:
+# Load=8/1024=1%, Rehash=0, Collisions=0/18=0%
+# VPATH Search Paths
+
+# No 'vpath' search paths.
+
+# No general ('VPATH' variable) search path.
+
+# strcache buffers: 1 (0) / strings = 30 / storage = 249 B / avg = 8 B
+# current buf: size = 8162 B / used = 249 B / count = 30 / avg = 8 B
+
+# strcache performance: lookups = 38 / hit rate = 21%
+ 
+# hash-table stats:
+# Load=30/8192=0%, Rehash=0, Collisions=1/38=3%
+# Finished Make data base on Fri Oct 14 13:48:14 2022
+
+ 

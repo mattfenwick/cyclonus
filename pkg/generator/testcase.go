@@ -1,12 +1,13 @@
 package generator
 
 import (
+	"sort"
+	"strings"
+
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"sort"
-	"strings"
 )
 
 type TestCase struct {
@@ -114,6 +115,7 @@ const (
 	ProbeModeServiceName = "service-name"
 	ProbeModeServiceIP   = "service-ip"
 	ProbeModePodIP       = "pod-ip"
+	ProbeModeNodeIP      = "node-ip"
 )
 
 var AllProbeModes = []string{
@@ -135,7 +137,8 @@ func ParseProbeMode(mode string) (ProbeMode, error) {
 }
 
 // ProbeConfig: exactly one field must be non-null (or, in AllAvailable's case, non-false).  This
-//   models a discriminated union (sum type).
+//
+//	models a discriminated union (sum type).
 type ProbeConfig struct {
 	AllAvailable bool
 	PortProtocol *PortProtocol

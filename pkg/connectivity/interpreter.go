@@ -2,6 +2,8 @@ package connectivity
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
@@ -9,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	networkingv1 "k8s.io/api/networking/v1"
-	"time"
 )
 
 const (
@@ -116,6 +117,10 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 				err = testCaseState.SetPodLabels(ns, pod, labels)
 			} else if action.DeletePod != nil {
 				err = testCaseState.DeletePod(action.DeletePod.Namespace, action.DeletePod.Pod)
+			} else if action.CreateService != nil {
+				err = testCaseState.CreateService(action.CreateService.Service)
+			} else if action.DeleteService != nil {
+				err = testCaseState.DeleteService(action.CreateService.Service)
 			} else {
 				err = errors.Errorf("invalid Action at step %d, action %d", stepIndex, actionIndex)
 			}

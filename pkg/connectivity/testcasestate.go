@@ -1,13 +1,15 @@
 package connectivity
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	"time"
 )
 
 type TestCaseState struct {
@@ -47,6 +49,26 @@ func (t *TestCaseState) UpdatePolicy(policy *networkingv1.NetworkPolicy) error {
 	t.Policies[index] = policy
 	_, err := t.Kubernetes.UpdateNetworkPolicy(policy)
 	return err
+}
+
+func (t *TestCaseState) CreateService(svc *v1.Service) error {
+	newResources, err := t.Resources.CreateService(svc)
+	if err != nil {
+		return err
+	}
+	t.Resources = newResources
+	fmt.Printf("creating service %+v", svc.Name)
+	_, err = t.Kubernetes.CreateService(svc)
+	return err
+}
+
+func (t *TestCaseState) DeleteService(svc *v1.Service) error {
+	newResources, err := t.Resources.DeleteService(svc)
+	if err != nil {
+		return err
+	}
+	t.Resources = newResources
+	return t.Kubernetes.DeleteService(svc.Name, svc.Namespace)
 }
 
 func (t *TestCaseState) CreateNamespace(ns string, labels map[string]string) error {
@@ -92,10 +114,18 @@ func (t *TestCaseState) CreatePod(ns string, pod string, labels map[string]strin
 	if err != nil {
 		return err
 	}
+	fmt.Println("creating cluster svc")
 	_, err = t.Kubernetes.CreateService(newPod.KubeService())
 	if err != nil {
 		return err
 	}
+
+	fmt.Println("creating lb svc")
+	_, err = t.Kubernetes.CreateService(newPod.KubeServiceLoadBalancer())
+	if err != nil {
+		return err
+	}
+
 	// wait for ready, get ip
 	for i := 0; i < 12; i++ {
 		kubePod, err := t.Kubernetes.GetPod(ns, pod)
