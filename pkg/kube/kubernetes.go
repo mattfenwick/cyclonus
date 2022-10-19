@@ -3,6 +3,7 @@ package kube
 import (
 	"bytes"
 	"context"
+
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -37,6 +38,11 @@ func NewKubernetesForContext(context string) (*Kubernetes, error) {
 		ClientSet:  clientset,
 		RestConfig: kubeConfig,
 	}, nil
+}
+
+func (k *Kubernetes) GetNodes() (*v1.NodeList, error) {
+	nodes, err := k.ClientSet.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	return nodes, errors.Wrapf(err, "unable to get nodes")
 }
 
 func (k *Kubernetes) GetNamespace(namespace string) (*v1.Namespace, error) {

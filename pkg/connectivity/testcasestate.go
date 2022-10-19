@@ -2,6 +2,7 @@ package connectivity
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
@@ -134,6 +135,8 @@ func (t *TestCaseState) CreatePod(ns string, pod string, labels map[string]strin
 		}
 		if kubePod.Status.Phase == "Running" && kubePod.Status.PodIP != "" {
 			newPod.IP = kubePod.Status.PodIP
+			newPod.NodeIP = "10.240.0.4"
+			log.Printf("setting node ip to %v", newPod.NodeIP)
 			return nil
 		}
 		time.Sleep(5 * time.Second)

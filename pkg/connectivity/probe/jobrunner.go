@@ -1,13 +1,14 @@
 package probe
 
 import (
+	"strings"
+
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/mattfenwick/cyclonus/pkg/worker"
 	"github.com/sirupsen/logrus"
-	"strings"
 )
 
 type Runner struct {
@@ -28,11 +29,23 @@ func NewKubeBatchRunner(kubernetes kube.IKubernetes, workers int, jobBuilder *Jo
 }
 
 func (p *Runner) RunProbeForConfig(probeConfig *generator.ProbeConfig, resources *Resources) *Table {
-	return NewTableFromJobResults(resources, p.runProbe(p.JobBuilder.GetJobsForProbeConfig(resources, probeConfig)))
+	jobs := p.JobBuilder.GetJobsForProbeConfig(resources, probeConfig)
+	logrus.Debugf("got jobs %+v", jobs)
+	jobresults := p.runProbe(jobs)
+	if probeConfig.Mode == generator.ProbeModeNodeIP {
+		return NewNodeTableFromJobResults(resources, jobresults)
+	} else {
+		return NewPodTableFromJobResults(resources, jobresults)
+	}
 }
 
 func (p *Runner) runProbe(jobs *Jobs) []*JobResult {
+	logrus.Debugf("running probe for job %+v", jobs)
 	resultSlice := p.JobRunner.RunJobs(jobs.Valid)
+
+	for _, res := range resultSlice {
+		logrus.Debugf("resultslice combined: %+v, ingress: %+v, egress %+v", res.Combined, res.Ingress, res.Egress)
+	}
 
 	invalidPP := ConnectivityInvalidPortProtocol
 	unknown := ConnectivityUnknown
@@ -100,6 +113,7 @@ type KubeJobRunner struct {
 }
 
 func (k *KubeJobRunner) RunJobs(jobs []*Job) []*JobResult {
+	logrus.Debugf("run job single with %+v", jobs)
 	size := len(jobs)
 	jobsChan := make(chan *Job, size)
 	resultsChan := make(chan *JobResult, size)
@@ -123,7 +137,9 @@ func (k *KubeJobRunner) RunJobs(jobs []*Job) []*JobResult {
 // probeWorker continues polling a pod connectivity status, until the incoming "jobs" channel is closed, and writes results back out to the "results" channel.
 // it only writes pass/fail status to a channel and has no failure side effects, this is by design since we do not want to fail inside a goroutine.
 func (k *KubeJobRunner) worker(jobs <-chan *Job, results chan<- *JobResult) {
+	logrus.Debugf("running probe worker")
 	for job := range jobs {
+		logrus.Debugf("probing connectivity for job %+v", job)
 		connectivity, _ := probeConnectivity(k.Kubernetes, job)
 		results <- &JobResult{
 			Job:      job,
@@ -134,14 +150,15 @@ func (k *KubeJobRunner) worker(jobs <-chan *Job, results chan<- *JobResult) {
 
 func probeConnectivity(k8s kube.IKubernetes, job *Job) (Connectivity, string) {
 	commandDebugString := strings.Join(job.KubeExecCommand(), " ")
+	logrus.Debugf("probe connectivity")
 	stdout, stderr, commandErr, err := k8s.ExecuteRemoteCommand(job.FromNamespace, job.FromPod, job.FromContainer, job.ClientCommand())
-	logrus.Debugf("stdout, stderr from %s: \n%s\n%s", commandDebugString, stdout, stderr)
+	logrus.Debugf("stdout, stderr from [%s]: \n%s\n%s", commandDebugString, stdout, stderr)
 	if err != nil {
-		logrus.Errorf("unable to set up command %s: %+v", commandDebugString, err)
+		logrus.Errorf("unable to set up command [%s]: %+v", commandDebugString, err)
 		return ConnectivityCheckFailed, commandDebugString
 	}
 	if commandErr != nil {
-		logrus.Debugf("unable to run command %s: %+v", commandDebugString, commandErr)
+		logrus.Debugf("unable to run command [%s]: %+v", commandDebugString, commandErr)
 		return ConnectivityBlocked, commandDebugString
 	}
 	return ConnectivityAllowed, commandDebugString
@@ -157,6 +174,7 @@ func NewKubeBatchJobRunner(k8s kube.IKubernetes, workers int) *KubeBatchJobRunne
 }
 
 func (k *KubeBatchJobRunner) RunJobs(jobs []*Job) []*JobResult {
+	logrus.Debugf("run job batch")
 	jobMap := map[string]*Job{}
 
 	// 1. batch up jobs

@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"strings"
+
 	"github.com/mattfenwick/cyclonus/pkg/connectivity"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
@@ -11,7 +13,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"strings"
 )
 
 type ProbeArgs struct {

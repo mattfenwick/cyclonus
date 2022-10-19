@@ -20,6 +20,9 @@ const (
 	ActionFeatureCreatePod    = "action: create pod"
 	ActionFeatureSetPodLabels = "action: set pod labels"
 	ActionFeatureDeletePod    = "action: delete pod"
+
+	ActionFeatureCreateService = "action: create service"
+	ActionFeatureDeleteService = "action: delete service"
 )
 
 const (

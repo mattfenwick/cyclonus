@@ -17,11 +17,11 @@ func (t *TestCaseGenerator) LoadBalancerTestCase() []*TestCase {
 			Ports: []v1.ServicePort{
 				{
 					Protocol: v1.ProtocolTCP,
-					Port:     8087,
-					NodePort: 32087,
+					Port:     81,
+					NodePort: 32086,
 				},
 			},
-			Selector: map[string]string{"app": "toolbox"},
+			Selector: map[string]string{"pod": "a"},
 		},
 	}
 	probe := &ProbeConfig{
@@ -33,8 +33,9 @@ func (t *TestCaseGenerator) LoadBalancerTestCase() []*TestCase {
 		Mode: ProbeModeNodeIP,
 	}
 	return []*TestCase{
-		NewTestCase("should allow ingress access on one named port",
+		NewTestCase("should allow access to nodeport with no netpols applied",
 			NewStringSet(TagLoadBalancer),
-			NewTestStep(probe, CreateService(svc))),
+			NewTestStep(probe,
+				CreateService(svc))),
 	}
 }

@@ -2,6 +2,7 @@ package connectivity
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
@@ -118,6 +119,7 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 			} else if action.DeletePod != nil {
 				err = testCaseState.DeletePod(action.DeletePod.Namespace, action.DeletePod.Pod)
 			} else if action.CreateService != nil {
+				log.Printf("creating service %+v", action.CreateService)
 				err = testCaseState.CreateService(action.CreateService.Service)
 			} else if action.DeleteService != nil {
 				err = testCaseState.DeleteService(action.CreateService.Service)
@@ -152,8 +154,10 @@ func (t *Interpreter) runProbe(testCaseState *TestCaseState, probeConfig *genera
 		parsedPolicy,
 		append([]*networkingv1.NetworkPolicy{}, testCaseState.Policies...)) // this looks weird, but just making a new copy to avoid accidentally mutating it elsewhere
 
+	logrus.Debug("before running kube probe")
 	for i := 0; i <= t.Config.KubeProbeRetries; i++ {
 		logrus.Infof("running kube probe on try %d", i+1)
+		logrus.Debugf("running new kube probe on try %d", i+1)
 		stepResult.AddKubeProbe(t.kubeRunner.RunProbeForConfig(probeConfig, testCaseState.Resources))
 		// no differences between synthetic and kube probes?  then we can stop
 		if stepResult.LastComparison().ValueCounts(t.Config.IgnoreLoopback)[DifferentComparison] == 0 {

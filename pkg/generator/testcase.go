@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
@@ -65,8 +66,12 @@ func (t *TestCase) collectActionsAndPolicies() (map[string]bool, []*networkingv1
 				features[ActionFeatureSetPodLabels] = true
 			} else if action.DeletePod != nil {
 				features[ActionFeatureDeletePod] = true
+			} else if action.CreateService != nil {
+				features[ActionFeatureCreateService] = true
+			} else if action.DeleteService != nil {
+				features[ActionFeatureDeleteService] = true
 			} else {
-				panic("invalid Action")
+				panic(fmt.Sprintf("invalid Action: %v", action))
 			}
 		}
 	}
