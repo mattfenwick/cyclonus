@@ -136,21 +136,21 @@ func CreateService(svc *v1.Service) *Action {
 }
 
 type UpdateServiceAction struct {
-	svc *v1.Service
+	Service *v1.Service
 }
 
 func UpdateService(svc *v1.Service) *Action {
 	return &Action{UpdateService: &UpdateServiceAction{
-		svc: svc,
+		Service: svc,
 	}}
 }
 
 type DeleteServiceAction struct {
-	svc *v1.Service
+	Service *v1.Service
 }
 
 func DeleteService(svc *v1.Service) *Action {
 	return &Action{DeleteService: &DeleteServiceAction{
-		svc: svc,
+		Service: svc,
 	}}
 }

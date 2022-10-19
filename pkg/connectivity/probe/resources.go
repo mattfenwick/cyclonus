@@ -212,7 +212,7 @@ func (r *Resources) CreateService(svc *v1.Service) (*Resources, error) {
 // DeleteNamespace returns a new object without the namespace.  It should not affect the original Resources object.
 func (r *Resources) DeleteService(svc *v1.Service) (*Resources, error) {
 	if _, ok := r.Services[svc.Name]; !ok {
-		return nil, errors.Errorf("service %s not found", svc.Name)
+		return nil, errors.Errorf("service %s/%s not found in test state", svc.Namespace, svc.Name)
 	}
 	newServices := map[string]*v1.Service{}
 	for oldServiceName, oldService := range r.Services {

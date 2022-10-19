@@ -28,33 +28,33 @@ func (j *JobBuilder) GetJobsForProbeConfig(resources *Resources, config *generat
 func (j *JobBuilder) GetJobsForNodeIP(resources *Resources, config *generator.ProbeConfig) *Jobs {
 	jobs := &Jobs{}
 	logrus.Debugf("getting jobs for node ip %v", config)
-	podFrom := &Pod{
-		Namespace: "x",
-		Name:      "a",
-		Containers: []*Container{
-			{Name: "cont-80-tcp"},
-		},
+
+	for _, podFrom := range resources.Pods {
+		for _, node := range resources.Nodes {
+			job := &Job{
+				FromKey:             podFrom.PodString().String(),
+				FromNamespace:       podFrom.Namespace,
+				FromNamespaceLabels: resources.Namespaces[podFrom.Namespace],
+				FromPod:             podFrom.Name,
+				FromPodLabels:       podFrom.Labels,
+				FromContainer:       podFrom.Containers[0].Name,
+				FromIP:              podFrom.IP,
+				ToKey:               node.Name,
+				ToHost:              node.IP,
+				ToNamespace:         "node",
+				ToNamespaceLabels:   map[string]string{},
+				ToPodLabels:         map[string]string{},
+				ToIP:                node.IP,
+				ResolvedPort:        config.PortProtocol.Port.IntValue(),
+				ResolvedPortName:    "Custom",
+				Protocol:            config.PortProtocol.Protocol,
+				TimeoutSeconds:      j.TimeoutSeconds,
+			}
+			jobs.Valid = append(jobs.Valid, job)
+			
+		}
 	}
-	job := &Job{
-		FromKey:             podFrom.PodString().String(),
-		FromNamespace:       podFrom.Namespace,
-		FromNamespaceLabels: resources.Namespaces[podFrom.Namespace],
-		FromPod:             podFrom.Name,
-		FromPodLabels:       podFrom.Labels,
-		FromContainer:       podFrom.Containers[0].Name,
-		FromIP:              podFrom.IP,
-		ToKey:               "aks-nodepool1-12881656-vmss000000",
-		ToHost:              "10.240.0.4",
-		ToNamespace:         "node",
-		ToNamespaceLabels:   map[string]string{},
-		ToPodLabels:         map[string]string{},
-		ToIP:                "10.240.0.4",
-		ResolvedPort:        config.PortProtocol.Port.IntValue(),
-		ResolvedPortName:    "Custom",
-		Protocol:            v1.ProtocolTCP,
-		TimeoutSeconds:      j.TimeoutSeconds,
-	}
-	jobs.Valid = append(jobs.Valid, job)
+
 	return jobs
 }
 
