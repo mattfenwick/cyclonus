@@ -1,5 +1,0 @@
-make --dry-run --always-make --keep-going --print-directory
-make: Entering directory '/home/matmerr/go/src/github.com/mattfenwick/cyclonus'
-go test ./pkg/...
-make: Leaving directory '/home/matmerr/go/src/github.com/mattfenwick/cyclonus'
- 
