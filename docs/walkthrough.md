@@ -114,13 +114,11 @@ Key types:
  - TruthTable
 
 
-# CLI usage
+# Using Cyclonus
 
-[`cyclonus analyze`](./command-analyze.md): leverage executable network policy specification
+[CLI usage](../README.md#cli-usage)
 
-[`cyclonus generate`](./command-generate.md): CNI network policy conformance test suite
-
-[`cyclonus probe`](./command-probe.md): run a custom network policy test 
+[Examples](../examples/run.sh)
 
 # Next steps
 

@@ -14,11 +14,11 @@ Users: check out the:
 
 Developers: check out the [Developer guide](./docs/developer-guide.md)
 
-Cyclonus subcommands:
+### CLI usage
 
- - `cyclonus probe`: [run a single network policy test on a cluster](./docs/command-probe.md)
+ - `cyclonus analyze`: [leverage network policy engine to precisely understand your policies](./docs/command-analyze.md)
  - `cyclonus generate`: [run network policy conformance test suites on a cluster](./docs/command-generate.md)
- - `cyclonus analyze`: [analyze network policies](./docs/command-analyze.md)
+ - `cyclonus probe`: [run a single network policy test on a cluster](./docs/command-probe.md)
 
 
 ## Cyclonus disambiguation
