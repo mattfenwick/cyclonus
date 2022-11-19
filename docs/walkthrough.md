@@ -118,7 +118,28 @@ Key types:
 
 [CLI usage](../README.md#cli-usage)
 
-[Examples](../examples/run.sh)
+Examples:
+ - [`cyclonus analyze`](../examples/run.sh)
+ - `cyclonus probe`:
+
+   ```bash
+   go run cmd/cyclonus/main.go probe \
+     --server-protocol=tcp \
+     --server-port=80
+   ```
+
+ - `cyclonus generate`:
+   
+   ```bash
+   go run cmd/cyclonus/main.go generate \
+     --include conflict \
+     --job-timeout-seconds 2 \
+     --ignore-loopback=true \
+     --server-protocol=tcp \
+     --server-port=80 \
+     --mock \
+     --perturbation-wait-seconds=0
+   ```
 
 # Next steps
 
