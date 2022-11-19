@@ -48,8 +48,9 @@ Testing network policies for CNI providers on Kubernetes has historically been v
 requiring a lot of boilerplate.
 
 This was recently improved upstream via truth table based tests:
- - [see KEP](https://github.com/kubernetes/enhancements/tree/master/keps/sig-network/1611-network-policy-validation)
- - [see Kubernetes PR](https://github.com/kubernetes/kubernetes/pull/91592)
+
+ - KEP: ["Architecting NetworkPolicy tests with a DSL for better upstream test coverage of all CNIs"](https://github.com/kubernetes/enhancements/tree/master/keps/sig-network/1611-network-policy-validation)
+ - kubernetes PR: ["new NetworkPolicy Validation suite"](https://github.com/kubernetes/kubernetes/pull/91592)
 
 Cyclonus is the next evolution: in addition to truth-table connectivity tests, it adds two new components:
  - a powerful network policy engine implementing the Kubernetes network policy specification
