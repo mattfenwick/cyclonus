@@ -501,7 +501,7 @@ Expected egress:
 +---------+-------------+-------------+-------------+-------------+-------------+-------------+-------------+-------------+-------------+
 ```
 
-### Piece 5: expect combined connectivity
+### Piece 5: expected combined connectivity
 
 The third additional piece of data is the expected **combined** connectivity -- taking into account both ingress and egress
 expected connectivity.

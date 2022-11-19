@@ -7,16 +7,18 @@ policies that suit your needs!
 
 ## Quickstart
 
-Users: check out our [Quickstart guide](./docs/quickstart.md)
+Users: check out the:
 
-Developers: check out our [Developer guide](./docs/developer-guide.md)
-
-Cyclonus functionality:
-
- - [run a single network policy test on a cluster](./docs/probe.md)
- - [run network policy conformance tests on a cluster](./docs/generator.md)
+ - [Quickstart guide](./docs/quickstart.md)
  - [understand test runs](./docs/test-runs.md)
- - [analyze network policies](./docs/analyze.md)
+
+Developers: check out the [Developer guide](./docs/developer-guide.md)
+
+Cyclonus subcommands:
+
+ - `cyclonus probe`: [run a single network policy test on a cluster](./docs/command-probe.md)
+ - `cyclonus generate`: [run network policy conformance test suites on a cluster](./docs/command-generate.md)
+ - `cyclonus analyze`: [analyze network policies](./docs/command-analyze.md)
 
 
 ## Integrations
@@ -36,11 +38,18 @@ Cyclonus is available as a [**krew/kubectl plugin**](https://github.com/mattfenw
 
 ## Motivation and History
 
-Testing network policies for CNI providers on Kubernetes has historically been very difficult, requiring a lot of boiler plate.
-This was recently improved upstream via truth table based tests 
-([see KEP](https://github.com/kubernetes/enhancements/tree/master/keps/sig-network/1611-network-policy-validation)).
-Cyclonus is the next evolution of the truth table tests which are part of upstream Kubernetes.
-Cyclonus generates hundreds of network policies, their connectivity tables, and outputs results in the same, easy to read format.
+Testing network policies for CNI providers on Kubernetes has historically been very difficult,
+requiring a lot of boilerplate.
+
+This was recently improved upstream via truth table based tests:
+ - [see KEP](https://github.com/kubernetes/enhancements/tree/master/keps/sig-network/1611-network-policy-validation)
+ - [see Kubernetes PR](https://github.com/kubernetes/kubernetes/pull/91592)
+
+Cyclonus is the next evolution: in addition to truth-table connectivity tests, it adds two new components:
+ - a powerful network policy engine implementing the Kubernetes network policy specification
+ - a test case generator, allowing for easy testing of hundreds of network policy scenarios
+
+Cyclonus aims to make network policies and implementations easy to understand, easy to use correctly, and easy to verify.
 
 ## Thanks to contributors
 
