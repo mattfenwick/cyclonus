@@ -17,9 +17,9 @@ Example of subtle/confusing policies:
 
 # Cyclonus secret sauce
 
-Visualization of a network policy's meaning -- TODO explain
+Visualization of a network policy's meaning: [truth tables](./test-runs.md)
 
-Network policy engine: executable network policy specification -- TODO explain
+Network policy engine: executable network policy specification
 
 # Code walkthrough
 
