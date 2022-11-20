@@ -33,9 +33,11 @@ Example of subtle/confusing policies:
 
 # Cyclonus secret sauce
 
-Visualization of a network policy's meaning: [connectivity truth tables](https://kubernetes.io/blog/2021/04/20/defining-networkpolicy-conformance-cni-providers/#the-first-step-a-validation-framework-for-networkpolicies-that-was-intuitive-to-use-and-understand)
+Visualization of a network policy's meaning: [connectivity truth tables](https://kubernetes.io/blog/2021/04/20/defining-networkpolicy-conformance-cni-providers/#the-first-step-a-validation-framework-for-networkpolicies-that-was-intuitive-to-use-and-understand).
 
-Network policy engine: executable network policy specification
+Network policy engine: executable network policy specification.
+
+Generation of network policy conformance suites.
 
 
 # Using Cyclonus
