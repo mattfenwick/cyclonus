@@ -17,9 +17,38 @@ Example of subtle/confusing policies:
 
 # Cyclonus secret sauce
 
-Visualization of a network policy's meaning: [truth tables](./test-runs.md)
+Visualization of a network policy's meaning: [connectivity truth tables](https://kubernetes.io/blog/2021/04/20/defining-networkpolicy-conformance-cni-providers/#the-first-step-a-validation-framework-for-networkpolicies-that-was-intuitive-to-use-and-understand)
 
 Network policy engine: executable network policy specification
+
+
+# Using Cyclonus
+
+[CLI usage](../README.md#cli-usage)
+
+Examples:
+- [`cyclonus analyze`](../examples/run.sh)
+- `cyclonus probe`:
+
+  ```bash
+  go run cmd/cyclonus/main.go probe \
+    --server-protocol=tcp \
+    --server-port=80
+  ```
+
+- `cyclonus generate` -- see [Understanding Cyclonus test runs](./test-runs.md):
+
+  ```bash
+  go run cmd/cyclonus/main.go generate \
+    --include conflict \
+    --job-timeout-seconds 2 \
+    --ignore-loopback=true \
+    --server-protocol=tcp \
+    --server-port=80 \
+    --mock \
+    --perturbation-wait-seconds=0
+  ```
+
 
 # Code walkthrough
 
@@ -114,34 +143,7 @@ Key types:
  - TruthTable
 
 
-# Using Cyclonus
-
-[CLI usage](../README.md#cli-usage)
-
-Examples:
- - [`cyclonus analyze`](../examples/run.sh)
- - `cyclonus probe`:
-
-   ```bash
-   go run cmd/cyclonus/main.go probe \
-     --server-protocol=tcp \
-     --server-port=80
-   ```
-
- - `cyclonus generate`:
-   
-   ```bash
-   go run cmd/cyclonus/main.go generate \
-     --include conflict \
-     --job-timeout-seconds 2 \
-     --ignore-loopback=true \
-     --server-protocol=tcp \
-     --server-port=80 \
-     --mock \
-     --perturbation-wait-seconds=0
-   ```
-
-# Next steps
+# Future of Cyclonus
 
 Work with community to build out Cyclonus functionality and evolve in tandem with kubernetes network policy:
 https://github.com/kubernetes-sigs/network-policy-api/tree/master/cmd/cyclonus .
