@@ -132,8 +132,8 @@ Goals:
 How is a test case executed?
  1. blank slate; collect connectivity table
  2. for each (1+) perturbation:
-   - update cluster state
-   - collect connectivity data
+     - update cluster state
+     - collect connectivity data
 
 Key types:
  - ComparisonTable
