@@ -1,4 +1,20 @@
-# Cyclonus: kubernetes network policy spec and CNI conformance
+# Table of Contents
+
+- [Cyclonus: kubernetes network policy engine and CNI conformance](#cyclonus-kubernetes-network-policy-engine-and-cni-conformance)
+- [Why Cyclonus?](#why-cyclonus)
+- [Cyclonus secret sauce](#cyclonus-secret-sauce)
+- [Using Cyclonus](#using-cyclonus)
+- [Code walkthrough](#code-walkthrough)
+   * [Network policy engine](#network-policy-engine)
+   * [Kubernetes wrapper and mock](#kubernetes-wrapper-and-mock)
+   * [Network policy test scenario generator](#network-policy-test-scenario-generator)
+   * [Connectivity test](#connectivity-test)
+      + [Connectivity test: data collection](#connectivity-test-data-collection)
+- [Future of Cyclonus](#future-of-cyclonus)
+- [Acknowledgements](#acknowledgements)
+
+
+# Cyclonus: kubernetes network policy engine and CNI conformance
 
 Cyclonus is a kubernetes network policy tool which can:
 
