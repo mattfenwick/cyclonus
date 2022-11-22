@@ -161,7 +161,7 @@ func ExplainPolicies(explainedPolicies *matcher.Policy) {
 }
 
 func Lint(kubePolicies []*networkingv1.NetworkPolicy) {
-	warnings := linter.Lint(kubePolicies, set.NewSet[linter.Check](nil))
+	warnings := linter.Lint(kubePolicies, set.FromSlice[linter.Check](nil))
 	fmt.Println(linter.WarningsTable(warnings))
 }
 
