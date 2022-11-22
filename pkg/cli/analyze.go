@@ -166,7 +166,8 @@ func Lint(kubePolicies []*networkingv1.NetworkPolicy) {
 }
 
 // QueryTargetPod matches targets; targets exist in only a single namespace and can't be matched by namespace
-//   label, therefore we match by exact namespace and by pod labels.
+//
+//	label, therefore we match by exact namespace and by pod labels.
 type QueryTargetPod struct {
 	Namespace string
 	Labels    map[string]string
