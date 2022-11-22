@@ -27,8 +27,8 @@ pushd "$CNI"
 popd
 
 # preload agnhost image
-docker pull k8s.gcr.io/e2e-test-images/agnhost:2.36
-kind load docker-image k8s.gcr.io/e2e-test-images/agnhost:2.36 --name "$CLUSTER_NAME"
+docker pull k8s.gcr.io/e2e-test-images/agnhost:2.43
+kind load docker-image k8s.gcr.io/e2e-test-images/agnhost:2.43 --name "$CLUSTER_NAME"
 
 # make sure that the new kind cluster is the current kubectl context
 kind get clusters
