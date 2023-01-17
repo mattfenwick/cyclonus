@@ -20,7 +20,7 @@ func RunTestCaseGeneratorTests() {
 			Expect(len(gen.ConflictTestCases())).To(Equal(16))
 			Expect(len(gen.NamespaceTestCases())).To(Equal(2))
 
-			Expect(len(gen.GenerateTestCases())).To(Equal(230))
+			Expect(len(gen.GenerateTestCases())).To(Equal(232))
 		})
 	})
 }

@@ -8,7 +8,6 @@ import (
 )
 
 func (t *TestCaseGenerator) LoadBalancerTestCase() []*TestCase {
-	// TODO: simplify this struct passed to CreateService
 	svc1 := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-service-name",
@@ -51,7 +50,7 @@ func (t *TestCaseGenerator) LoadBalancerTestCase() []*TestCase {
 		NewTestCase("should allow access to nodeport with no netpols applied",
 			NewStringSet(TagLoadBalancer),
 			NewTestStep(probe,
-				CreateService(svc1), // TODO: add service reset, without removing core test services
+				CreateService(svc1),
 			),
 		),
 		NewTestCase("should deny access to nodeport with netpols applied",

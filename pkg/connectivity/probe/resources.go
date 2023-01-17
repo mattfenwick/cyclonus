@@ -198,7 +198,7 @@ func (r *Resources) CreateService(svc *v1.Service) (*Resources, error) {
 	}
 	newServices := map[string]*v1.Service{}
 	for oldServiceName, oldService := range r.Services {
-		newServices[oldServiceName] = oldService // TODO: service type is pointer, duplicate resource type needs to be deep copied, just following paradigm for now
+		newServices[oldServiceName] = oldService // Note: service type is pointer, duplicate resource type needs to be deep copied
 	}
 	newServices[svc.Name] = svc
 	return &Resources{
