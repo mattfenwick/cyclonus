@@ -2,6 +2,8 @@ package connectivity
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
@@ -9,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	networkingv1 "k8s.io/api/networking/v1"
-	"time"
 )
 
 const (
@@ -27,6 +28,7 @@ type InterpreterConfig struct {
 	BatchJobs                        bool
 	IgnoreLoopback                   bool
 	JobTimeoutSeconds                int
+	FailFast                         bool
 }
 
 func (i *InterpreterConfig) PerturbationWaitDuration() time.Duration {
@@ -128,7 +130,12 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 		logrus.Infof("step %d: waiting %d seconds for perturbation to take effect", stepIndex+1, t.Config.PerturbationWaitSeconds)
 		time.Sleep(t.Config.PerturbationWaitDuration())
 
-		result.Steps = append(result.Steps, t.runProbe(testCaseState, step.Probe))
+		stepResult := t.runProbe(testCaseState, step.Probe)
+		result.Steps = append(result.Steps, stepResult)
+
+		if t.Config.FailFast && !stepResult.Passed(t.Config.IgnoreLoopback) {
+			break
+		}
 	}
 
 	return result
@@ -151,7 +158,7 @@ func (t *Interpreter) runProbe(testCaseState *TestCaseState, probeConfig *genera
 		logrus.Infof("running kube probe on try %d", i+1)
 		stepResult.AddKubeProbe(t.kubeRunner.RunProbeForConfig(probeConfig, testCaseState.Resources))
 		// no differences between synthetic and kube probes?  then we can stop
-		if stepResult.LastComparison().ValueCounts(t.Config.IgnoreLoopback)[DifferentComparison] == 0 {
+		if stepResult.Passed(t.Config.IgnoreLoopback) {
 			break
 		}
 	}

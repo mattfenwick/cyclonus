@@ -35,6 +35,7 @@ type GenerateArgs struct {
 	ServerNamespaces          []string
 	ServerPods                []string
 	CleanupNamespaces         bool
+	FailFast                  bool
 	Include                   []string
 	Exclude                   []string
 	DestinationType           string
@@ -72,6 +73,7 @@ func SetupGenerateCommand() *cobra.Command {
 	command.Flags().IntVar(&args.PodCreationTimeoutSeconds, "pod-creation-timeout-seconds", 60, "number of seconds to wait for pods to create, be running and have IP addresses")
 	command.Flags().StringVar(&args.Context, "context", "", "kubernetes context to use; if empty, uses default context")
 	command.Flags().BoolVar(&args.CleanupNamespaces, "cleanup-namespaces", false, "if true, clean up namespaces after completion")
+	command.Flags().BoolVar(&args.FailFast, "fail-fast", false, "if true, stop running tests after the first failure")
 	command.Flags().StringVar(&args.DestinationType, "destination-type", "", "override to set what to direct requests at; if not specified, the tests will be left as-is; one of "+strings.Join(generator.AllProbeModes, ", "))
 	command.Flags().IntVar(&args.JobTimeoutSeconds, "job-timeout-seconds", 10, "number of seconds to pass on to 'agnhost connect --timeout=%ds' flag")
 
@@ -121,6 +123,7 @@ func RunGenerateCommand(args *GenerateArgs) {
 		BatchJobs:                        batchJobs,
 		IgnoreLoopback:                   args.IgnoreLoopback,
 		JobTimeoutSeconds:                args.JobTimeoutSeconds,
+		FailFast:                         args.FailFast,
 	}
 	interpreter := connectivity.NewInterpreter(kubernetes, resources, interpreterConfig)
 	printer := &connectivity.Printer{
@@ -166,6 +169,11 @@ func RunGenerateCommand(args *GenerateArgs) {
 
 		printer.PrintTestCaseResult(result)
 		fmt.Printf("finished policy #%d\n", i+1)
+
+		if args.FailFast && !result.Passed(interpreter.Config.IgnoreLoopback) {
+			logrus.Warn("failing fast due to failure")
+			break
+		}
 	}
 
 	printer.PrintSummary()
