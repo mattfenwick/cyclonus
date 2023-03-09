@@ -142,7 +142,6 @@ func ParseProbeMode(mode string) (ProbeMode, error) {
 }
 
 // ProbeConfig: exactly one field must be non-null (or, in AllAvailable's case, non-false).  This
-//
 //	models a discriminated union (sum type).
 type ProbeConfig struct {
 	AllAvailable bool

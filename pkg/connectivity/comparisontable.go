@@ -45,10 +45,10 @@ func NewComparisonTable(items []string) *ComparisonTable {
 
 func NewComparisonTableFrom(kubeProbe *probe.Table, simulatedProbe *probe.Table) *ComparisonTable {
 	if kubeProbe == nil {
-		panic("kubeprobe is nil")
+		panic(errors.Errorf("kubeprobe is nil"))
 	}
 	if simulatedProbe == nil {
-		panic("sim probe is nil")
+		panic(errors.Errorf("sim probe is nil"))
 	}
 	if len(kubeProbe.Wrapped.Froms) != len(simulatedProbe.Wrapped.Froms) || len(kubeProbe.Wrapped.Tos) != len(simulatedProbe.Wrapped.Tos) {
 		panic(errors.Errorf("cannot compare tables of different dimensions"))

@@ -2,7 +2,6 @@ package worker
 
 import (
 	"encoding/json"
-	"log"
 	"os/exec"
 
 	"github.com/pkg/errors"
@@ -71,7 +70,6 @@ func IssueRequestWithRetries(r *Request, retries int) *Result {
 
 func IssueRequest(r *Request) *Result {
 	command := r.Command()
-	log.Printf("running command: %v", command)
 	name, args := command[0], command[1:]
 	cmd := exec.Command(name, args...)
 	out, err := cmd.Output()

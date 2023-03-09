@@ -46,6 +46,9 @@ func (t *TestCaseGenerator) LoadBalancerTestCase() []*TestCase {
 		},
 	}
 
+	// these tests cases are currently nonblocking the suite, 
+	// but there is still work needed to measure the success/failure of the 
+	// probe in the node+pod table
 	return []*TestCase{
 		NewTestCase("should allow access to nodeport with no netpols applied",
 			NewStringSet(TagLoadBalancer),

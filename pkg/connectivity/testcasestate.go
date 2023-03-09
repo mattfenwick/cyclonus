@@ -115,13 +115,11 @@ func (t *TestCaseState) CreatePod(ns string, pod string, labels map[string]strin
 	if err != nil {
 		return err
 	}
-	fmt.Println("creating cluster svc")
 	_, err = t.Kubernetes.CreateService(newPod.KubeService())
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("creating lb svc")
 	_, err = t.Kubernetes.CreateService(newPod.KubeServiceLoadBalancer())
 	if err != nil {
 		return err

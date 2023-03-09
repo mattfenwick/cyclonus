@@ -50,6 +50,7 @@ func NewPodTableFromJobResults(resources *Resources, jobResults []*JobResult) *T
 	return table
 }
 
+// Note: The UX here needs some work to accurately portray pod->node matrix
 func NewNodeTableFromJobResults(resources *Resources, jobResults []*JobResult) *Table {
 	res := append(resources.SortedNodeNames(), resources.SortedPodNames()...)
 	logrus.Debugf("merged table %+v", res)
