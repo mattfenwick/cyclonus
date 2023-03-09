@@ -41,3 +41,7 @@ func (s *StepResult) LastComparison() *ComparisonTable {
 func (s *StepResult) LastKubeProbe() *probe.Table {
 	return s.KubeProbes[len(s.KubeProbes)-1]
 }
+
+func (s *StepResult) Passed(ignoreLoopback bool) bool {
+	return s.LastComparison().ValueCounts(ignoreLoopback)[DifferentComparison] == 0
+}

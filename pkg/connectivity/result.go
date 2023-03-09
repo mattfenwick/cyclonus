@@ -32,7 +32,7 @@ func (r *Result) Features() map[string][]string {
 
 func (r *Result) Passed(ignoreLoopback bool) bool {
 	for _, step := range r.Steps {
-		if step.LastComparison().ValueCounts(ignoreLoopback)[DifferentComparison] > 0 {
+		if !step.Passed(ignoreLoopback) {
 			return false
 		}
 	}
