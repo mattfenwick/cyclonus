@@ -161,12 +161,13 @@ func ExplainPolicies(explainedPolicies *matcher.Policy) {
 }
 
 func Lint(kubePolicies []*networkingv1.NetworkPolicy) {
-	warnings := linter.Lint(kubePolicies, set.NewSet[linter.Check](nil))
+	warnings := linter.Lint(kubePolicies, set.FromSlice[linter.Check](nil))
 	fmt.Println(linter.WarningsTable(warnings))
 }
 
 // QueryTargetPod matches targets; targets exist in only a single namespace and can't be matched by namespace
-//   label, therefore we match by exact namespace and by pod labels.
+//
+//	label, therefore we match by exact namespace and by pod labels.
 type QueryTargetPod struct {
 	Namespace string
 	Labels    map[string]string

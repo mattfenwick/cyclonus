@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	agnhostImage        = "k8s.gcr.io/e2e-test-images/agnhost:2.36"
+	agnhostImage        = "k8s.gcr.io/e2e-test-images/agnhost:2.43"
 	cyclonusWorkerImage = "mfenwick100/cyclonus-worker:latest"
 )
 

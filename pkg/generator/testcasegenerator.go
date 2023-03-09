@@ -35,6 +35,7 @@ Test cases:
 1 policy with both ingress and egress
 2 policies with both ingress and egress
 */
+
 type TestCaseGenerator struct {
 	PodIP        string
 	AllowDNS     bool
