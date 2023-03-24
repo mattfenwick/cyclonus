@@ -1,11 +1,13 @@
 package probe
 
 import (
+	"strings"
+
 	"github.com/mattfenwick/collections/pkg/slice"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/maps"
-	"strings"
 )
 
 type Item struct {
@@ -36,8 +38,23 @@ func NewTable(items []string) *Table {
 	})}
 }
 
-func NewTableFromJobResults(resources *Resources, jobResults []*JobResult) *Table {
+func NewPodTableFromJobResults(resources *Resources, jobResults []*JobResult) *Table {
 	table := NewTable(resources.SortedPodNames())
+	for _, result := range jobResults {
+		fr := result.Job.FromKey
+		to := result.Job.ToKey
+		pp := table.Get(fr, to)
+		// this really shouldn't happen, so let's not recover from it
+		utils.DoOrDie(pp.AddJobResult(result))
+	}
+	return table
+}
+
+// Note: The UX here needs some work to accurately portray pod->node matrix
+func NewNodeTableFromJobResults(resources *Resources, jobResults []*JobResult) *Table {
+	res := append(resources.SortedNodeNames(), resources.SortedPodNames()...)
+	logrus.Debugf("merged table %+v", res)
+	table := NewTable(res)
 	for _, result := range jobResults {
 		fr := result.Job.FromKey
 		to := result.Job.ToKey

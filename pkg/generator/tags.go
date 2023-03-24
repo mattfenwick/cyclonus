@@ -1,11 +1,12 @@
 package generator
 
 import (
+	"sort"
+	"strings"
+
 	"github.com/mattfenwick/collections/pkg/slice"
 	"github.com/pkg/errors"
 	"golang.org/x/exp/maps"
-	"sort"
-	"strings"
 )
 
 const (
@@ -84,6 +85,7 @@ const (
 	TagConflict     = "conflict"
 	TagExample      = "example"
 	TagUpstreamE2E  = "upstream-e2e"
+	TagLoadBalancer = "loadbalancer"
 )
 
 var AllTags = map[string][]string{
@@ -143,6 +145,7 @@ var AllTags = map[string][]string{
 		TagConflict,
 		TagExample,
 		TagUpstreamE2E,
+		TagLoadBalancer,
 	},
 }
 

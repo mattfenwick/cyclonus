@@ -2,13 +2,14 @@ package probe
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/mattfenwick/collections/pkg/slice"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"strings"
 )
 
 const (
@@ -48,6 +49,7 @@ type Pod struct {
 	Labels     map[string]string
 	ServiceIP  string
 	IP         string
+	NodeIP     string
 	Containers []*Container
 }
 
@@ -59,6 +61,8 @@ func (p *Pod) Host(probeMode generator.ProbeMode) string {
 		return p.IP
 	case generator.ProbeModeServiceIP:
 		return p.ServiceIP
+	case generator.ProbeModeNodeIP:
+		return p.NodeIP
 	default:
 		panic(errors.Errorf("invalid mode %s", probeMode))
 	}
@@ -89,6 +93,10 @@ func (p *Pod) ServiceName() string {
 	return fmt.Sprintf("s-%s-%s", p.Namespace, p.Name)
 }
 
+func (p *Pod) ServiceNameLoadBalancer() string {
+	return fmt.Sprintf("s-%s-%s-lb", p.Namespace, p.Name)
+}
+
 func (p *Pod) KubePod() *v1.Pod {
 	zero := int64(0)
 	return &v1.Pod{
@@ -113,6 +121,22 @@ func (p *Pod) KubeService() *v1.Service {
 		Spec: v1.ServiceSpec{
 			Ports:    slice.Map(func(cont *Container) v1.ServicePort { return cont.KubeServicePort() }, p.Containers),
 			Selector: p.Labels,
+		},
+	}
+}
+
+func (p *Pod) KubeServiceLoadBalancer() *v1.Service {
+	ports := slice.Map(func(cont *Container) v1.ServicePort { return cont.KubeServicePort() }, p.Containers)
+	tcpPorts := slice.Filter(func(port v1.ServicePort) bool { return port.Protocol == v1.ProtocolTCP }, ports)
+	return &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      p.ServiceNameLoadBalancer(),
+			Namespace: p.Namespace,
+		},
+		Spec: v1.ServiceSpec{
+			Ports:    tcpPorts,
+			Selector: p.Labels,
+			Type:     v1.ServiceTypeLoadBalancer,
 		},
 	}
 }
@@ -184,6 +208,15 @@ func (c *Container) KubeServicePort() v1.ServicePort {
 	return v1.ServicePort{
 		Name:     fmt.Sprintf("service-port-%s-%d", strings.ToLower(string(c.Protocol)), c.Port),
 		Protocol: c.Protocol,
+		Port:     int32(c.Port),
+	}
+}
+
+// when using load balancer types, cannot contain more than 1 protocol
+func (c *Container) KubeServicePortTCP() v1.ServicePort {
+	return v1.ServicePort{
+		Name:     fmt.Sprintf("service-port-%s-%d", strings.ToLower(string(v1.ProtocolTCP)), c.Port),
+		Protocol: v1.ProtocolTCP,
 		Port:     int32(c.Port),
 	}
 }

@@ -2,9 +2,10 @@ package worker
 
 import (
 	"encoding/json"
+	"os/exec"
+
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
-	"os/exec"
 )
 
 var (

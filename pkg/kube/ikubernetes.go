@@ -2,12 +2,13 @@ package kube
 
 import (
 	"fmt"
+	"math/rand"
+
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"math/rand"
 )
 
 type IKubernetes interface {
@@ -33,6 +34,8 @@ type IKubernetes interface {
 	DeletePod(namespace string, pod string) error
 	SetPodLabels(namespace string, pod string, labels map[string]string) (*v1.Pod, error)
 	GetPodsInNamespace(namespace string) ([]v1.Pod, error)
+
+	GetNodes() (*v1.NodeList, error)
 
 	ExecuteRemoteCommand(namespace string, pod string, container string, command []string) (string, string, error, error)
 }
@@ -102,6 +105,10 @@ func NewMockKubernetes(passRate float64) *MockKubernetes {
 		passRate:   passRate,
 		podID:      1,
 	}
+}
+
+func (m *MockKubernetes) GetNodes() (*v1.NodeList, error) {
+	return nil, errors.New("not implemented")
 }
 
 func (m *MockKubernetes) getNamespaceObject(namespace string) (*MockNamespace, error) {

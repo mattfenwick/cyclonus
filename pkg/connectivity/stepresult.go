@@ -3,6 +3,7 @@ package connectivity
 import (
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
+	"github.com/sirupsen/logrus"
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
@@ -29,6 +30,7 @@ func (s *StepResult) AddKubeProbe(kubeProbe *probe.Table) {
 
 func (s *StepResult) Comparison(i int) *ComparisonTable {
 	if s.comparisons[i] == nil {
+		logrus.Debugf("comparing i [%d] in kubeprobes %+v", i, s.KubeProbes)
 		s.comparisons[i] = NewComparisonTableFrom(s.KubeProbes[i], s.SimulatedProbe)
 	}
 	return s.comparisons[i]

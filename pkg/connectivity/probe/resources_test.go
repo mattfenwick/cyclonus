@@ -3,6 +3,7 @@ package probe
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	v1 "k8s.io/api/core/v1"
 )
 
 func RunResourcesTests() {
@@ -48,6 +49,18 @@ func RunResourcesTests() {
 
 			Expect(r.Pods[0].Labels).To(Equal(labels))
 			Expect(r2.Pods[0].Labels).To(Equal(map[string]string{}))
+		})
+
+		It("Should create a service nondestructively", func() {
+			r := &Resources{
+				Services: make(map[string]*v1.Service),
+			}
+			svc := v1.Service{}
+			r2, err := r.CreateService(&svc)
+			Expect(err).To(Succeed())
+
+			Expect(r.Services).To(HaveLen(0))
+			Expect(r2.Services).To(HaveLen(1))
 		})
 	})
 }

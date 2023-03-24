@@ -118,6 +118,10 @@ func (t *Interpreter) ExecuteTestCase(testCase *generator.TestCase) *Result {
 				err = testCaseState.SetPodLabels(ns, pod, labels)
 			} else if action.DeletePod != nil {
 				err = testCaseState.DeletePod(action.DeletePod.Namespace, action.DeletePod.Pod)
+			} else if action.CreateService != nil {
+				err = testCaseState.CreateService(action.CreateService.Service)
+			} else if action.DeleteService != nil {
+				err = testCaseState.DeleteService(action.DeleteService.Service)
 			} else {
 				err = errors.Errorf("invalid Action at step %d, action %d", stepIndex, actionIndex)
 			}

@@ -72,7 +72,8 @@ func (t *TestCaseGenerator) GenerateAllTestCases() []*TestCase {
 		t.ActionTestCases(),
 		t.ConflictTestCases(),
 		t.NamespaceTestCases(),
-		t.UpstreamE2ETestCases())
+		t.UpstreamE2ETestCases(),
+		t.LoadBalancerTestCase())
 }
 
 func (t *TestCaseGenerator) GenerateTestCases() []*TestCase {

@@ -1,6 +1,9 @@
 package generator
 
-import networkingv1 "k8s.io/api/networking/v1"
+import (
+	v1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+)
 
 // Action models a sum type (discriminated union): exactly one field must be non-null.
 type Action struct {
@@ -17,6 +20,10 @@ type Action struct {
 	CreatePod    *CreatePodAction
 	SetPodLabels *SetPodLabelsAction
 	DeletePod    *DeletePodAction
+
+	CreateService *CreateServiceAction
+	UpdateService *UpdateServiceAction
+	DeleteService *DeleteServiceAction
 }
 
 type CreatePolicyAction struct {
@@ -115,5 +122,35 @@ func DeletePod(namespace string, pod string) *Action {
 	return &Action{DeletePod: &DeletePodAction{
 		Namespace: namespace,
 		Pod:       pod,
+	}}
+}
+
+type CreateServiceAction struct {
+	Service *v1.Service
+}
+
+func CreateService(svc *v1.Service) *Action {
+	return &Action{CreateService: &CreateServiceAction{
+		Service: svc,
+	}}
+}
+
+type UpdateServiceAction struct {
+	Service *v1.Service
+}
+
+func UpdateService(svc *v1.Service) *Action {
+	return &Action{UpdateService: &UpdateServiceAction{
+		Service: svc,
+	}}
+}
+
+type DeleteServiceAction struct {
+	Service *v1.Service
+}
+
+func DeleteService(svc *v1.Service) *Action {
+	return &Action{DeleteService: &DeleteServiceAction{
+		Service: svc,
 	}}
 }

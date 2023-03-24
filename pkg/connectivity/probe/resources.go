@@ -1,6 +1,8 @@
 package probe
 
 import (
+	"time"
+
 	"github.com/mattfenwick/collections/pkg/slice"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
@@ -8,12 +10,13 @@ import (
 	"golang.org/x/exp/maps"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"time"
 )
 
 type Resources struct {
 	Namespaces map[string]map[string]string
 	Pods       []*Pod
+	Nodes      []*Node
+	Services   map[string]*v1.Service
 	//ExternalIPs []string
 }
 
@@ -22,6 +25,8 @@ func NewDefaultResources(kubernetes kube.IKubernetes, namespaces []string, podNa
 
 	r := &Resources{
 		Namespaces: map[string]map[string]string{},
+		Services:   make(map[string]*v1.Service),
+
 		//ExternalIPs: externalIPs,
 	}
 
@@ -139,6 +144,7 @@ func (r *Resources) CreateNamespace(ns string, labels map[string]string) (*Resou
 	return &Resources{
 		Namespaces: newNamespaces,
 		Pods:       r.Pods,
+		Nodes:      r.Nodes,
 	}, nil
 }
 
@@ -155,6 +161,7 @@ func (r *Resources) UpdateNamespaceLabels(ns string, labels map[string]string) (
 	return &Resources{
 		Namespaces: newNamespaces,
 		Pods:       r.Pods,
+		Nodes:      r.Nodes,
 	}, nil
 }
 
@@ -180,7 +187,55 @@ func (r *Resources) DeleteNamespace(ns string) (*Resources, error) {
 	return &Resources{
 		Namespaces: newNamespaces,
 		Pods:       pods,
+		Nodes:      r.Nodes,
 	}, nil
+}
+
+// CreateServce returns a new object with a new namespace.  It should not affect the original Resources object.
+func (r *Resources) CreateService(svc *v1.Service) (*Resources, error) {
+	if _, ok := r.Services[svc.Name]; ok {
+		return nil, errors.Errorf("service %s already found", svc.Name)
+	}
+	newServices := map[string]*v1.Service{}
+	for oldServiceName, oldService := range r.Services {
+		newServices[oldServiceName] = oldService // Note: service type is pointer, duplicate resource type needs to be deep copied
+	}
+	newServices[svc.Name] = svc
+	return &Resources{
+		Services:   newServices,
+		Pods:       r.Pods,
+		Nodes:      r.Nodes,
+		Namespaces: r.Namespaces,
+	}, nil
+}
+
+// DeleteNamespace returns a new object without the namespace.  It should not affect the original Resources object.
+func (r *Resources) DeleteService(svc *v1.Service) (*Resources, error) {
+	if _, ok := r.Services[svc.Name]; !ok {
+		return nil, errors.Errorf("service %s/%s not found in test state", svc.Namespace, svc.Name)
+	}
+	newServices := map[string]*v1.Service{}
+	for oldServiceName, oldService := range r.Services {
+		if oldServiceName != svc.Name {
+			newServices[oldServiceName] = oldService
+		}
+	}
+
+	return &Resources{
+		Services: newServices,
+	}, nil
+}
+
+func (r *Resources) addNodes(nodes *v1.NodeList) {
+	for _, node := range nodes.Items {
+		nodeips := node.Status.Addresses
+		if len(nodeips) > 0 {
+			logrus.Debugf("loading node name %s and ip %+v", node.Name, nodeips[0].Address)
+			r.Nodes = append(r.Nodes, NewNode(node.Name, node.Labels, nodeips[0].Address))
+		} else {
+			logrus.Errorf("node %s has no ip's", node.Name)
+		}
+	}
 }
 
 // CreatePod returns a new object with a new pod.  It should not affect the original Resources object.
@@ -192,6 +247,7 @@ func (r *Resources) CreatePod(ns string, podName string, labels map[string]strin
 	}
 	return &Resources{
 		Namespaces: r.Namespaces,
+		Nodes:      r.Nodes,
 		Pods:       append(append([]*Pod{}, r.Pods...), NewPod(ns, podName, labels, "TODO", r.Pods[0].Containers)),
 		//ExternalIPs: r.ExternalIPs,
 	}, nil
@@ -214,6 +270,7 @@ func (r *Resources) SetPodLabels(ns string, podName string, labels map[string]st
 	}
 	return &Resources{
 		Namespaces: r.Namespaces,
+		Nodes:      r.Nodes,
 		Pods:       pods,
 		//ExternalIPs: r.ExternalIPs,
 	}, nil
@@ -236,6 +293,7 @@ func (r *Resources) DeletePod(ns string, podName string) (*Resources, error) {
 	return &Resources{
 		Namespaces: r.Namespaces,
 		Pods:       newPods,
+		Nodes:      r.Nodes,
 		//ExternalIPs: r.ExternalIPs,
 	}, nil
 }
@@ -244,6 +302,12 @@ func (r *Resources) SortedPodNames() []string {
 	return slice.Sort(slice.Map(
 		func(p *Pod) string { return p.PodString().String() },
 		r.Pods))
+}
+
+func (r *Resources) SortedNodeNames() []string {
+	return slice.Sort(slice.Map(
+		func(n *Node) string { return n.Name },
+		r.Nodes))
 }
 
 func (r *Resources) NamespacesSlice() []string {
@@ -269,15 +333,27 @@ func (r *Resources) CreateResourcesInKube(kubernetes kube.IKubernetes) error {
 			}
 		}
 		kubeService := pod.KubeService()
+		kubeServiceLoadBalancer := pod.KubeServiceLoadBalancer()
 		_, err = kubernetes.GetService(kubeService.Namespace, kubeService.Name)
 		if err != nil {
 			_, err = kubernetes.CreateService(kubeService)
 			if err != nil {
 				return err
 			}
+			_, err = kubernetes.CreateService(kubeServiceLoadBalancer)
+			if err != nil {
+				return err
+			}
 		}
 	}
-	return nil
+
+	nodes, err := kubernetes.GetNodes()
+	if err != nil {
+		return err
+	}
+	r.addNodes(nodes)
+
+	return err
 }
 
 func KubeNamespace(ns string, labels map[string]string) *v1.Namespace {
