@@ -53,6 +53,8 @@ git tag $TAG
 git push origin $TAG
 ```
 
+You'll need to be logged in to dockerhub from the command line, in order to push images: `docker login`
+
 Cut a release:
 
 ```bash
