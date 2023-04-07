@@ -2,9 +2,12 @@ package matcher
 
 import (
 	"encoding/json"
+	"sort"
+
+	collectionsjson "github.com/mattfenwick/collections/pkg/json"
+	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"sort"
 )
 
 type PortMatcher interface {
@@ -100,12 +103,18 @@ func (s *SpecificPortMatcher) MarshalJSON() (b []byte, e error) {
 }
 
 func (s *SpecificPortMatcher) Combine(other *SpecificPortMatcher) *SpecificPortMatcher {
+	logrus.Debugf("SpecificPortMatcher Combined:\n%s\n", collectionsjson.MustMarshalToString([]interface{}{s, other}))
+
 	pps := append([]*PortProtocolMatcher{}, s.Ports...)
 	for _, otherPP := range other.Ports {
+		foundDuplicate := false
 		for _, pp := range pps {
 			if pp.Equals(otherPP) {
+				foundDuplicate = true
 				break
 			}
+		}
+		if !foundDuplicate {
 			pps = append(pps, otherPP)
 		}
 	}
@@ -125,6 +134,8 @@ func (s *SpecificPortMatcher) Combine(other *SpecificPortMatcher) *SpecificPortM
 	// TODO compact port ranges
 	ranges := append(s.PortRanges, other.PortRanges...)
 	// TODO sort port ranges
+
+	logrus.Debugf("ports:\n%s\n", collectionsjson.MustMarshalToString(pps))
 
 	return &SpecificPortMatcher{Ports: pps, PortRanges: ranges}
 }

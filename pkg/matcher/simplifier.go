@@ -1,8 +1,10 @@
 package matcher
 
 import (
+	"github.com/mattfenwick/collections/pkg/json"
 	"github.com/mattfenwick/collections/pkg/slice"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/maps"
 )
 
@@ -35,6 +37,7 @@ func Simplify(matchers []PeerMatcher) []PeerMatcher {
 }
 
 func simplifyPortsForAllPeers(matchers []*PortsForAllPeersMatcher) *PortsForAllPeersMatcher {
+	logrus.Debugf("simplifyPortsForAllPeers:\n%s\n", json.MustMarshalToString(matchers))
 	if len(matchers) == 0 {
 		return nil
 	}
