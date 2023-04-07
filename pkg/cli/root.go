@@ -1,17 +1,18 @@
 package cli
 
 import (
+	"os"
+
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 func RunRootCommand() {
 	command := SetupRootCommand()
 	if err := errors.Wrapf(command.Execute(), "run root command"); err != nil {
-		log.Fatalf("unable to run root command: %+v", err)
+		logrus.Fatalf("unable to run root command: %+v", err)
 		os.Exit(1)
 	}
 }

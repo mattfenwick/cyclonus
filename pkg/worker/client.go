@@ -2,9 +2,10 @@ package worker
 
 import (
 	"encoding/json"
+
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 type Client struct {
@@ -17,9 +18,9 @@ func (c *Client) Batch(b *Batch) ([]*Result, error) {
 		return nil, errors.Wrapf(err, "unable to marshal json")
 	}
 	command := []string{"/worker", "--jobs", string(bytes)}
-	log.Infof("issuing %s worker command with %d requests", b.Key(), len(b.Requests))
+	logrus.Infof("issuing %s worker command with %d requests", b.Key(), len(b.Requests))
 	stdout, stderr, commandErr, err := c.Kubernetes.ExecuteRemoteCommand(b.Namespace, b.Pod, b.Container, command)
-	log.Tracef("%s worker stdout:\n%s\nworker stderr:\n%s\n", b.Key(), stdout, stderr)
+	logrus.Tracef("%s worker stdout:\n%s\nworker stderr:\n%s\n", b.Key(), stdout, stderr)
 
 	if err != nil {
 		return nil, err
