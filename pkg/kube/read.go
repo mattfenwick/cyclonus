@@ -1,4 +1,4 @@
-package cli
+package kube
 
 import (
 	"os"
@@ -6,14 +6,13 @@ import (
 
 	"github.com/mattfenwick/collections/pkg/builtin"
 	"github.com/mattfenwick/collections/pkg/slice"
-	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
-func readPoliciesFromPath(policyPath string) ([]*networkingv1.NetworkPolicy, error) {
+func ReadNetworkPoliciesFromPath(policyPath string) ([]*networkingv1.NetworkPolicy, error) {
 	var allPolicies []*networkingv1.NetworkPolicy
 	err := filepath.Walk(policyPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -42,7 +41,7 @@ func readPoliciesFromPath(policyPath string) ([]*networkingv1.NetworkPolicy, err
 		// try parsing a list
 		policyList, err := utils.ParseYamlStrict[networkingv1.NetworkPolicyList](bytes)
 		if err == nil {
-			allPolicies = append(allPolicies, slice.Map(builtin.Reference[networkingv1.NetworkPolicy], policyList.Items)...)
+			allPolicies = append(allPolicies, refNetpolList(policyList.Items)...)
 			return nil
 		}
 
@@ -69,8 +68,8 @@ func readPoliciesFromPath(policyPath string) ([]*networkingv1.NetworkPolicy, err
 	return allPolicies, nil
 }
 
-func readPoliciesFromKube(kubeClient *kube.Kubernetes, namespaces []string) ([]*networkingv1.NetworkPolicy, error) {
-	netpols, err := kube.GetNetworkPoliciesInNamespaces(kubeClient, namespaces)
+func ReadNetworkPoliciesFromKube(kubeClient *Kubernetes, namespaces []string) ([]*networkingv1.NetworkPolicy, error) {
+	netpols, err := GetNetworkPoliciesInNamespaces(kubeClient, namespaces)
 	if err != nil {
 		return nil, err
 	}
@@ -78,9 +77,5 @@ func readPoliciesFromKube(kubeClient *kube.Kubernetes, namespaces []string) ([]*
 }
 
 func refNetpolList(refs []networkingv1.NetworkPolicy) []*networkingv1.NetworkPolicy {
-	policies := make([]*networkingv1.NetworkPolicy, len(refs))
-	for i := 0; i < len(refs); i++ {
-		policies[i] = &refs[i]
-	}
-	return policies
+	return slice.Map(builtin.Reference[networkingv1.NetworkPolicy], refs)
 }
