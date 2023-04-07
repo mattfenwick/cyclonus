@@ -28,17 +28,19 @@ func ReadNetworkPoliciesFromPath(policyPath string) ([]*networkingv1.NetworkPoli
 			return err
 		}
 
-		// try parsing multiple policies separated by '---' lines
-		policies, err := utils.ParseYaml[[]*networkingv1.NetworkPolicy](bytes)
-		if err == nil {
-			log.Debugf("parsed %d policies from %s", len(*policies), path)
-			allPolicies = append(allPolicies, *policies...)
-			return nil
-		}
+		// TODO try parsing plain yaml list (that is: not a NetworkPolicyList)
+		// policies, err := utils.ParseYaml[[]*networkingv1.NetworkPolicy](bytes)
 
-		log.Debugf("unable to parse multiple policies separated by '---' lines: %+v", err)
+		// TODO try parsing multiple policies separated by '---' lines
+		// policies, err := yaml.ParseMany[networkingv1.NetworkPolicy](bytes)
+		// if err == nil {
+		// 	log.Debugf("parsed %d policies from %s", len(policies), path)
+		// 	allPolicies = append(allPolicies, refNetpolList(policies)...)
+		// 	return nil
+		// }
+		// log.Errorf("unable to parse multiple policies separated by '---' lines: %+v", err)
 
-		// try parsing a list
+		// try parsing a NetworkPolicyList
 		policyList, err := utils.ParseYamlStrict[networkingv1.NetworkPolicyList](bytes)
 		if err == nil {
 			allPolicies = append(allPolicies, refNetpolList(policyList.Items)...)
