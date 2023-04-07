@@ -31,6 +31,10 @@ func RunReadNetworkPolicyTests() {
 			policies, err := ReadNetworkPoliciesFromPath("../../networkpolicies/simple-example")
 			Expect(err).To(BeNil())
 			Expect(len(policies)).To(Equal(7))
+
+			policies, err = ReadNetworkPoliciesFromPath("../../networkpolicies/")
+			Expect(err).To(BeNil())
+			Expect(len(policies)).To(Equal(14))
 		})
 
 		// TODO test to show what happens for duplicate names
