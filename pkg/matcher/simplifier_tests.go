@@ -112,15 +112,18 @@ func RunSimplifierTests() {
 	})
 
 	Describe("Port Simplifier", func() {
+		port99 := intstr.FromInt(99)
+		port100 := intstr.FromInt(100)
+		port999 := intstr.FromInt(999)
+
 		It("should combine matchers correctly", func() {
-			port99 := intstr.FromInt(99)
 			allPortsOnSctp := &PortProtocolMatcher{
 				Port:     nil,
 				Protocol: v1.ProtocolSCTP,
 			}
 			port99OnUdp := &PortProtocolMatcher{
 				Port:     &port99,
-				Protocol: v1.ProtocolSCTP,
+				Protocol: v1.ProtocolSCTP, // TODO should this be udp?
 			}
 
 			allMatcher := &AllPortMatcher{}
@@ -135,6 +138,21 @@ func RunSimplifierTests() {
 
 			Expect(CombinePortMatchers(allPortsOnSctpMatcher, port99OnUdpMatcher)).To(Equal(combinedMatcher))
 			Expect(CombinePortMatchers(port99OnUdpMatcher, allPortsOnSctpMatcher)).To(Equal(combinedMatcher))
+		})
+
+		It("should combine matchers with multiple protocols correctly", func() {
+			tcp100 := &PortProtocolMatcher{Port: &port100, Protocol: v1.ProtocolTCP}
+			udp100 := &PortProtocolMatcher{Port: &port100, Protocol: v1.ProtocolUDP}
+			tcp999 := &PortProtocolMatcher{Port: &port999, Protocol: v1.ProtocolTCP}
+			udp999 := &PortProtocolMatcher{Port: &port999, Protocol: v1.ProtocolUDP}
+
+			matcher100 := &SpecificPortMatcher{Ports: []*PortProtocolMatcher{tcp100, udp100}}
+			matcher999 := &SpecificPortMatcher{Ports: []*PortProtocolMatcher{tcp999, udp999}}
+
+			expected := &SpecificPortMatcher{Ports: []*PortProtocolMatcher{tcp100, udp100, tcp999, udp999}}
+
+			Expect(CombinePortMatchers(matcher999, matcher100)).To(Equal(expected))
+			Expect(CombinePortMatchers(matcher100, matcher999)).To(Equal(expected))
 		})
 	})
 }
