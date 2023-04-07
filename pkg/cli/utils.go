@@ -1,13 +1,16 @@
 package cli
 
 import (
+	"os"
+	"path/filepath"
+
+	"github.com/mattfenwick/collections/pkg/builtin"
+	"github.com/mattfenwick/collections/pkg/slice"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	networkingv1 "k8s.io/api/networking/v1"
-	"os"
-	"path/filepath"
 )
 
 func readPoliciesFromPath(policyPath string) ([]*networkingv1.NetworkPolicy, error) {
@@ -26,7 +29,7 @@ func readPoliciesFromPath(policyPath string) ([]*networkingv1.NetworkPolicy, err
 			return err
 		}
 
-		// try parsing a list first
+		// try parsing multiple policies separated by '---' lines
 		policies, err := utils.ParseYaml[[]*networkingv1.NetworkPolicy](bytes)
 		if err == nil {
 			log.Debugf("parsed %d policies from %s", len(*policies), path)
@@ -34,7 +37,17 @@ func readPoliciesFromPath(policyPath string) ([]*networkingv1.NetworkPolicy, err
 			return nil
 		}
 
-		log.Debugf("failed to parse list from %s, falling back to parsing single policy", path)
+		log.Debugf("unable to parse multiple policies separated by '---' lines: %+v", err)
+
+		// try parsing a list
+		policyList, err := utils.ParseYamlStrict[networkingv1.NetworkPolicyList](bytes)
+		if err == nil {
+			allPolicies = append(allPolicies, slice.Map(builtin.Reference[networkingv1.NetworkPolicy], policyList.Items)...)
+			return nil
+		}
+
+		log.Debugf("unable to parse list of policies: %+v", err)
+
 		policy, err := utils.ParseYamlStrict[networkingv1.NetworkPolicy](bytes)
 		if err != nil {
 			return errors.WithMessagef(err, "unable to parse single policy from yaml at %s", path)
