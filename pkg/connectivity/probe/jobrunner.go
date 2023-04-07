@@ -1,13 +1,14 @@
 package probe
 
 import (
+	"strings"
+
+	"github.com/mattfenwick/collections/pkg/json"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/matcher"
-	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/mattfenwick/cyclonus/pkg/worker"
 	"github.com/sirupsen/logrus"
-	"strings"
 )
 
 type Runner struct {
@@ -78,7 +79,7 @@ func (s *SimulatedJobRunner) RunJob(job *Job) *JobResult {
 	allowed := s.Policies.IsTrafficAllowed(job.Traffic())
 	// TODO could also keep the whole `allowed` struct somewhere
 
-	logrus.Tracef("to %s\n%s\n", utils.JsonString(job), allowed.Table())
+	logrus.Tracef("to %s\n%s\n", json.MustMarshalToString(job), allowed.Table())
 
 	var combined, ingress, egress = ConnectivityBlocked, ConnectivityBlocked, ConnectivityBlocked
 	if allowed.Ingress.IsAllowed() {

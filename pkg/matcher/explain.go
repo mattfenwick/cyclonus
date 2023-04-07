@@ -2,13 +2,14 @@ package matcher
 
 import (
 	"fmt"
+	"strings"
+
+	"github.com/mattfenwick/collections/pkg/json"
 	"github.com/mattfenwick/collections/pkg/slice"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
-	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	networkingv1 "k8s.io/api/networking/v1"
-	"strings"
 )
 
 type SliceBuilder struct {
@@ -59,7 +60,7 @@ func (s *SliceBuilder) TargetsTableLines(targets []*Target, isIngress bool) {
 		if len(target.Peers) == 0 {
 			s.Append("no pods, no ips", "no ports, no protocols")
 		} else {
-			for _, peer := range slice.SortOn(func(p PeerMatcher) string { return utils.DumpJSON(p) }, target.Peers) {
+			for _, peer := range slice.SortOn(func(p PeerMatcher) string { return json.MustMarshalToString(p) }, target.Peers) {
 				switch a := peer.(type) {
 				case *AllPeersMatcher:
 					s.Append("all pods, all ips", "all ports, all protocols")

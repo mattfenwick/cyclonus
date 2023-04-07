@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/mattfenwick/collections/pkg/json"
 	"github.com/mattfenwick/collections/pkg/set"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
@@ -123,7 +124,7 @@ func RunAnalyzeCommand(args *AnalyzeArgs) {
 		kubePolicies = append(kubePolicies, netpol.AllExamples...)
 	}
 
-	logrus.Debugf("parsed policies:\n%s", utils.JsonString(kubePolicies))
+	logrus.Debugf("parsed policies:\n%s", json.MustMarshalToString(kubePolicies))
 	policies := matcher.BuildNetworkPolicies(args.SimplifyPolicies, kubePolicies)
 
 	for _, mode := range args.Modes {
@@ -182,7 +183,7 @@ type QueryTargetPod struct {
 
 func QueryTargets(explainedPolicies *matcher.Policy, podPath string, pods []*QueryTargetPod) {
 	if podPath != "" {
-		podsFromFile, err := utils.ParseJsonFromFile[[]*QueryTargetPod](podPath)
+		podsFromFile, err := json.ParseFile[[]*QueryTargetPod](podPath)
 		utils.DoOrDie(err)
 		pods = append(pods, *podsFromFile...)
 	}
@@ -220,7 +221,7 @@ func QueryTraffic(explainedPolicies *matcher.Policy, trafficPath string) {
 	if trafficPath == "" {
 		logrus.Fatalf("%+v", errors.Errorf("path to traffic file required for QueryTraffic command"))
 	}
-	allTraffics, err := utils.ParseJsonFromFile[[]*matcher.Traffic](trafficPath)
+	allTraffics, err := json.ParseFile[[]*matcher.Traffic](trafficPath)
 	utils.DoOrDie(err)
 
 	for _, traffic := range *allTraffics {
@@ -238,7 +239,7 @@ type SyntheticProbeConnectivityConfig struct {
 
 func ProbeSyntheticConnectivity(explainedPolicies *matcher.Policy, modelPath string, kubePods []v1.Pod, kubeNamespaces []v1.Namespace) {
 	if modelPath != "" {
-		config, err := utils.ParseJsonFromFile[SyntheticProbeConnectivityConfig](modelPath)
+		config, err := json.ParseFile[SyntheticProbeConnectivityConfig](modelPath)
 		utils.DoOrDie(err)
 
 		jobBuilder := &probe.JobBuilder{TimeoutSeconds: 10}
