@@ -2,11 +2,12 @@ package connectivity
 
 import (
 	"fmt"
-	"github.com/mattfenwick/collections/pkg/slice"
-	log "github.com/sirupsen/logrus"
-	"golang.org/x/exp/maps"
 	"math"
 	"strings"
+
+	"github.com/mattfenwick/collections/pkg/slice"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/exp/maps"
 
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
@@ -37,7 +38,7 @@ func (t *Printer) PrintSummary() {
 	fmt.Printf("Tag results:\n%s\n", t.printMarkdownFeatureTable(summary.TagPrimaryCounts, summary.TagCounts))
 
 	if err := PrintJUnitResults(t.JunitResultsFile, t.Results, t.IgnoreLoopback); err != nil {
-		log.Errorf("unable to dump JUnit test results: %+v", err)
+		logrus.Errorf("unable to dump JUnit test results: %+v", err)
 	}
 }
 

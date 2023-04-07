@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/mattfenwick/collections/pkg/json"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
@@ -89,7 +90,7 @@ func SetupGenerateCommand() *cobra.Command {
 }
 
 func RunGenerateCommand(args *GenerateArgs) {
-	fmt.Printf("args: \n%s\n", utils.JsonString(args))
+	fmt.Printf("args: \n%s\n", json.MustMarshalToString(args))
 
 	RunVersionCommand()
 
@@ -105,7 +106,7 @@ func RunGenerateCommand(args *GenerateArgs) {
 		utils.DoOrDie(err)
 		info, err := kubeClient.ClientSet.ServerVersion()
 		utils.DoOrDie(err)
-		fmt.Printf("Kubernetes server version: \n%s\n", utils.JsonString(info))
+		fmt.Printf("Kubernetes server version: \n%s\n", json.MustMarshalToString(info))
 		kubernetes = kubeClient
 	}
 

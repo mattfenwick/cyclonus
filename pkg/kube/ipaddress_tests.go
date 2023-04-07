@@ -2,11 +2,12 @@ package kube
 
 import (
 	"fmt"
+	"net"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/networking/v1"
-	"net"
 )
 
 type ipCidrTestCase struct {
@@ -41,7 +42,7 @@ func RunIPAddressTests() {
 				},
 			}
 			for _, c := range testCases {
-				log.Infof("looking at %+v", c)
+				logrus.Infof("looking at %+v", c)
 				isInCidr, err := IsIPInCIDR(c.IP, c.CIDR)
 				Expect(err).To(BeNil())
 				Expect(isInCidr).To(Equal(c.IsMember))
@@ -83,7 +84,7 @@ func RunIPAddressTests() {
 			}
 
 			for _, c := range testCases {
-				log.Infof("looking at %+v", c)
+				logrus.Infof("looking at %+v", c)
 				isInCidr, err := IsIPInCIDR(c.IP, c.CIDR)
 				Expect(err).To(BeNil())
 				Expect(isInCidr).To(Equal(c.IsMember))
@@ -143,7 +144,7 @@ func RunIPAddressTests() {
 				},
 			}
 			for _, c := range testCases {
-				log.Infof("looking at %+v", c)
+				logrus.Infof("looking at %+v", c)
 				isMatch, err := IsIPAddressMatchForIPBlock(c.IP, c.IPBlock)
 				Expect(err).To(BeNil())
 				Expect(isMatch).To(Equal(c.IsMatch))
@@ -182,7 +183,7 @@ func RunIPAddressTests() {
 				},
 			}
 			for _, c := range testCases {
-				log.Infof("looking at %+v", c)
+				logrus.Infof("looking at %+v", c)
 
 				isMatchWithoutExcept, err := IsIPAddressMatchForIPBlock(c.IP, &v1.IPBlock{
 					CIDR:   c.IPBlock.CIDR,

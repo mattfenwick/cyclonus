@@ -5,10 +5,11 @@ import (
 	"path/filepath"
 
 	"github.com/mattfenwick/collections/pkg/builtin"
+	"github.com/mattfenwick/collections/pkg/file"
 	"github.com/mattfenwick/collections/pkg/slice"
 	"github.com/mattfenwick/cyclonus/pkg/utils"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
@@ -19,11 +20,11 @@ func ReadNetworkPoliciesFromPath(policyPath string) ([]*networkingv1.NetworkPoli
 			return errors.Wrapf(err, "unable to walk path %s", path)
 		}
 		if info.IsDir() {
-			log.Tracef("not opening dir %s", path)
+			logrus.Tracef("not opening dir %s", path)
 			return nil
 		}
-		log.Debugf("walking path %s", path)
-		bytes, err := utils.ReadFileBytes(path)
+		logrus.Debugf("walking path %s", path)
+		bytes, err := file.Read(path)
 		if err != nil {
 			return err
 		}
@@ -34,11 +35,11 @@ func ReadNetworkPoliciesFromPath(policyPath string) ([]*networkingv1.NetworkPoli
 		// TODO try parsing multiple policies separated by '---' lines
 		// policies, err := yaml.ParseMany[networkingv1.NetworkPolicy](bytes)
 		// if err == nil {
-		// 	log.Debugf("parsed %d policies from %s", len(policies), path)
+		// 	logrus.Debugf("parsed %d policies from %s", len(policies), path)
 		// 	allPolicies = append(allPolicies, refNetpolList(policies)...)
 		// 	return nil
 		// }
-		// log.Errorf("unable to parse multiple policies separated by '---' lines: %+v", err)
+		// logrus.Errorf("unable to parse multiple policies separated by '---' lines: %+v", err)
 
 		// try parsing a NetworkPolicyList
 		policyList, err := utils.ParseYamlStrict[networkingv1.NetworkPolicyList](bytes)
@@ -47,14 +48,14 @@ func ReadNetworkPoliciesFromPath(policyPath string) ([]*networkingv1.NetworkPoli
 			return nil
 		}
 
-		log.Debugf("unable to parse list of policies: %+v", err)
+		logrus.Debugf("unable to parse list of policies: %+v", err)
 
 		policy, err := utils.ParseYamlStrict[networkingv1.NetworkPolicy](bytes)
 		if err != nil {
 			return errors.WithMessagef(err, "unable to parse single policy from yaml at %s", path)
 		}
 
-		log.Debugf("parsed single policy from %s: %+v", path, policy)
+		logrus.Debugf("parsed single policy from %s: %+v", path, policy)
 		allPolicies = append(allPolicies, policy)
 		return nil
 	})

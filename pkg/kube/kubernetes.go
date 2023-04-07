@@ -3,8 +3,9 @@ package kube
 import (
 	"bytes"
 	"context"
+
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,7 +23,7 @@ type Kubernetes struct {
 }
 
 func NewKubernetesForContext(context string) (*Kubernetes, error) {
-	log.Debugf("instantiating k8s Clientset for context %s", context)
+	logrus.Debugf("instantiating k8s Clientset for context %s", context)
 	kubeConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		clientcmd.NewDefaultClientConfigLoadingRules(),
 		&clientcmd.ConfigOverrides{CurrentContext: context}).ClientConfig()
@@ -70,13 +71,13 @@ func (k *Kubernetes) CreateNamespace(ns *v1.Namespace) (*v1.Namespace, error) {
 }
 
 func (k *Kubernetes) DeleteAllNetworkPoliciesInNamespace(ns string) error {
-	log.Debugf("deleting all network policies in namespace %s", ns)
+	logrus.Debugf("deleting all network policies in namespace %s", ns)
 	netpols, err := k.ClientSet.NetworkingV1().NetworkPolicies(ns).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return errors.Wrapf(err, "unable to list network policies in ns %s", ns)
 	}
 	for _, np := range netpols.Items {
-		log.Debugf("deleting network policy %s/%s", ns, np.Name)
+		logrus.Debugf("deleting network policy %s/%s", ns, np.Name)
 		err = k.DeleteNetworkPolicy(np.Namespace, np.Name)
 		if err != nil {
 			return err
@@ -99,13 +100,13 @@ func (k *Kubernetes) GetNetworkPoliciesInNamespace(namespace string) ([]networki
 }
 
 func (k *Kubernetes) UpdateNetworkPolicy(policy *networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error) {
-	log.Debugf("updating network policy %s/%s", policy.Namespace, policy.Name)
+	logrus.Debugf("updating network policy %s/%s", policy.Namespace, policy.Name)
 	np, err := k.ClientSet.NetworkingV1().NetworkPolicies(policy.Namespace).Update(context.TODO(), policy, metav1.UpdateOptions{})
 	return np, errors.Wrapf(err, "unable to update network policy %s/%s", policy.Namespace, policy.Name)
 }
 
 func (k *Kubernetes) CreateNetworkPolicy(policy *networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error) {
-	log.Debugf("creating network policy %s/%s", policy.Namespace, policy.Name)
+	logrus.Debugf("creating network policy %s/%s", policy.Namespace, policy.Name)
 
 	createdPolicy, err := k.ClientSet.NetworkingV1().NetworkPolicies(policy.Namespace).Create(context.TODO(), policy, metav1.CreateOptions{})
 	return createdPolicy, errors.Wrapf(err, "unable to create network policy %s/%s", policy.Namespace, policy.Name)
@@ -118,7 +119,7 @@ func (k *Kubernetes) GetService(namespace string, name string) (*v1.Service, err
 
 func (k *Kubernetes) CreateService(svc *v1.Service) (*v1.Service, error) {
 	ns := svc.Namespace
-	log.Debugf("creating service %s/%s", ns, svc.Name)
+	logrus.Debugf("creating service %s/%s", ns, svc.Name)
 	createdService, err := k.ClientSet.CoreV1().Services(ns).Create(context.TODO(), svc, metav1.CreateOptions{})
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to create service %s/%s", ns, svc.Name)
@@ -127,7 +128,7 @@ func (k *Kubernetes) CreateService(svc *v1.Service) (*v1.Service, error) {
 }
 
 func (k *Kubernetes) DeleteService(namespace string, name string) error {
-	log.Debugf("deleting service %s/%s", namespace, name)
+	logrus.Debugf("deleting service %s/%s", namespace, name)
 	err := k.ClientSet.CoreV1().Services(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
 	return errors.Wrapf(err, "unable to delete service %s/%s", namespace, name)
 }
@@ -165,14 +166,14 @@ func (k *Kubernetes) SetPodLabels(namespace string, podName string, labels map[s
 
 func (k *Kubernetes) CreatePod(pod *v1.Pod) (*v1.Pod, error) {
 	ns := pod.Namespace
-	log.Debugf("creating pod %s/%s", ns, pod.Name)
+	logrus.Debugf("creating pod %s/%s", ns, pod.Name)
 
 	createdPod, err := k.ClientSet.CoreV1().Pods(ns).Create(context.TODO(), pod, metav1.CreateOptions{})
 	return createdPod, errors.Wrapf(err, "unable to create pod %s/%s", ns, pod.Name)
 }
 
 func (k *Kubernetes) DeletePod(namespace string, podName string) error {
-	log.Debugf("deleting pod %s/%s", namespace, podName)
+	logrus.Debugf("deleting pod %s/%s", namespace, podName)
 	err := k.ClientSet.CoreV1().Pods(namespace).Delete(context.TODO(), podName, metav1.DeleteOptions{})
 	return errors.Wrapf(err, "unable to delete pod %s/%s", namespace, podName)
 }
