@@ -123,7 +123,7 @@ func RunSimplifierTests() {
 			}
 			port99OnUdp := &PortProtocolMatcher{
 				Port:     &port99,
-				Protocol: v1.ProtocolSCTP, // TODO should this be udp?
+				Protocol: v1.ProtocolUDP,
 			}
 
 			allMatcher := &AllPortMatcher{}

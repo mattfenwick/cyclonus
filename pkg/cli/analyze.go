@@ -2,11 +2,12 @@ package cli
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/mattfenwick/collections/pkg/set"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
 	"github.com/mattfenwick/cyclonus/pkg/linter"
-	"strings"
 
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/mattfenwick/cyclonus/pkg/kube/netpol"
@@ -102,12 +103,18 @@ func RunAnalyzeCommand(args *AnalyzeArgs) {
 			kubeNamespaces = nsList.Items
 			namespaces = []string{v1.NamespaceAll}
 		}
-		kubePolicies, err = readPoliciesFromKube(kubeClient, namespaces)
+		kubePolicies, err = kube.ReadNetworkPoliciesFromKube(kubeClient, namespaces)
+		if err != nil {
+			logrus.Errorf("unable to read network policies from kube, ns '%s': %+v", namespaces, err)
+		}
 		kubePods, err = kube.GetPodsInNamespaces(kubeClient, namespaces)
+		if err != nil {
+			logrus.Errorf("unable to read pods from kube, ns '%s': %+v", namespaces, err)
+		}
 	}
 	// 2. read policies from file
 	if args.PolicyPath != "" {
-		policiesFromPath, err := readPoliciesFromPath(args.PolicyPath)
+		policiesFromPath, err := kube.ReadNetworkPoliciesFromPath(args.PolicyPath)
 		utils.DoOrDie(err)
 		kubePolicies = append(kubePolicies, policiesFromPath...)
 	}

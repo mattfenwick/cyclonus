@@ -11,5 +11,6 @@ func TestModel(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunIPAddressTests()
 	RunLabelSelectorTests()
+	RunReadNetworkPolicyTests()
 	RunSpecs(t, "network policy matcher suite")
 }
