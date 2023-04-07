@@ -2,7 +2,7 @@
 
 ## Setup
 
- - [Get set up with golang 1.19](https://golang.org/dl/)
+ - [Get set up with golang 1.20](https://golang.org/dl/)
  - clone this repo
 
         git clone git@github.com:mattfenwick/cyclonus.git
