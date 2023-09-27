@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"strings"
+
 	"github.com/mattfenwick/cyclonus/pkg/connectivity"
 	"github.com/mattfenwick/cyclonus/pkg/connectivity/probe"
 	"github.com/mattfenwick/cyclonus/pkg/generator"
@@ -11,7 +13,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"strings"
 )
 
 type ProbeArgs struct {
@@ -34,6 +35,7 @@ type ProbeArgs struct {
 	ServerPorts      []int
 	ServerNamespaces []string
 	ServerPods       []string
+	ImageRepository  string
 }
 
 func SetupProbeCommand() *cobra.Command {
@@ -66,6 +68,7 @@ func SetupProbeCommand() *cobra.Command {
 	command.Flags().IntVar(&args.PerturbationWaitSeconds, "perturbation-wait-seconds", 5, "number of seconds to wait after perturbing the cluster (i.e. create a network policy, modify a ns/pod label) before running probes, to give the CNI time to update the cluster state")
 	command.Flags().IntVar(&args.PodCreationTimeoutSeconds, "pod-creation-timeout-seconds", 60, "number of seconds to wait for pods to create, be running and have IP addresses")
 	command.Flags().StringVar(&args.PolicyPath, "policy-path", "", "path to yaml network policy to create in kube; if empty, will not create any policies")
+	command.Flags().StringVar(&args.ImageRepository, "image-repository", "registry.k8s.io", "Image repository for agnhost")
 
 	return command
 }
@@ -82,7 +85,7 @@ func RunProbeCommand(args *ProbeArgs) {
 	protocols := parseProtocols(args.Protocols)
 	serverProtocols := parseProtocols(args.ServerProtocols)
 
-	resources, err := probe.NewDefaultResources(kubernetes, args.ServerNamespaces, args.ServerPods, args.ServerPorts, serverProtocols, externalIPs, args.PodCreationTimeoutSeconds, false)
+	resources, err := probe.NewDefaultResources(kubernetes, args.ServerNamespaces, args.ServerPods, args.ServerPorts, serverProtocols, externalIPs, args.PodCreationTimeoutSeconds, false, args.ImageRepository)
 	utils.DoOrDie(err)
 
 	interpreterConfig := &connectivity.InterpreterConfig{

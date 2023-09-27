@@ -1,6 +1,8 @@
 package probe
 
 import (
+	"time"
+
 	"github.com/mattfenwick/collections/pkg/slice"
 	"github.com/mattfenwick/cyclonus/pkg/kube"
 	"github.com/pkg/errors"
@@ -8,7 +10,6 @@ import (
 	"golang.org/x/exp/maps"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"time"
 )
 
 type Resources struct {
@@ -17,7 +18,7 @@ type Resources struct {
 	//ExternalIPs []string
 }
 
-func NewDefaultResources(kubernetes kube.IKubernetes, namespaces []string, podNames []string, ports []int, protocols []v1.Protocol, externalIPs []string, podCreationTimeoutSeconds int, batchJobs bool) (*Resources, error) {
+func NewDefaultResources(kubernetes kube.IKubernetes, namespaces []string, podNames []string, ports []int, protocols []v1.Protocol, externalIPs []string, podCreationTimeoutSeconds int, batchJobs bool, imageRepository string) (*Resources, error) {
 	//sort.Strings(externalIPs) // TODO why is this here?
 
 	r := &Resources{
@@ -27,7 +28,7 @@ func NewDefaultResources(kubernetes kube.IKubernetes, namespaces []string, podNa
 
 	for _, ns := range namespaces {
 		for _, podName := range podNames {
-			r.Pods = append(r.Pods, NewDefaultPod(ns, podName, ports, protocols, batchJobs))
+			r.Pods = append(r.Pods, NewDefaultPod(ns, podName, ports, protocols, batchJobs, imageRepository))
 		}
 		r.Namespaces[ns] = map[string]string{"ns": ns}
 	}
