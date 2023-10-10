@@ -27,11 +27,11 @@ func NewPod(ns string, name string, labels map[string]string, ip string, contain
 	}
 }
 
-func NewDefaultPod(ns string, name string, ports []int, protocols []v1.Protocol, batchJobs bool, imageRepository string) *Pod {
+func NewDefaultPod(ns string, name string, ports []int, protocols []v1.Protocol, batchJobs bool, imageRegistry string) *Pod {
 	var containers []*Container
 	for _, port := range ports {
 		for _, protocol := range protocols {
-			containers = append(containers, NewDefaultContainer(port, protocol, batchJobs, imageRepository))
+			containers = append(containers, NewDefaultContainer(port, protocol, batchJobs, imageRegistry))
 		}
 	}
 	return &Pod{
@@ -164,22 +164,22 @@ func (p *Pod) PodString() PodString {
 }
 
 type Container struct {
-	Name            string
-	Port            int
-	Protocol        v1.Protocol
-	PortName        string
-	BatchJobs       bool
-	imageRepository string
+	Name          string
+	Port          int
+	Protocol      v1.Protocol
+	PortName      string
+	BatchJobs     bool
+	ImageRegistry string
 }
 
-func NewDefaultContainer(port int, protocol v1.Protocol, batchJobs bool, imageRepository string) *Container {
+func NewDefaultContainer(port int, protocol v1.Protocol, batchJobs bool, imageRegistry string) *Container {
 	return &Container{
-		Name:            fmt.Sprintf("cont-%d-%s", port, strings.ToLower(string(protocol))),
-		Port:            port,
-		Protocol:        protocol,
-		PortName:        fmt.Sprintf("serve-%d-%s", port, strings.ToLower(string(protocol))),
-		BatchJobs:       batchJobs,
-		imageRepository: imageRepository,
+		Name:          fmt.Sprintf("cont-%d-%s", port, strings.ToLower(string(protocol))),
+		Port:          port,
+		Protocol:      protocol,
+		PortName:      fmt.Sprintf("serve-%d-%s", port, strings.ToLower(string(protocol))),
+		BatchJobs:     batchJobs,
+		ImageRegistry: imageRegistry,
 	}
 }
 
@@ -195,7 +195,7 @@ func (c *Container) Image() string {
 	if c.BatchJobs {
 		return cyclonusWorkerImage
 	}
-	return c.imageRepository + "/" + agnhostImage
+	return c.ImageRegistry + "/" + agnhostImage
 }
 
 func (c *Container) KubeContainer() v1.Container {

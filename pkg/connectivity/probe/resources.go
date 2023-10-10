@@ -18,7 +18,7 @@ type Resources struct {
 	//ExternalIPs []string
 }
 
-func NewDefaultResources(kubernetes kube.IKubernetes, namespaces []string, podNames []string, ports []int, protocols []v1.Protocol, externalIPs []string, podCreationTimeoutSeconds int, batchJobs bool, imageRepository string) (*Resources, error) {
+func NewDefaultResources(kubernetes kube.IKubernetes, namespaces []string, podNames []string, ports []int, protocols []v1.Protocol, externalIPs []string, podCreationTimeoutSeconds int, batchJobs bool, imageRegistry string) (*Resources, error) {
 	//sort.Strings(externalIPs) // TODO why is this here?
 
 	r := &Resources{
@@ -28,7 +28,7 @@ func NewDefaultResources(kubernetes kube.IKubernetes, namespaces []string, podNa
 
 	for _, ns := range namespaces {
 		for _, podName := range podNames {
-			r.Pods = append(r.Pods, NewDefaultPod(ns, podName, ports, protocols, batchJobs, imageRepository))
+			r.Pods = append(r.Pods, NewDefaultPod(ns, podName, ports, protocols, batchJobs, imageRegistry))
 		}
 		r.Namespaces[ns] = map[string]string{"ns": ns}
 	}
