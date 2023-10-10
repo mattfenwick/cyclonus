@@ -44,6 +44,7 @@ type GenerateArgs struct {
 	DryRun                    bool
 	JobTimeoutSeconds         int
 	JunitResultsFile          string
+	ImageRegistry             string
 	//BatchJobs                 bool
 }
 
@@ -85,6 +86,7 @@ func SetupGenerateCommand() *cobra.Command {
 	command.Flags().BoolVar(&args.DryRun, "dry-run", false, "if true, don't actually do anything: just print out what would be done")
 
 	command.Flags().StringVar(&args.JunitResultsFile, "junit-results-file", "", "output junit results to the specified file")
+	command.Flags().StringVar(&args.ImageRegistry, "image-registry", "registry.k8s.io", "Image registry for agnhost")
 
 	return command
 }
@@ -113,7 +115,7 @@ func RunGenerateCommand(args *GenerateArgs) {
 	serverProtocols := parseProtocols(args.ServerProtocols)
 
 	batchJobs := false // args.BatchJobs
-	resources, err := probe.NewDefaultResources(kubernetes, args.ServerNamespaces, args.ServerPods, args.ServerPorts, serverProtocols, externalIPs, args.PodCreationTimeoutSeconds, batchJobs)
+	resources, err := probe.NewDefaultResources(kubernetes, args.ServerNamespaces, args.ServerPods, args.ServerPorts, serverProtocols, externalIPs, args.PodCreationTimeoutSeconds, batchJobs, args.ImageRegistry)
 	utils.DoOrDie(err)
 
 	interpreterConfig := &connectivity.InterpreterConfig{

@@ -24,7 +24,7 @@ namespace x).  There are three modes to test network policies in:
 
 Tests can run over multiple protocols and ports.  A typical test run includes protocols TCP and UDP (often
 SCTP as well), and ports 80 and 81.  Each port/protocol combination is served by a container running `agnhost` (docker
-image: k8s.gcr.io/e2e-test-images/agnhost) which is capable of serving a specific protocol on a specific port.  Thus,
+image: registry.k8s.io/e2e-test-images/agnhost) which is capable of serving a specific protocol on a specific port.  Thus,
 if your test includes protocols TCP and UDP, and ports 80 and 81, each pod will have 4 containers.  Named ports are
 included as well -- `serve-80-udp` is the name for port 80 on UDP.
 
