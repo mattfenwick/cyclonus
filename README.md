@@ -66,3 +66,4 @@ Cyclonus aims to make network policies and implementations easy to understand, e
  - @enhaocui
  - @matmerr
  - @huntergregory
+ - @jaydeokar
