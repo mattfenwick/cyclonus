@@ -614,7 +614,7 @@ spec:
 func AllowNoEgressFromNamespace(namespace string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-no-egress-from-namespace"),
+			Name:      "allow-no-egress-from-namespace",
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -695,7 +695,7 @@ spec:
 func AllowNoIngressNorEgress(namespace string, targetLabels map[string]string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-nothing"),
+			Name:      "allow-nothing",
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
