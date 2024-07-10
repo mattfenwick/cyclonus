@@ -117,7 +117,7 @@ func WarningsTable(warnings []Warning) string {
 	table.SetReflowDuringAutoWrap(false)
 	table.SetAutoWrapText(false)
 
-	sortedWarnings := slice.SortOnBy(sortKey, slice.CompareSlicePairwise[string](), warnings)
+	sortedWarnings := slice.SortOnBy(sortKey, slice.ComparePairwise[string](), warnings)
 	for _, w := range sortedWarnings {
 		origin := "Source"
 		if !w.OriginIsSource() {

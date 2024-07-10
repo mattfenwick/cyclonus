@@ -3,7 +3,7 @@
 set -xv
 set -euo pipefail
 
-KIND_VERSION=${KIND_VERSION:-v0.20.0}
+KIND_VERSION=${KIND_VERSION:-v0.23.0}
 CNI=${CNI:-calico}
 CLUSTER_NAME="netpol-$CNI"
 RUN_FROM_SOURCE=${RUN_FROM_SOURCE:-true}
