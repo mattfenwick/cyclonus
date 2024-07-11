@@ -58,11 +58,11 @@ You'll need to be logged in to dockerhub from the command line, in order to push
 Cut a release:
 
 ```bash
-goreleaser release --rm-dist
+goreleaser release --clean
 ```
 
 Make a test release:
 
 ```bash
-goreleaser release --snapshot --rm-dist
+goreleaser release --snapshot --clean
 ```
